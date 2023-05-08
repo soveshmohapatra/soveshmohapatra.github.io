@@ -11,4 +11,4 @@ I've spent some excellent summers working at MIT CSAIL, UMass IALS, and UMass Li
 
 When I'm not working, I am generally [exploring national parks]({ site.url }}/national-parks), playing Valorant, or star gazing. I like to [blog]({{ site.url }}/archive.html) and have written a few articles compiling my experiences with graduate school admissions, computational neuroscience, etc.
 
-Some people in the gaming community (especially on Valorant circle) know me as *Sesh*.
+Some people in the gaming community (especially in Valorant circle) know me as *Sesh*.
