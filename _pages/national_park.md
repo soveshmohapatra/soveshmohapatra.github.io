@@ -1,7 +1,7 @@
 ---
 layout: page
-title: Birding
-permalink: /birding/
+title: National Park
+permalink: /national-park/
 order: 3
 ---
 
