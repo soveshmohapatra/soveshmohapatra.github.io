@@ -12,7 +12,8 @@ I am starting my PhD in BioEngineering at [University of Pennsylvania](https://b
 
 I maintain a list of my publications under the [Research]({{ site.url }}/research) tab. I also [blog]({{ site.url }}/archive) every now and then compiling my personal experiences.
 
-[Resume]({{ site.url }}/assets/resume.pdf), [Google Scholar](https://scholar.google.com/citations?user=TOvlOuEAAAAJ&hl=en), [Semantic Scholar](https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878), [Research Gate](https://www.researchgate.net/profile/Sovesh-Mohapatra-2)
+[Resume]({{ site.url }}/assets/resume.pdf) \n
+[Google Scholar](https://scholar.google.com/citations?user=TOvlOuEAAAAJ&hl=en), [Semantic Scholar](https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878), [Research Gate](https://www.researchgate.net/profile/Sovesh-Mohapatra-2) \n
 Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 
 #### Updates
@@ -41,7 +42,7 @@ Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 <tr><td><b>May 2020:</b></td><td>started my summer internship at <a href="https://research.google/teams/brain/">Google Brain</a>, where I will be working with <a href="https://sites.google.com/site/royaurko">Aurko Roy</a></td></tr>
 <tr><td><b>Apr 2020:</b></td><td>talk at <a href="https://www.research.ibm.com/">IBM research</a> on model extraction attacks on BERT (<a href="https://docs.google.com/presentation/d/1emJb07ER8Gje6PGauIU--t0DCgvECJlnjVQfv9rOUkM/edit">slides</a>)</td></tr>
 <tr><td><b>Apr 2020:</b></td><td>new <a href="http://www.cleverhans.io/2020/04/06/stealing-bert.html">blogpost</a> with <a href="https://www.papernot.fr">Nicolas Papernot</a> on our ICLR 2020 paper on model extraction attacks on BERT.</td></tr>
-<tr><td><b>Jan 2020:</b></td><td>I am co-organizing the <a href="https://umass-mlfl.github.io/">Machine Learning and Friends Lunch</a> at UMass Amherst with Neha Nayak Kennard. If you have speaker recommendations, fill them <a href="https://docs.google.com/forms/d/e/1FAIpQLSe2gqWTn4UXWqxbuLB1EPcuLBO7hP3aXh-ZluMvJsxL-hHI2Q/viewform">here</a>!</td></tr>
+<tr><td><b>Jan 2020:</b></td><td> paper published at <a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011012"> PLOS Computational Biology </a> on predicting effects and extent of stimulation on brain </td></tr>
 <tr><td><b>Nov 2022:</b></td><td> new preprint <a href="https://arxiv.org/abs/2210.01091">paper</a> on how and when transfer learning is effective.</td></tr>
 <tr><td><b>Nov 2022:</b></td><td> presented paper at <a href="https://aclanthology.org/2022.nlp4dh-1.0.pdf"> AACL-NLP4DH</a> on sentiment analysis of Presidential election speeches.</td></tr>
 <tr><td><b>Sep 2022:</b></td><td> new preprint <a href="https://arxiv.org/abs/2209.13487"> paper </a> on sentiment analysis of Presidential election speeches</td></tr>
