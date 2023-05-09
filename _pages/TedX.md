@@ -1,6 +1,6 @@
 ---
 layout: page
-title: My TedX Talks
+title: TedX Talks
 permalink: TedX
 order: 6
 ---
