@@ -1,20 +1,19 @@
 ---
 layout: page
 ---
+
 {% include JB/setup %}
 
 <img style="float: right; width: 35%; padding: 6px;" src=" {{ site.url }}/assets/IMG_1403.jpg">
 
-My name is Kalpesh Krishna, and I am a ~~fourth~~ fifth year PhD student in Computer Science at [UMass Amherst](http://cs.umass.edu/) advised by Prof. [Mohit Iyyer](https://people.cs.umass.edu/~miyyer/) in the [UMass NLP](http://nlp.cs.umass.edu/) lab. My research is supported by the [Google PhD Fellowship](https://research.google/outreach/phd-fellowship/).
+My name is Sovesh Mohapatra, a senior undergraduate at the [University of Massachusetts Amherst](http://umass.edu/). I will be completing my triple major in Computer Science, Linguistics, and Mathematics in three years, with my graduation expected in May 2023.
 
-I received my undergraduate degree at [IIT Bombay](http://iitb.ac.in). In the past, I've done some fun internships at [AI2](https://allenai.org/) (Summer 2022), [Google Research](https://research.google) (Summer 2019 - Spring 2022), [Toyota Technological Institute at Chicago](https://www.ttic.edu/) (Summer 2017) and [Mozilla](https://www.mozilla.org/en-US/) (Summer 2016).
+I am starting my PhD in BioEngineering at [University of Pennsylvania](https://be.seas.upenn.edu/) under [Dr. Hao Huang](https://www.med.upenn.edu/apps/faculty/index.php/g275/p8837947) and [Dr. Minhui Ouyang](https://www.med.upenn.edu/apps/faculty/index.php/g275/p8844108). Currently, I am working with [Dr. Gottfried Schlaug](http://profiles.umassmed.edu/display/22559132) on problems in identifying lesions in stroke patients and channeling the stimulation to enhance the current rehabilitation techniques for stroke patients
 
 I maintain a list of my publications under the [Research]({{ site.url }}/research) tab. I also [blog]({{ site.url }}/archive) every now and then compiling my personal experiences.
 
-[CV / Resume]({{ site.url }}/assets/cv.pdf), [Google Scholar](https://scholar.google.com/citations?hl=en&user=9g2BsMUAAAAJ), [Semantic Scholar](https://www.semanticscholar.org/author/Kalpesh-Krishna/26161085)  
-Email ID: [kalpesh@cs.umass.edu](mailto:kalpesh@cs.umass.edu)  
-
-**I am actively looking for full-time research positions in industry. If you think I may be a good fit, feel free to reach out to me!**
+[CV / Resume]({{ site.url }}/assets/cv.pdf), [Google Scholar](https://scholar.google.com/citations?user=TOvlOuEAAAAJ&hl=en), [Semantic Scholar](https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878), [Research Gate](https://www.researchgate.net/profile/Sovesh-Mohapatra-2)
+Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 
 #### Updates
 
