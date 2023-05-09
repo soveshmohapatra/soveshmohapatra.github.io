@@ -16,6 +16,11 @@ I invite you to take a moment to dive into these captivating videos. Join me on 
 
 ## TedX Manipal
 
+The thrill of stepping onto the TEDx stage for my third talk, at the ripe age of 18, was a mix of familiarity and anticipation. Having experienced the energy and impact of previous talks, I was eager to share my latest insights and ideas with the world. The stage had become a space where my voice could reach far and wide, where my words could spark change and inspire others.
+
+This time, I chose to explore a topic that had been gnawing at my curiosity—the untapped potential of youth in driving innovation and shaping the future. Drawing from my own experiences and observations, I crafted a narrative that challenged the notion that age determines one's ability to make a meaningful impact on society.
+
+
 <iframe width="560" height="315" src="https://www.youtube.com/embed/GVlF48dxipM?start=20" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
 
 
