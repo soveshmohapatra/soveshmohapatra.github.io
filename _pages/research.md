@@ -8,9 +8,9 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 [Google Scholar](https://scholar.google.com/citations?user=TOvlOuEAAAAJ&hl=en), [Semantic Scholar](https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878), [Research Gate](https://www.researchgate.net/profile/Sovesh-Mohapatra-2)
 
-### Selected Papers
+## Selected Papers
 
-## Pre-print
+### Pre-print
 
 # 2023
 
@@ -24,7 +24,7 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 *Sovesh Mohapatra*, Somesh Mohapatra
 **arXiv**
 
-## Peer-Reviewed Journal
+### Peer-Reviewed Journal
 
 # 2023
 
