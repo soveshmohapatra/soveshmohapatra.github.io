@@ -19,24 +19,23 @@ To share my experiences and bring you along on this incredible journey, I will b
 }
 </style>
 
-<p style="text-align: center;">
 
-## <p>Grand Canyon National Park</p>
+## Grand Canyon National Park
 <img src="{{ site.url }}/assets/national-park/4.jpg" class="squareImg" />
 
 <br /><br />
 
-## <p>Zion National Park</p>
+## Zion National Park
 <img src="{{ site.url }}/assets/national-park/3.jpg" class="squareImg" />
 
 <br /><br />
 
-## <p>Death Valley National Park</p>
+## Death Valley National Park
 <img src="{{ site.url }}/assets/national-park/2.jpg" class="squareImg" />
 
 <br /><br />
 
-## <p>Yellowstone National Park</p>
+## Yellowstone National Park
 <img src="{{ site.url }}/assets/national-park/5.jpg" class="squareImg" />
 
 <br /><br />
