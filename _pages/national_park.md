@@ -13,22 +13,22 @@ To share my experiences and bring you along on this incredible journey, I will b
 
 <p style="text-align: center;">
 
-<p>White-eyed Buzzard (<i>Grand Canyon</i>)</p>
+<p>Grand Canyon National Park</p>
 <img src="{{ site.url }}/assets/national-park/4.jpg" />
 
 <br /><br />
 
-<p>Ruby-crowned Kinglet (<i>Zion</i>)</p>
+<p>Zion National Park</p>
 <img src="{{ site.url }}/assets/national-park/3.jpg" />
 
 <br /><br />
 
-<p>Pine Grosbeak (<i>Death Valley</i>)</p>
+<p>Death Valley National Park</p>
 <img src="{{ site.url }}/assets/national-park/2.jpg" />
 
 <br /><br />
 
-<p>Red-necked Phalarope (<i>Yellowstone</i>)</p>
+<p>Yellowstone National Park</p>
 <img src="{{ site.url }}/assets/national-park/5.jpg" />
 
 <br /><br />
