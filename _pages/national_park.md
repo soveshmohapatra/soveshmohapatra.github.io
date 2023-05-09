@@ -5,11 +5,11 @@ permalink: /national-park/
 order: 3
 ---
 
-I started my journey of visiting national parks during Fall 2021, and I instantly fell in love with the scenic views and the beauty of stars. One visit lead to another, and by now I have visited 10 out of 63 national parks. I know a long way to go but will make it soon. 
+In Fall 2021, I embarked on an incredible journey to explore the national parks of the United States. From the very first visit, I was captivated by the stunning landscapes, the awe-inspiring beauty of the night skies, and the sense of adventure that comes with each new park. So far, I've managed to visit 10 out of the 63 national parks, and though there's still a long way to go, I'm determined to experience them all.
 
-I love the challenge of the trek to get the pleasure of breathtaking views and also the fun of getting to see random scenic views on the way to the top. Above all, the twinkling stars in the night takes away all the worries surrounding the life. 
+One of the things I love most about these adventures is the challenge of trekking through diverse terrains to reach the most breathtaking vistas. The journey to the summit is often filled with unexpected and picturesque scenes that make the effort worthwhile. But the true reward comes when the sun sets, and the sky comes alive with a mesmerizing display of twinkling stars. In those moments, all the worries and stresses of everyday life seem to fade away, leaving only a sense of wonder and tranquility.
 
-In this page, I gonna post some of my pictures from the national parks to take you along my journey. 
+To share my experiences and bring you along on this incredible journey, I will be posting a collection of photographs from my visits to these national parks. Each image tells a story of adventure, beauty, and the power of nature to inspire and rejuvenate the soul. So join me as I continue to explore the great outdoors and uncover the hidden gems that await in the vast wilderness of America's national parks.
 
 <p style="text-align: center;">
 
