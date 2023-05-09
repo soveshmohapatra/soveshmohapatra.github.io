@@ -43,14 +43,14 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 * [Sentiment is all you need to win US Presidential elections](https://arxiv.org/abs/2209.13487)
 *Sovesh Mohapatra*, Somesh Mohapatra
-**AACL NLP4DH 2022**
+**AACL NLP4DH**
 
 # 2019
 
 * Magneto-Dielectric Hyperthermia Therapy for Adenocarcinoma
 *Sovesh Mohapatra*, Soumitra Satapathi
-**MRS Spring Meeting 2019**
+**MRS Spring Meeting**
 
 * Inorganic Halide Perovskite Single Crystal—Growth Mechanism, Structural and Optical Properties
 *Sovesh Mohapatra*, Naveen Tailor, Soumitra Satapathi
-**MRS Fall Meeting 2019**
+**MRS Fall Meeting**
