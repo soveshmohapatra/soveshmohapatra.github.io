@@ -2,7 +2,7 @@
 layout: page
 title: TedX Talks
 permalink: TedX
-order: 6
+order: 5
 ---
 
 I've had the wonderful opportunity to share my early journey through several TedX events, including TedXManipal and TedXRamjasCollege. On this page, I have carefully curated and added the videos of these inspiring talks for you to enjoy. I hope they not only entertain you but also ignite a spark of inspiration within you.

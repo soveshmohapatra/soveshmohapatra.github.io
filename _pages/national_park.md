@@ -2,7 +2,7 @@
 layout: page
 title: National Park
 permalink: /national-park/
-order: 3
+order: 6
 ---
 
 In Fall 2021, I embarked on an incredible journey to explore the national parks of the United States. From the very first visit, I was captivated by the stunning landscapes, the awe-inspiring beauty of the night skies, and the sense of adventure that comes with each new park. So far, I've managed to visit 10 out of the 63 national parks, and though there's still a long way to go, I'm determined to experience them all.

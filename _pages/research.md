@@ -2,7 +2,7 @@
 layout: page
 title: Research
 permalink: /research/
-order: 5
+order: 2
 ---
 I am broadly interested in Neuroimaging, Computer Vision and Natural Language Processing.
 
