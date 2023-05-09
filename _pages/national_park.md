@@ -27,17 +27,17 @@ To share my experiences and bring you along on this incredible journey, I will b
 <br /><br />
 
 <p>Zion National Park</p>
-<img src="{{ site.url }}/assets/national-park/3.jpg" />
+<img src="{{ site.url }}/assets/national-park/3.jpg" class="squareImg" />
 
 <br /><br />
 
 <p>Death Valley National Park</p>
-<img src="{{ site.url }}/assets/national-park/2.jpg" />
+<img src="{{ site.url }}/assets/national-park/2.jpg" class="squareImg" />
 
 <br /><br />
 
 <p>Yellowstone National Park</p>
-<img src="{{ site.url }}/assets/national-park/5.jpg" />
+<img src="{{ site.url }}/assets/national-park/5.jpg" class="squareImg" />
 
 <br /><br />
 
