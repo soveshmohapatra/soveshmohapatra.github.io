@@ -1,6 +1,6 @@
 ---
 layout: page
-title: TedX
+title: My TedX Talks
 permalink: TedX
 order: 6
 ---
@@ -13,9 +13,10 @@ I believe that watching these talks can be a source of motivation and empowermen
 
 I invite you to take a moment to dive into these captivating videos. Join me on this immersive journey as I unravel my thoughts, ideas, and stories, all aimed at inspiring and empowering others. 
 
-<p style="text-align: center;">
 
-<p>TedX Manipal</p>
+
+## TedX Manipal
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/GVlF48dxipM?start=20" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
 
