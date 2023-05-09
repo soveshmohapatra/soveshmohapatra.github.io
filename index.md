@@ -4,7 +4,7 @@ layout: page
 
 {% include JB/setup %}
 
-<img style="float: right; width: 35%; padding: 6px;" src=" {{ site.url }}/assets/IMG_1403.jpg">
+<img style="float: right; width: 35%; padding: 6px;" src=" {{ site.url }}/assets/1.jpg">
 
 My name is Sovesh Mohapatra, a senior undergraduate at the [University of Massachusetts Amherst](http://umass.edu/). I will be completing my triple major in Computer Science, Linguistics, and Mathematics in three years, with my graduation expected in May 2023.
 
