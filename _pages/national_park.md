@@ -13,8 +13,8 @@ To share my experiences and bring you along on this incredible journey, I will b
 
 <style>
 .squareImg {
-  width: 300px;
-  height: 300px;
+  width: 400px;
+  height: 400px;
   object-fit: cover;
 }
 </style>
