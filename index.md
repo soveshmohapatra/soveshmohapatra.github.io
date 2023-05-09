@@ -50,9 +50,8 @@ Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 <tr><td><b>Jun 2019:</b></td><td> <a href="http://purvaten.github.io/">Purva Tendulkar</a> won the <a href="https://twitter.com/jmacunha/status/1142184529026662400"><i>Best Presentation Award</i></a> for our <a href="https://arxiv.org/abs/1903.07820">paper</a> in ICCC 2019!</td></tr>
 <tr><td><b>May 2019:</b></td><td> started summer internship at <a href="https://ai.google/research/teams/language/">Google AI Language</a> in New York</td></tr>
 <tr><td><b>Apr 2019:</b></td><td> talk at the UMass <a href="https://ds.cs.umass.edu/news-events/events/data-science-research-symposium-2019">Data Science Research Symposium 2019</a></td></tr>
-<tr><td><b>Apr 2019:</b></td><td> new <a href="https://arxiv.org/abs/1903.07820">paper</a> on thematic doodle generation to appear in <a href="http://www.computationalcreativity.net/iccc2019/">ICCC 2019</a></td></tr>
+<tr><td><b>Nov 2019:</b></td><td> presented at <a href="https://www.mrs.org/meetings-events/fall-meetings-exhibits/past-fall-meetings/2019-mrs-fall-meeting/call-for-papers/symposium-sessions-detail/2019_mrs_fall_meeting/en08"> MRS Fall Meeting</a> on Inorganic Halide Perovskite Single Crystal</td></tr>
 <tr><td><b>May 2019:</b></td><td> talk at  <a href="hhttps://www.ted.com/talks/sovesh_mohapatra_the_sentient_of_life"> TedX Manipal</a> </td></tr>
-<tr><td><b>Sep 2018:</b></td><td> started my PhD in Computer Science at UMass Amherst</td></tr>
 <tr><td><b>Aug 2018:</b></td><td> started working at IIT Roorkee with Dr. Soumitra Satapathi </td></tr>
 <tr><td><b>Jun 2018:</b></td><td> started working at CSIR IGIB with Dr. Vinod Scaria </td></tr>
 <tr><td><b>Apr 2018:</b></td><td> talk at <a href="https://www.youtube.com/watch?v=cBDq5DeQbw0"> TedX Ramjas College </a></td></tr>
