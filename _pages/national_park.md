@@ -11,10 +11,18 @@ One of the things I love most about these adventures is the challenge of trekkin
 
 To share my experiences and bring you along on this incredible journey, I will be posting a collection of photographs from my visits to these national parks. Each image tells a story of adventure, beauty, and the power of nature to inspire and rejuvenate the soul. So join me as I continue to explore the great outdoors and uncover the hidden gems that await in the vast wilderness of America's national parks.
 
+<style>
+.squareImg {
+  width: 300px;
+  height: 300px;
+  object-fit: cover;
+}
+</style>
+
 <p style="text-align: center;">
 
 <p>Grand Canyon National Park</p>
-<img src="{{ site.url }}/assets/national-park/4.jpg" />
+<img src="{{ site.url }}/assets/national-park/4.jpg" class="squareImg" />
 
 <br /><br />
 
