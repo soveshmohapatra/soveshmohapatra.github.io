@@ -14,9 +14,7 @@ I maintain a list of my publications under the [Research]({{ site.url }}/researc
 
 [Resume]({{ site.url }}/assets/resume.pdf) 
 
-
 [Google Scholar](https://scholar.google.com/citations?user=TOvlOuEAAAAJ&hl=en), [Semantic Scholar](https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878), [Research Gate](https://www.researchgate.net/profile/Sovesh-Mohapatra-2) 
-
 
 Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 
@@ -45,7 +43,7 @@ Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 <tr><td><b>Sep 2020:</b></td><td>new <a href="https://arxiv.org/abs/2010.05700">paper</a> on paraphrasing for unsupervised style transfer to appear at EMNLP 2020. Check out a live demo and the codebase <a href="http://style.cs.umass.edu">here</a>.</td></tr>
 <tr><td><b>May 2020:</b></td><td>started my summer internship at <a href="https://research.google/teams/brain/">Google Brain</a>, where I will be working with <a href="https://sites.google.com/site/royaurko">Aurko Roy</a></td></tr>
 <tr><td><b>Apr 2020:</b></td><td>talk at <a href="https://www.research.ibm.com/">IBM research</a> on model extraction attacks on BERT (<a href="https://docs.google.com/presentation/d/1emJb07ER8Gje6PGauIU--t0DCgvECJlnjVQfv9rOUkM/edit">slides</a>)</td></tr>
-<tr><td><b>Apr 2020:</b></td><td>new <a href="http://www.cleverhans.io/2020/04/06/stealing-bert.html">blogpost</a> with <a href="https://www.papernot.fr">Nicolas Papernot</a> on our ICLR 2020 paper on model extraction attacks on BERT.</td></tr>
+<tr><td><b>Apr 2023:</b></td><td> new preprint <a href="https://arxiv.org/abs/2304.04738"> paper </a> on extraction of brain and specific region of interests using SAM </td></tr>
 <tr><td><b>Apr 2023:</b></td><td> paper published at <a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011012"> PLOS Computational Biology </a> on predicting effects and extent of stimulation on brain </td></tr>
 <tr><td><b>Mar 2023:</b></td><td> Accepted offer at University of Pennsylvania for my PhD </td></tr>
 <tr><td><b>Nov 2022:</b></td><td> new preprint <a href="https://arxiv.org/abs/2210.01091">paper</a> on how and when transfer learning is effective.</td></tr>
