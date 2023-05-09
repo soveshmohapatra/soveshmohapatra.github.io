@@ -53,7 +53,7 @@ Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 <tr><td><b>Apr 2019:</b></td><td> new <a href="https://arxiv.org/abs/1903.07820">paper</a> on thematic doodle generation to appear in <a href="http://www.computationalcreativity.net/iccc2019/">ICCC 2019</a></td></tr>
 <tr><td><b>Nov 2018:</b></td><td> presented <a href="https://arxiv.org/abs/1808.07733">paper</a> on logic rules for sentiment classification at EMNLP 2018 (<a href="assets/emnlp-2018.pdf">slides</a>)</td></tr>
 <tr><td><b>Sep 2018:</b></td><td> started my PhD in Computer Science at UMass Amherst</td></tr>
-<tr><td><b>Aug 2018:</b></td><td> graduated from IIT Bombay, receiving the Sharad Maloo Memorial Gold Medal</td></tr>
-<tr><td><b>Jul 2018:</b></td><td> new <a href="https://arxiv.org/abs/1807.06234">preprint</a> on hierarchical multitask learning for speech recognition</td></tr>
+<tr><td><b>Aug 2018:</b></td><td> started working at CSIR IGIB with Dr. Vinod Scaria </td></tr>
+<tr><td><b>Jun 2018:</b></td><td> started working at IIT Roorkee with Dr. Soumitra Satapathi </td></tr>
 <tr><td><b>Apr 2018:</b></td><td> talk at <a href="https://www.youtube.com/watch?v=cBDq5DeQbw0"> TedX Ramjas College </a></td></tr>
 <tr><td><b>Nov 2016:</b></td><td> Recieved <a href="https://pib.gov.in/newsite/PrintRelease.aspx?relid=153595"> National Child Award </a> from President of India for Innovation </td></tr>
