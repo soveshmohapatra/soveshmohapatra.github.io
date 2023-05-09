@@ -1,8 +1,8 @@
 ---
 layout: page
-title: CV
-permalink: /assets/cv.pdf
+title: Resume
+permalink: /assets/resume.pdf
 order: 4
 ---
 
-[4-page CV]({{ site.url }}/assets/cv.pdf)
+[4-page CV]({{ site.url }}/assets/resume.pdf)
