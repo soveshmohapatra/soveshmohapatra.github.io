@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Breaking Barriers: How Neuroscience is Revolutionizing AI Language Models?"
-date:   2023-02-16 09:00:55 +0530
+date:   2023-02-16 10:00:55 +0530
 tags: transfer learning neuroscience brain science deep learning
 image: https://soveshmohapatra.github.io/assets/blog/2/3.png
 ---
@@ -43,7 +43,6 @@ In addition, the use of specialized hardware, such as graphics processing units 
 ## Future of Neuroscience inspiring Language models with limited Computational Resources
 
 ![style_diffur]({{ site.url }}/assets/blog/2/3.png)
-
 
 While the future of neuroscience-inspired language models is closely tied to advances in computational power and resource availability, it is also important to consider how these models can be developed with limited computational resources. This is especially important for applications that run on mobile devices or other resource-constrained environments, where large neural network models may not be practical.
 
