@@ -12,13 +12,13 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 ### Pre-print
 
-# 2023
+## 2023
 
 * [SAM vs BET: A Comparative Study for Brain Extraction and Segmentation of Magnetic Resonance Images using Deep Learning](https://arxiv.org/abs/2304.04738)  
 *Sovesh Mohapatra*, Advait Gosai, Gottfried Schlaug
 **arXiv**
 
-# 2022
+## 2022
 
 * [The (In)Effectiveness of Intermediate Task Training For Domain Adaptation and Cross-Lingual Transfer Learning](https://arxiv.org/abs/2210.01091)
 *Sovesh Mohapatra*, Somesh Mohapatra
@@ -26,26 +26,26 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 ### Peer-Reviewed Journal
 
-# 2023
+## 2023
 
 * [Identifying the engagement of a brain network during a targeted tDCS-fMRI experiment using a machine learning approach](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011012)
 *Sovesh Mohapatra*, Anant Shinde, Gottfried Schlaug
 **PLOS Computational Biology**
 
-# 2021
+## 2021
 * [Repurposing therapeutics for COVID-19: Rapid prediction of commercially available drugs through machine learning and docking](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0241543)
 *Sovesh Mohapatra*, Prathul Nath, Manisha Chatterjee, Neeladrisingha Das, Deepjyoti Kalita, Partha Roy, Soumitra Satapathi 
 **PLOS One**
 
 ## Conference Proceedings
 
-# 2022
+## 2022
 
 * [Sentiment is all you need to win US Presidential elections](https://arxiv.org/abs/2209.13487)
 *Sovesh Mohapatra*, Somesh Mohapatra
 **AACL NLP4DH**
 
-# 2019
+## 2019
 
 * Magneto-Dielectric Hyperthermia Therapy for Adenocarcinoma
 *Sovesh Mohapatra*, Soumitra Satapathi
