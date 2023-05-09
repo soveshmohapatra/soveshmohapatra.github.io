@@ -55,5 +55,5 @@ Email ID: [soveshmohapa@umass.edu](mailto:soveshmohapa@umass.edu)
 <tr><td><b>Sep 2018:</b></td><td> started my PhD in Computer Science at UMass Amherst</td></tr>
 <tr><td><b>Aug 2018:</b></td><td> graduated from IIT Bombay, receiving the Sharad Maloo Memorial Gold Medal</td></tr>
 <tr><td><b>Jul 2018:</b></td><td> new <a href="https://arxiv.org/abs/1807.06234">preprint</a> on hierarchical multitask learning for speech recognition</td></tr>
-<tr><td><b>Jun 2018:</b></td><td> new blogs on <a href="2018/05/29/grad-resources.html">grad resources</a>, <a href="2018/06/04/cs-opportunities.html">IIT Bombay CS opportunities</a> and <a href="2018/06/05/crowd-sourcing.html">crowdsourcing</a></td></tr>
-<tr><td><b>Nov 2016:</b></td><td> recieved <a href="https://pib.gov.in/newsite/PrintRelease.aspx?relid=153595"> National Child Award from President of India</a> for Innovation </td></tr>
+<tr><td><b>Apr 2018:</b></td><td> talk at <a href="https://www.youtube.com/watch?v=cBDq5DeQbw0"> TedX Ramjas College </a></td></tr>
+<tr><td><b>Nov 2016:</b></td><td> Recieved <a href="https://pib.gov.in/newsite/PrintRelease.aspx?relid=153595"> National Child Award </a> from President of India for Innovation </td></tr>
