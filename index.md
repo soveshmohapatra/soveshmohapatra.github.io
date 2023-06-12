@@ -24,6 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Jun 2023:</b></td><td> started PhD at University of Pennsylvania </td></tr>
 <tr><td><b>Apr 2023:</b></td><td> new preprint <a href="https://arxiv.org/abs/2304.04738"> paper </a> on extraction of brain and specific region of interests using SAM </td></tr>
 <tr><td><b>Apr 2023:</b></td><td> paper published at <a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011012"> PLOS Computational Biology </a> on predicting effects and extent of stimulation on brain </td></tr>
 <tr><td><b>Mar 2023:</b></td><td> Accepted offer at University of Pennsylvania for my PhD </td></tr>
