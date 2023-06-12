@@ -14,7 +14,7 @@ I maintain a list of my publications under the [Research]({{ site.url }}/researc
 
 [Resume]({{ site.url }}/assets/resume.pdf) 
 
-[Google Scholar](https://scholar.google.com/citations?user=TOvlOuEAAAAJ&hl=en), [Semantic Scholar](https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878), [Research Gate](https://www.researchgate.net/profile/Sovesh-Mohapatra-2) 
+[Google Scholar](https://scholar.google.com/citations?user=TOvlOuEAAAAJ&hl=en), [Semantic Scholar](https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878), [Research Gate](https://www.researchgate.net/profile/Sovesh-Mohapatra-2)
 
 Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 
