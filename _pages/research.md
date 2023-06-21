@@ -14,6 +14,10 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 #### 2023
 
+* [Meta-Analysis of Transfer Learning for Segmentation of Brain Lesions](https://arxiv.org/abs/2306.11714)  
+**Sovesh Mohapatra**, Advait Gosai, Anant Shinde, Aleksei Rutkovskii, Sirisha Nouduri, Gottfried Schlaug
+**arXiv**
+
 * [SAM vs BET: A Comparative Study for Brain Extraction and Segmentation of Magnetic Resonance Images using Deep Learning](https://arxiv.org/abs/2304.04738)  
 **Sovesh Mohapatra**, Advait Gosai, Gottfried Schlaug
 **arXiv**
