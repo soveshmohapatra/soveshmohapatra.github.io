@@ -8,7 +8,7 @@ layout: page
 
 My name is Sovesh Mohapatra, a PhD student in BioEngineering department at the  [University of Pennsylvania](https://be.seas.upenn.edu/) under [Dr. Hao Huang](https://www.med.upenn.edu/apps/faculty/index.php/g275/p8837947) and [Dr. Minhui Ouyang](https://www.med.upenn.edu/apps/faculty/index.php/g275/p8844108).
 
-I completed my bachelors with triple major in Computer Science, Linguistics, and Mathematics in three years from [University of Massachusetts Amherst](http://umass.edu/). At UMass, I worked with [Dr. Gottfried Schlaug](http://profiles.umassmed.edu/display/22559132) in gearing towards predicting and enhancing a patient’s recovery potential and optimizing rehabilitation techniques for stroke patients.
+I completed my bachelors with a triple major in Computer Science, Linguistics, and Mathematics in three years from [University of Massachusetts Amherst](http://umass.edu/). At UMass, I worked with [Dr. Gottfried Schlaug](http://profiles.umassmed.edu/display/22559132) in gearing towards predicting and enhancing a patient’s recovery potential and optimizing rehabilitation techniques for stroke patients.
 
 I maintain a list of my publications under the [Research]({{ site.url }}/research) tab. I also [blog]({{ site.url }}/archive) every now and then compiling my personal experiences.
 
