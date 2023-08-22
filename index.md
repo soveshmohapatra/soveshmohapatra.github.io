@@ -24,6 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Aug 2023:</b></td><td> submitted two papers at the BRaTS Challenge of MICCAI 2023</td></tr>
 <tr><td><b>Jul 2023:</b></td><td> appointed as the chair for GRS Tissue Microstructure 2025 </td></tr>
 <tr><td><b>Jun 2023:</b></td><td> new preprint <a href="https://arxiv.org/abs/2306.11714"> paper </a> on lesion segmentation and understanding of the extent using transfer learning </td></tr>
 <tr><td><b>Jun 2023:</b></td><td> started PhD in <a href="https://www.med.upenn.edu/huanglab"> Laboratory for Neural MRI and Brain Connectivity </a> at UPenn </td></tr>
