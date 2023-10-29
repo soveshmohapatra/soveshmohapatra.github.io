@@ -52,7 +52,7 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 * [SAM vs BET: A Comparative Study for Brain Extraction and Segmentation of Magnetic Resonance Images using Deep Learning](https://arxiv.org/abs/2304.04738)  
 **Sovesh Mohapatra**, Advait Gosai, Gottfried Schlaug  
-**MEDICAL IMAGING MEETS NEURIP**
+**MEDICAL IMAGING MEETS NEURIPS**
 
 #### 2022
 
