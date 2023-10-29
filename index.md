@@ -24,6 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Oct 2023:</b></td><td> One paper selected in MedNeurips Workshop NEURIPS 2023</td></tr>
 <tr><td><b>Oct 2023:</b></td><td> One paper selected for oral presentation in BONBID-HIE Workshop MICCAI 2023</td></tr>
 <tr><td><b>Oct 2023:</b></td><td> Two papers selected for poster presentation in BrainLes Workshop MICCAI 2023</td></tr>
 <tr><td><b>Sept 2023:</b></td><td> appointed as advocacy chair for Penn Rangoli club</td></tr>
