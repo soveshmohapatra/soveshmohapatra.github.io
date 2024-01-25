@@ -52,7 +52,7 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 * Graph kernel assisted robust individual and group level functional brain parcellation (GRAFP)
 **Sovesh Mohapatra**, Minhui Ouyang, Qinmu Peng, Hao Huang    
-**2024 ISMRM & ISMRT Annual Meeting & Exhibition** 
+**ISMRM & ISMRT Annual Meeting & Exhibition** 
 
 #### 2023
 
