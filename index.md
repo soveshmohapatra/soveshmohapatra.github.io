@@ -24,7 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
-<tr><td><b>Jan 2024:</b></td><td> One paper accepted for oral power pitch presentation at 2024 ISMRM & ISMRT Annual Meeting & Exhibition</td></tr>
+<tr><td><b>Jan 2024:</b></td><td> Two papers accepted for oral power pitch presentation at 2024 ISMRM & ISMRT Annual Meeting & Exhibition</td></tr>
 <tr><td><b>Oct 2023:</b></td><td> One paper accepted at MedNeurips Workshop NEURIPS 2023</td></tr>
 <tr><td><b>Oct 2023:</b></td><td> One paper accepted for oral presentation in BONBID-HIE Workshop MICCAI 2023</td></tr>
 <tr><td><b>Oct 2023:</b></td><td> Two papers accepted for poster presentation in BrainLes Workshop MICCAI 2023</td></tr>

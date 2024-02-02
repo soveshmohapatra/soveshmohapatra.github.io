@@ -54,6 +54,10 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 **Sovesh Mohapatra**, Minhui Ouyang, Qinmu Peng, Hao Huang    
 **ISMRM & ISMRT Annual Meeting & Exhibition** 
 
+* Differential myelination maturation across cortical regions and white matter tracts during infancy
+Ruolin Li Wentao Wu, **Sovesh Mohapatra**, Kay Sindabizera, Ziqin Zhang, Chancellor Lee, Minhui Ouyang, Hao Huang
+**ISMRM & ISMRT Annual Meeting & Exhibition**
+
 #### 2023
 
 * [SAM vs BET: A Comparative Study for Brain Extraction and Segmentation of Magnetic Resonance Images using Deep Learning](https://arxiv.org/abs/2304.04738)  
