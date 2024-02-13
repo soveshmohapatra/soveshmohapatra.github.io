@@ -24,7 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
-<tr><td><b>Feb 2024:</b></td><td> Awarded ISMRM & ISMRT Annual Meeting & Exhibition the Educational Stipend</td></tr>
+<tr><td><b>Feb 2024:</b></td><td> Awarded ISMRM & ISMRT Annual Meeting & Exhibition Educational Stipend</td></tr>
 <tr><td><b>Jan 2024:</b></td><td> Two papers accepted for oral power pitch presentation at 2024 ISMRM & ISMRT Annual Meeting & Exhibition</td></tr>
 <tr><td><b>Oct 2023:</b></td><td> One paper accepted at MedNeurips Workshop NEURIPS 2023</td></tr>
 <tr><td><b>Oct 2023:</b></td><td> One paper accepted for oral presentation in BONBID-HIE Workshop MICCAI 2023</td></tr>
