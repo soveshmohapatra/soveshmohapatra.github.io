@@ -56,7 +56,7 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 * Differential myelination maturation across cortical regions and white matter tracts during infancy
 Ruolin Li Wentao Wu, **Sovesh Mohapatra**, Kay Sindabizera, Ziqin Zhang, Chancellor Lee, Minhui Ouyang, Hao Huang          
-**ISMRM & ISMRT Annual Meeting========== & Exhibition**
+**ISMRM & ISMRT Annual Meeting & Exhibition**
 
 #### 2023
 
