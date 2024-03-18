@@ -18,10 +18,6 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 **Sovesh Mohapatra**, Chiranjeewee Prasad Koirala, Advait Gosai, Gottfried Schlaug  
 **arXiv**
 
-* [Automated Ensemble-Based Segmentation of Pediatric Brain Tumors: A Novel Approach Using the CBTN-CONNECT-ASNR-MICCAI BraTS-PEDs 2023 Challenge Data](https://arxiv.org/abs/2308.07212)  
-**Sovesh Mohapatra**, Shashidhar Reddy Javaji, Advait Gosai, Gottfried Schlaug  
-**arXiv**
-
 * [Meta-Analysis of Transfer Learning for Segmentation of Brain Lesions](https://arxiv.org/abs/2306.11714)  
 **Sovesh Mohapatra**, Advait Gosai, Anant Shinde, Aleksei Rutkovskii, Sirisha Nouduri, Gottfried Schlaug  
 **arXiv**
@@ -63,6 +59,10 @@ Ruolin Li, Wentao Wu, **Sovesh Mohapatra**, Kay Sindabizera, Ziqin Zhang, Chance
 * [SAM vs BET: A Comparative Study for Brain Extraction and Segmentation of Magnetic Resonance Images using Deep Learning](https://arxiv.org/abs/2304.04738)  
 **Sovesh Mohapatra**, Advait Gosai, Gottfried Schlaug  
 **MEDICAL IMAGING MEETS NEURIPS**
+
+* [Automated ensemble method for pediatric brain tumor segmentation](https://arxiv.org/abs/2308.07212)  
+**Sovesh Mohapatra**, Shashidhar Reddy Javaji, Advait Gosai, Gottfried Schlaug  
+**MICCAI BrainLes Workshop**
 
 #### 2022
 
