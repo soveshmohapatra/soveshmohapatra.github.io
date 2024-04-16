@@ -32,7 +32,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <tr><td><b>Sept 2023:</b></td><td> appointed as advocacy chair for Penn Rangoli club</td></tr>
 <tr><td><b>Aug 2023:</b></td><td> submitted two papers at the BraTS Challenge of MICCAI 2023</td></tr>
 <tr><td><b>Jul 2023:</b></td><td> appointed as the chair for GRS Tissue Microstructure 2025 </td></tr>
-<tr><td><b>Jun 2023:</b></td><td> new preprint <a href="https://arxiv.org/abs/2306.11714"> paper </a> on lesion segmentation and understanding of the extent using transfer learning </td></tr>
+<tr><td><b>Jun 2023:</b></td><td> new preprint <a href="https://arxiv.org/abs/2306.11714"> paper </a> on lesion segmentation and understanding the extent using transfer learning </td></tr>
 <tr><td><b>Jun 2023:</b></td><td> started PhD in <a href="https://www.med.upenn.edu/huanglab"> Laboratory for Neural MRI and Brain Connectivity </a> at UPenn </td></tr>
 <tr><td><b>Apr 2023:</b></td><td> new preprint <a href="https://arxiv.org/abs/2304.04738"> paper </a> on extraction of brain and specific region of interests using SAM </td></tr>
 <tr><td><b>Apr 2023:</b></td><td> paper published at <a href="https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011012"> PLOS Computational Biology </a> on predicting effects and extent of stimulation on brain </td></tr>
