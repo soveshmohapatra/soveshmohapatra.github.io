@@ -1,6 +1,6 @@
 ---
 layout: null
-permalink: /redirect/
+permalink: /zoom/
 ---
 
 <!DOCTYPE html>
