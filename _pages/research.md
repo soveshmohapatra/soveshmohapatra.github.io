@@ -30,6 +30,12 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 ### Peer-Reviewed Journal
 
+#### 2024
+
+* [Machine-learning based prediction of future outcome using multimodal MRI during early childhood](https://www.sciencedirect.com/science/article/pii/S1744165X2400043X)  
+Minhui Ouyang, Matthew T. Whitehead, **Sovesh Mohapatra**, Tianjia Zhu, Hao Huang
+**Seminars in Fetal and Neonatal Medicine**
+
 #### 2023
 
 * [Identifying the engagement of a brain network during a targeted tDCS-fMRI experiment using a machine learning approach](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1011012)  
