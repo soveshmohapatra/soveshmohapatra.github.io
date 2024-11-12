@@ -33,7 +33,7 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 #### 2024
 
 * [Machine-learning based prediction of future outcome using multimodal MRI during early childhood](https://www.sciencedirect.com/science/article/pii/S1744165X2400043X)  
-Minhui Ouyang, Matthew T. Whitehead, **Sovesh Mohapatra**, Tianjia Zhu, Hao Huang
+Minhui Ouyang, Matthew T. Whitehead, **Sovesh Mohapatra**, Tianjia Zhu, Hao Huang   
 **Seminars in Fetal and Neonatal Medicine**
 
 #### 2023
