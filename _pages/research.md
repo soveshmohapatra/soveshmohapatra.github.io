@@ -62,6 +62,10 @@ Ruolin Li, Wentao Wu, **Sovesh Mohapatra**, Kay Sindabizera, Ziqin Zhang, Chance
 
 #### 2023
 
+* [An Ensemble Approach for Segmentation of Neonatal HIE Lesions](https://link.springer.com/chapter/10.1007/978-3-031-71626-3_3)  
+**Sovesh Mohapatra**, Chiranjeewee Prasad Koirala, Gottfried Schlaug  
+**BONBID-HIE MICCAI**
+
 * [SAM vs BET: A Comparative Study for Brain Extraction and Segmentation of Magnetic Resonance Images using Deep Learning](https://arxiv.org/abs/2304.04738)  
 **Sovesh Mohapatra**, Advait Gosai, Gottfried Schlaug  
 **MEDICAL IMAGING MEETS NEURIPS**
