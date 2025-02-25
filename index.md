@@ -24,6 +24,8 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Jan 2025:</b></td><td> Two papers accepted for Poster presentation at 2025 ISMRM & ISMRT Annual Meeting & Exhibition</td></tr>
+<tr><td><b>Jan 2025:</b></td><td> Two papers accepted for Oral presentation at 2025 ISMRM & ISMRT Annual Meeting & Exhibition</td></tr>
 <tr><td><b>Nov 2024:</b></td><td> New <a href="https://www.sciencedirect.com/science/article/pii/S1744165X2400043X"> review paper</a> on multimodal MRI coupled with AI for better prediction</td></tr>
 <tr><td><b>Oct 2024:</b></td><td> New <a href="https://link.springer.com/chapter/10.1007/978-3-031-71626-3_3"> conference chapter</a> on better segmentation of Neonatal HIE lesions</td></tr>
 <tr><td><b>Aug 2024:</b></td><td> Passed my PhD qualification</td></tr>
