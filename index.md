@@ -24,6 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Feb 2025:</b></td><td> Trainee Representative for Pediatric MR Study Group at ISMRM 2025</td></tr>
 <tr><td><b>Feb 2025:</b></td><td> One paper accepted for Oral presentation at 2025 Organization of Human Brain Mapping</td></tr>
 <tr><td><b>Jan 2025:</b></td><td> Three papers accepted for Poster presentation at 2025 ISMRM & ISMRT Annual Meeting & Exhibition</td></tr>
 <tr><td><b>Jan 2025:</b></td><td> One paper accepted for Oral presentation at 2025 ISMRM & ISMRT Annual Meeting & Exhibition</td></tr>
