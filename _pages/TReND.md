@@ -22,7 +22,7 @@ permalink: /research/TReND/
 
 
 
-  <title>Academic Project Page</title>
+  <title>TReND: Transformer-derived Features and Regularized NMF for Neonatal Functional Network Delineation</title>
   <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
   <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
   rel="stylesheet">
