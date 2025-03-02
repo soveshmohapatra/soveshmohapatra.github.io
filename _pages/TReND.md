@@ -5,6 +5,23 @@ permalink: /research/TReND/
 
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="description" content="TReND: A self-supervised transformer-autoencoder framework integrating regularized NMF for neonatal functional network delineation.">
+  <meta property="og:title" content="TReND: Transformer-derived Features and Regularized NMF for Neonatal Functional Network Delineation"/>
+  <meta property="og:description" content="A novel self-supervised transformer-autoencoder framework integrating RNMF to unveil neonatal functional networks in rs-fMRI data."/>
+  <meta property="og:url" content="https://arxiv.org/abs/YOUR_PAPER_ID"/>
+  <meta property="og:image" content="static/image/TReND_paper_banner.png" />
+  <meta property="og:image:width" content="1200"/>
+  <meta property="og:image:height" content="630"/>
+  <meta name="twitter:title" content="TReND: Transformer-derived Features and Regularized NMF for Neonatal Functional Network Delineation">
+  <meta name="twitter:description" content="A robust framework for neonatal functional parcellation using transformer-based autoencoder and RNMF clustering."/>
+  <meta name="twitter:image" content="static/images/TReND_twitter_banner.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="keywords" content="Neonatal Functional Parcellation, Transformer Autoencoder, Resting-state fMRI, Regularized NMF, Functional Connectivity, Deep Learning, Brain Development, Machine Learning, Geodesic Distance, Self-supervised Learning">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
   <title>Academic Project Page</title>
   <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
   <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
