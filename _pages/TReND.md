@@ -102,9 +102,9 @@ permalink: /research/TReND/
                   <a href="https://soveshmohapatra.com/research/TReND/" target="_blank"
                   class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
-                    <i class="Coming Soon"></i>
+                    <i class="ai ai-arxiv"></i>
                   </span>
-                  <span>arXiv</span>
+                  <span>Coming Soon</span>
                 </a>
               </span>
             </div>
