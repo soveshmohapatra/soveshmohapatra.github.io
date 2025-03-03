@@ -58,7 +58,7 @@ permalink: /research/TReND/
                   </div>
 
                   <div class="is-size-5 publication-authors">
-                    <span class="author-block">Host Instuition: University of Pennsylvania and Children's Hospital of Philadelphia<br>Conferance name and year</span>
+                    <span class="author-block">Host Instuition: University of Pennsylvania and Children's Hospital of Philadelphia</span>
                     <span class="eql-cntrb"><small><br><sup>*</sup>Corresponding Author</small></span>
                   </div>
 
