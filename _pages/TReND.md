@@ -50,7 +50,7 @@ permalink: /research/TReND/
       <div class="container is-max-desktop">
         <div class="columns is-centered">
           <div class="column has-text-centered">
-            <h1 class="title is-1 publication-title">TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation</h1>
+            <h2 class="title is-1 publication-title">TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation</h1>
             <div class="is-size-5 publication-authors">
               <!-- Paper authors -->
               <span class="author-block">
