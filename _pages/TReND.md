@@ -50,13 +50,13 @@ permalink: /research/TReND/
       <div class="container is-max-desktop">
         <div class="columns is-centered">
           <div class="column has-text-centered">
-            <h2 class="title is-1 publication-title">TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation</h1>
+            <h1 class="title is-1 publication-title">TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation</h1>
             <div class="is-size-5 publication-authors">
               <!-- Paper authors -->
               <span class="author-block">
-                <a>Sovesh Mohapatra</a>,</span>
+                Sovesh Mohapatra,</span>
                 <span class="author-block">
-                  <a>Minhui Ouyang</a>,</span>
+                  Minhui Ouyang,</span>
                   <span class="author-block">
                     <a href="THIRD AUTHOR PERSONAL LINK" target="_blank">Third Author</a>
                   </span>
