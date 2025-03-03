@@ -148,21 +148,21 @@ permalink: /research/TReND/
       </div>
       <div class="item">
         <!-- Your image here -->
-        <img src="/assets/TReND/2.pdf" alt="Simulation Data" style="display: block; margin: 0 auto; width: 80%;"/>
+        <img src="/assets/TReND/2.gif" alt="Simulation Data" style="display: block; margin: 0 auto; width: 80%;"/>
         <h4 class="subtitle has-text-centered">
           Performance evaluation of TReND versus traditional parcellation methods on simulated data.
         </h4>
       </div>
       <div class="item">
         <!-- Your image here -->
-        <img src="/assets/TReND/3.pdf" alt="7 Parcellation" style="display: block; margin: 0 auto; width: 80%;"/>
+        <img src="/assets/TReND/3.gif" alt="7 Parcellation" style="display: block; margin: 0 auto; width: 80%;"/>
         <h4 class="subtitle has-text-centered">
          Coarse parcellation of 7 functional networks in neonates derived from a 300-subject dHCP cohort.
        </h4>
      </div>
      <div class="item">
       <!-- Your image here -->
-      <img src="/assets/TReND/4.pdf" alt="19 Parcellation" style="display: block; margin: 0 auto; width: 80%;"/>
+      <img src="/assets/TReND/4.gif" alt="19 Parcellation" style="display: block; margin: 0 auto; width: 80%;"/>
       <h4 class="subtitle has-text-centered">
         Fine-grained parcellation of 19 functional networks in neonates derived from a 300-subject dHCP cohort.
       </h4>
