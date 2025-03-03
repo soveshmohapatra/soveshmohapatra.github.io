@@ -151,7 +151,7 @@ permalink: /research/TReND/
         <img src="/assets/TReND/2.png" alt="Simulation Data" style="display: block; margin: 0 auto;"/>
         <h4 class="subtitle has-text-centered">
           Performance evaluation of TReND versus traditional parcellation methods on simulated data.
-        </4>
+        </h4>
       </div>
       <div class="item">
         <!-- Your image here -->
