@@ -141,30 +141,30 @@ permalink: /research/TReND/
       <div id="results-carousel" class="carousel results-carousel">
        <div class="item">
         <!-- Your image here -->
-        <img src="static/images/carousel1.jpg" alt="MY ALT TEXT"/>
+        <img src="assets/TReND/1.pdf" alt="Schematic Flow"/>
         <h2 class="subtitle has-text-centered">
-          First image description.
+          Schematic representation of end-to-end functional parcellation framework of neonatal cortex.
         </h2>
       </div>
       <div class="item">
         <!-- Your image here -->
-        <img src="static/images/carousel2.jpg" alt="MY ALT TEXT"/>
+        <img src="assets/TReND/2.pdf" alt="Simulation Data"/>
         <h2 class="subtitle has-text-centered">
-          Second image description.
+          Performance evaluation of TReND versus traditional parcellation methods on simulated data.
         </h2>
       </div>
       <div class="item">
         <!-- Your image here -->
-        <img src="static/images/carousel3.jpg" alt="MY ALT TEXT"/>
+        <img src="assets/TReND/3.pdf" alt="7 Parcellation"/>
         <h2 class="subtitle has-text-centered">
-         Third image description.
+         Coarse parcellation of 7 functional networks in neonates derived from a 300-subject dHCP cohort.
        </h2>
      </div>
      <div class="item">
       <!-- Your image here -->
-      <img src="static/images/carousel4.jpg" alt="MY ALT TEXT"/>
+      <img src="assets/TReND/4.pdf" alt="19 Parcellation"/>
       <h2 class="subtitle has-text-centered">
-        Fourth image description.
+        Fine-grained parcellation of 19 functional networks in neonates derived from a 300-subject dHCP cohort.
       </h2>
     </div>
   </div>
