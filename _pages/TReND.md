@@ -23,24 +23,24 @@ permalink: /research/TReND/
 
 
   <title>TReND for Neonatal Parcellation</title>
-  <link rel="icon" type="image/x-icon" href="assets/TReND/Icon.png">
+  <link rel="icon" type="image/x-icon" href="/assets/TReND/Icon.png">
   <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
   rel="stylesheet">
 
-  <link rel="stylesheet" href="assets/TReND/css/bulma.min.css">
-  <link rel="stylesheet" href="assets/TReND/css/bulma-carousel.min.css">
-  <link rel="stylesheet" href="assets/TReND/css/bulma-slider.min.css">
-  <link rel="stylesheet" href="assets/TReND/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="/assets/TReND/css/bulma.min.css">
+  <link rel="stylesheet" href="/assets/TReND/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="/assets/TReND/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="/assets/TReND/css/fontawesome.all.min.css">
   <link rel="stylesheet"
   href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
-  <link rel="stylesheet" href="assets/TReND/css/index.css">
+  <link rel="stylesheet" href="/assets/TReND/css/index.css">
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <script src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
-  <script defer src="assets/TReND/js/fontawesome.all.min.js"></script>
-  <script src="assets/TReND/js/bulma-carousel.min.js"></script>
-  <script src="assets/TReND/js/bulma-slider.min.js"></script>
-  <script src="assets/TReND/js/index.js"></script>
+  <script defer src="/assets/TReND/js/fontawesome.all.min.js"></script>
+  <script src="/assets/TReND/js/bulma-carousel.min.js"></script>
+  <script src="/assets/TReND/js/bulma-slider.min.js"></script>
+  <script src="/assets/TReND/js/index.js"></script>
 </head>
 <body>
 
