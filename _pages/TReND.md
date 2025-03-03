@@ -54,17 +54,12 @@ permalink: /research/TReND/
             <div class="is-size-5 publication-authors">
               <!-- Paper authors -->
               <span class="author-block">
-                Sovesh Mohapatra,</span>
-                <span class="author-block">
-                  Minhui Ouyang,</span>
-                  <span class="author-block">
-                    <a href="THIRD AUTHOR PERSONAL LINK" target="_blank">Third Author</a>
-                  </span>
+                Sovesh Mohapatra, Minhui Ouyang, Shufang Tan, Jianlin Guo, Lianglong Sun, Yong He, Hao Huang<sup>*</sup></span>
                   </div>
 
                   <div class="is-size-5 publication-authors">
-                    <span class="author-block">Institution Name<br>Conferance name and year</span>
-                    <span class="eql-cntrb"><small><br><sup>*</sup>Indicates Equal Contribution</small></span>
+                    <span class="author-block">Host Instuition: University of Pennsylvania and Children's Hospital of Philadelphia<br>Conferance name and year</span>
+                    <span class="eql-cntrb"><small><br><sup>*</sup>Corresponding Author</small></span>
                   </div>
 
                   <div class="column has-text-centered">
