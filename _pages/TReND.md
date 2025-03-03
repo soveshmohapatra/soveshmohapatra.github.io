@@ -141,7 +141,7 @@ permalink: /research/TReND/
       <div id="results-carousel" class="carousel results-carousel">
        <div class="item">
         <!-- Your image here -->
-        <img src="/assets/TReND/1.pdf" alt="Schematic Flow" style="display: block; margin: 0 auto; width: 80%;"/>
+        <img src="/assets/TReND/1.gif" alt="Schematic Flow" style="display: block; margin: 0 auto; width: 80%;"/>
         <h4 class="subtitle has-text-centered">
           Schematic representation of end-to-end functional parcellation framework of neonatal cortex.
         </h4>
