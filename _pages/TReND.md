@@ -54,9 +54,9 @@ permalink: /research/TReND/
             <div class="is-size-5 publication-authors">
               <!-- Paper authors -->
               <span class="author-block">
-                <a href="https://www.soveshmohapatra.com" target="_blank">Sovesh Mohapatra</a>,</span>
+                <a>Sovesh Mohapatra</a>,</span>
                 <span class="author-block">
-                  <a href="Min" target="_blank">Second Author</a><sup>*</sup>,</span>
+                  <a>Minhui Ouyang</a>,</span>
                   <span class="author-block">
                     <a href="THIRD AUTHOR PERSONAL LINK" target="_blank">Third Author</a>
                   </span>
