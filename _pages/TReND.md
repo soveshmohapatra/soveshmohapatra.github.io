@@ -177,7 +177,15 @@ permalink: /research/TReND/
   <section class="section" id="BibTeX">
     <div class="container is-max-desktop content">
       <h2 class="title">BibTeX</h2>
-      <pre><code>BibTex Code Here</code></pre>
+      <pre><code>@misc{mohapatra2025trendtransformerderivedfeatures,
+      title={TReND: Transformer derived features and Regularized NMF for neonatal functional network Delineation}, 
+      author={Sovesh Mohapatra and Minhui Ouyang and Shufang Tan and Jianlin Guo and Lianglong Sun and Yong He and Hao Huang},
+      year={2025},
+      eprint={2503.02685},
+      archivePrefix={arXiv},
+      primaryClass={q-bio.NC},
+      url={https://arxiv.org/abs/2503.02685}, 
+}</code></pre>
     </div>
 </section>
 <!--End BibTex citation -->
