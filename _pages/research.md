@@ -14,9 +14,10 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 #### 2025
 
-* [TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation] (https://soveshmohapatra.com/research/TReND)
+* [TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation](https://soveshmohapatra.com/research/TReND)
 **Sovesh Mohapatra**, Minhui Ouyang, Shufang Tan, Jianlin Guo, Lianglong Sun, Yong He, Hao Huang 
 **arXiv**
+
 #### 2023
 
 * [Automated Ensemble-Based Segmentation of Adult Brain Tumors: A Novel Approach Using the BraTS AFRICA Challenge Data](https://arxiv.org/abs/2308.07214)  
