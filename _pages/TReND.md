@@ -9,7 +9,7 @@ permalink: /research/TReND/
   <meta name="description" content="TReND: A self-supervised transformer-autoencoder framework integrating regularized NMF for neonatal functional network delineation.">
   <meta property="og:title" content="TReND: Transformer-derived Features and Regularized NMF for Neonatal Functional Network Delineation"/>
   <meta property="og:description" content="A novel self-supervised transformer-autoencoder framework integrating RNMF to unveil neonatal functional networks in rs-fMRI data."/>
-  <meta property="og:url" content="https://arxiv.org/abs/YOUR_PAPER_ID"/>
+  <meta property="og:url" content="https://arxiv.org/abs/2503.02685"/>
   <meta property="og:image" content="static/image/TReND_paper_banner.png" />
   <meta property="og:image:width" content="1200"/>
   <meta property="og:image:height" content="630"/>
@@ -66,23 +66,23 @@ permalink: /research/TReND/
                     <div class="publication-links">
                          <!-- Arxiv PDF link -->
                       <span class="link-block">
-                        <a href="https://soveshmohapatra.com/research/TReND" target="_blank"
+                        <a href="https://arxiv.org/pdf/2503.02685" target="_blank"
                         class="external-link button is-normal is-rounded is-dark">
                         <span class="icon">
                           <i class="fas fa-file-pdf"></i>
                         </span>
-                        <span>Coming Soon</span>
+                        <span>Paper</span>
                       </a>
                     </span>
 
-                    <!-- Supplementary PDF link -->
+                    <!-- Parcellation -->
                     <span class="link-block">
                       <a href="https://soveshmohapatra.com/research/TReND/" target="_blank"
                       class="external-link button is-normal is-rounded is-dark">
                       <span class="icon">
-                        <i class="fas fa-file-pdf"></i>
+                        <img src="/assets/TReND/Icon.png" alt="Atlas Icon" />
                       </span>
-                      <span>Coming Soon</span>
+                      <span>Atlas Soon</span>
                     </a>
                   </span>
 
@@ -99,12 +99,12 @@ permalink: /research/TReND/
 
                 <!-- ArXiv abstract Link -->
                 <span class="link-block">
-                  <a href="https://soveshmohapatra.com/research/TReND/" target="_blank"
+                  <a href="https://arxiv.org/abs/2503.02685" target="_blank"
                   class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
                     <i class="ai ai-arxiv"></i>
                   </span>
-                  <span>Coming Soon</span>
+                  <span>Arxiv</span>
                 </a>
               </span>
             </div>
