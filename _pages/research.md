@@ -14,7 +14,7 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 #### 2025
 
-* [TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation](https://soveshmohapatra.com/research/TReND)
+* [TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation](https://soveshmohapatra.com/research/TReND)  
 **Sovesh Mohapatra**, Minhui Ouyang, Shufang Tan, Jianlin Guo, Lianglong Sun, Yong He, Hao Huang 
 **arXiv**
 
