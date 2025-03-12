@@ -59,7 +59,7 @@ permalink: /research/TReND/
 
                   <div class="is-size-5 publication-authors">
                     <span class="author-block">Host Instuition: University of Pennsylvania and Children's Hospital of Philadelphia</span>
-                    <span class="eql-cntrb"><small><br><sup>*</sup>Corresponding Author</small></span>
+                    <span class="eql-cntrb"><small><br><sup>*</sup>Corresponding Author (huangh6@chop.edu)</small></span>
                   </div>
 
                   <div class="column has-text-centered">
