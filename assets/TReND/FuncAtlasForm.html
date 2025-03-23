@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Request Atlas Access</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    /* Main container using flex layout */
+    .main-container {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    /* Sidebar styling for left and right images */
+    .sidebar {
+      width: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Center container for the form and header */
+    .form-wrapper {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+      margin: 0 20px;
+    }
+    .form-wrapper h1 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+      font-size: 1.6rem;
+      color: #333;
+    }
+    .form-wrapper h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.2rem;
+      color: #555;
+    }
+    /* Form styling */
+    .form-container {
+      width: 100%;
+    }
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.7rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      border-color: #007BFF;
+      outline: none;
+    }
+    .submit-button {
+      background-color: #007BFF;
+      color: #fff;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      width: 100%;
+    }
+    .submit-button:hover {
+      background-color: #0056b3;
+    }
+    /* Animated image styling - increased max-width for larger images */
+    .animated-image {
+      width: 100%;
+      max-width: 600px;
+      animation: slideUpDown 5s ease-in-out infinite;
+    }
+    /* Animation for left sidebar image with larger vertical movement */
+    @keyframes slideUpDown {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-100px); }
+      100% { transform: translateY(0); }
+    }
+    /* Different animation for right sidebar image with larger vertical movement */
+    .right-sidebar .animated-image {
+      animation: slideDownUp 6s ease-in-out infinite;
+    }
+    @keyframes slideDownUp {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(100px); }
+      100% { transform: translateY(0); }
+    }
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .main-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      .form-wrapper {
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <!-- Left sidebar with animated image -->
+    <div class="sidebar left-sidebar">
+      <img src="/Users/sovesh/Documents/Project_Labs/Neonatal-FBP/dHCP-data/Fig3/Form_1.png" alt="Left Image" class="animated-image">
+    </div>
+    
+    <!-- Center content: Project title and Form -->
+    <div class="form-wrapper">
+      <h1>TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation</h1>
+      <h2>Request Atlas Access</h2>
+      <div class="form-container">
+        <form id="atlasRequestForm" action="https://docs.google.com/forms/d/e/1FAIpQLSdV0hwuewgKdm9tfWryokRFQQXotn4aoDCKLtyyNE_7yTiXWQ/formResponse" method="POST">
+          <!-- Email Address Field -->
+          <div class="form-group">
+            <label for="researcherEmail">Your Email Address *</label>
+            <input type="email" id="researcherEmail" name="entry.1131645545" placeholder="example@gmail.com" required>
+          </div>
+          <!-- Institution/Affiliation Field -->
+          <div class="form-group">
+            <label for="institution">Institution/Affiliation *</label>
+            <input type="text" id="institution" name="entry.420517455" placeholder="Enter your institution name" required>
+          </div>
+          <!-- Principal Investigator (PI) Name Field -->
+          <div class="form-group">
+            <label for="piName">Principal Investigator (PI) Name *</label>
+            <input type="text" id="piName" name="entry.899322501" placeholder="Dr. John Doe" required>
+          </div>
+          <!-- Project Title/Description Field -->
+          <div class="form-group">
+            <label for="projectTitle">Project Title or Description *</label>
+            <textarea id="projectTitle" name="entry.858536611" rows="4" placeholder="Provide details about your project" required></textarea>
+          </div>
+          <!-- Researcher Name Field -->
+          <div class="form-group">
+            <label for="researcherName">Name of the Researcher *</label>
+            <input type="text" id="researcherName" name="entry.802401895" placeholder="Enter your full name" required>
+          </div>
+          <button type="submit" class="submit-button">Submit Request</button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Right sidebar with animated image -->
+    <div class="sidebar right-sidebar">
+      <img src="/Users/sovesh/Documents/Project_Labs/Neonatal-FBP/dHCP-data/Fig3/Form_2.png" alt="Right Image" class="animated-image">
+    </div>
+  </div>
+</body>
+</html>
