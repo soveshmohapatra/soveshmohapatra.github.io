@@ -175,24 +175,31 @@
   <!-- Client-side JavaScript to intercept submission and show thank-you message -->
   <script>
     document.getElementById("atlasRequestForm").addEventListener("submit", function(e) {
-      e.preventDefault();  // Prevent default form submission
-      
-      // Create a FormData object from the form data
-      var formData = new FormData(this);
-      
-      // Submit the form using fetch in no-cors mode
-      fetch(this.action, {
-        method: "POST",
-        mode: "no-cors",
-        body: formData
-      }).then(function() {
-        // Display a custom thank-you message upon submission
-        document.getElementById("formWrapper").innerHTML = "<h1>Thank You!</h1><p>Your request has been submitted successfully.</p>";
-      }).catch(function(error) {
-        console.error("Submission error:", error);
-        document.getElementById("formWrapper").innerHTML = "<h1>Error</h1><p>There was a problem submitting your request. Please try again later.</p>";
-      });
-    });
+  e.preventDefault();  // Prevent default form submission
+
+  // Create a FormData object from the form data
+  var formData = new FormData(this);
+
+  // Submit the form using fetch in no-cors mode
+  fetch(this.action, {
+    method: "POST",
+    mode: "no-cors",
+    body: formData
+  }).then(function() {
+    // Display a custom thank-you message upon submission
+    document.getElementById("formWrapper").innerHTML = 
+      "<h1>Thank You!</h1>" +
+      "<p>Your request has been submitted successfully.</p>" +
+      "<p>If you don't receive the link to download the atlas within the next 24 hours, please contact <a href='mailto:soveshm@seas.upenn.edu'>soveshm@seas.upenn.edu</a>.</p>" +
+      "<p>The atlas was developed using the dHCP-40wk template and has been surface-registered and released on fsaverage atlases for the ease of using in developmental/lifespan studies.</p>";
+  }).catch(function(error) {
+    console.error("Submission error:", error);
+    document.getElementById("formWrapper").innerHTML = 
+      "<h1>Error</h1>" +
+      "<p>There was a problem submitting your request. Please try again later.</p>";
+  });
+});
+
   </script>
 </body>
 </html>
