@@ -77,12 +77,12 @@ permalink: /research/TReND/
 
                     <!-- Parcellation -->
                     <span class="link-block">
-                      <a href="https://soveshmohapatra.com/research/TReND/" target="_blank"
+                      <a href="/assets/TReND/FuncAtlasForm.html" target="_blank"
                       class="external-link button is-normal is-rounded is-dark">
                       <span class="icon">
                         <img src="/assets/TReND/Icon.png" alt="Atlas Icon" />
                       </span>
-                      <span>Atlas Soon</span>
+                      <span>Request Atlas</span>
                     </a>
                   </span>
 
