@@ -87,19 +87,19 @@
     .submit-button:hover {
       background-color: #0056b3;
     }
-    /* Animated image styling - increased max-width for larger images */
+    /* Animated image styling */
     .animated-image {
       width: 100%;
       max-width: 600px;
       animation: slideUpDown 5s ease-in-out infinite;
     }
-    /* Animation for left sidebar image with larger vertical movement */
+    /* Left sidebar animation */
     @keyframes slideUpDown {
       0% { transform: translateY(0); }
       50% { transform: translateY(-100px); }
       100% { transform: translateY(0); }
     }
-    /* Different animation for right sidebar image with larger vertical movement */
+    /* Right sidebar animation */
     .right-sidebar .animated-image {
       animation: slideDownUp 6s ease-in-out infinite;
     }
@@ -131,7 +131,7 @@
     </div>
     
     <!-- Center content: Project title and Form -->
-    <div class="form-wrapper">
+    <div class="form-wrapper" id="formWrapper">
       <h1>TReND: Transformer-derived features and Regularized NMF for neonatal functional network Delineation</h1>
       <h2>Request Atlas Access</h2>
       <div class="form-container">
@@ -171,5 +171,28 @@
       <img src="/assets/TReND/Form_2.png" alt="Right Image" class="animated-image">
     </div>
   </div>
+
+  <!-- Client-side JavaScript to intercept submission and show thank-you message -->
+  <script>
+    document.getElementById("atlasRequestForm").addEventListener("submit", function(e) {
+      e.preventDefault();  // Prevent default form submission
+      
+      // Create a FormData object from the form data
+      var formData = new FormData(this);
+      
+      // Submit the form using fetch in no-cors mode
+      fetch(this.action, {
+        method: "POST",
+        mode: "no-cors",
+        body: formData
+      }).then(function() {
+        // Display a custom thank-you message upon submission
+        document.getElementById("formWrapper").innerHTML = "<h1>Thank You!</h1><p>Your request has been submitted successfully.</p>";
+      }).catch(function(error) {
+        console.error("Submission error:", error);
+        document.getElementById("formWrapper").innerHTML = "<h1>Error</h1><p>There was a problem submitting your request. Please try again later.</p>";
+      });
+    });
+  </script>
 </body>
 </html>
