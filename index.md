@@ -24,6 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>May 2025:</b></td><td> Recieved the Merit Award at 2025 Organization of Human Brain Mapping for the Neonatal Functional Parcellation Abstract</td></tr>
 <tr><td><b>Mar 2025:</b></td><td> New <a href="https://arxiv.org/abs/2503.02685"> paper</a> on Neonatal Functional Parcellation</td></tr>
 <tr><td><b>Mar 2025:</b></td><td> Awarded ISMRM & ISMRT Annual Meeting & Exhibition Educational Stipend</td></tr>
 <tr><td><b>Feb 2025:</b></td><td> Trainee Representative for Pediatric MR Study Group at ISMRM 2025</td></tr>
