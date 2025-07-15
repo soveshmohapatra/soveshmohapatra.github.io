@@ -24,6 +24,9 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Jul 2025:</b></td><td>  Chaired Gordon Research Seminar on Tissue Microstructure Imaging</td></tr>
+<tr><td><b>Jun 2025:</b></td><td>  TReND-Neonatal Functional Parcellation paper accepted in the Main track of MICCAI 2025</td></tr>
+<tr><td><b>Jun 2025:</b></td><td> Presented TReND-derived Neonatal Functional Atlas at 2025 Organization of Human Brain Mapping</td></tr>
 <tr><td><b>May 2025:</b></td><td> Recieved the Merit Award at 2025 Organization of Human Brain Mapping for the Neonatal Functional Parcellation Abstract</td></tr>
 <tr><td><b>Mar 2025:</b></td><td> New <a href="https://arxiv.org/abs/2503.02685"> paper</a> on Neonatal Functional Parcellation</td></tr>
 <tr><td><b>Mar 2025:</b></td><td> Awarded ISMRM & ISMRT Annual Meeting & Exhibition Educational Stipend</td></tr>
