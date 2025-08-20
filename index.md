@@ -6,7 +6,7 @@ layout: page
 
 <img style="float: right; width: 35%; padding: 6px;" src=" {{ site.url }}/assets/1.jpeg">
 
-My name is Sovesh Mohapatra, a PhD Candidate in BioEngineering department at the  [University of Pennsylvania](https://be.seas.upenn.edu/) under [Dani S Bassett] (https://live-sas-physics.pantheon.sas.upenn.edu/people/standing-faculty/danielle-bassett)
+My name is Sovesh Mohapatra, a PhD Candidate in BioEngineering department at the  [University of Pennsylvania](https://be.seas.upenn.edu/) under [Dani S Bassett](https://live-sas-physics.pantheon.sas.upenn.edu/people/standing-faculty/danielle-bassett)
 
 I completed my bachelors with a triple major in Computer Science, Linguistics, and Mathematics in three years from [University of Massachusetts Amherst](http://umass.edu/). At UMass, I worked with [Dr. Gottfried Schlaug](http://profiles.umassmed.edu/display/22559132) in gearing towards predicting and enhancing a patient’s recovery potential and optimizing rehabilitation techniques for stroke patients.
 
