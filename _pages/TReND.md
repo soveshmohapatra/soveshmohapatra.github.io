@@ -178,11 +178,15 @@ permalink: /research/TReND/
   <section class="section" id="BibTeX">
     <div class="container is-max-desktop content">
       <h2 class="title">BibTeX</h2>
-      <pre><code>@article{mohapatra2025trend,
-  title={TReND: Transformer derived features and Regularized NMF for neonatal functional network Delineation},
-  author={Mohapatra, Sovesh and Ouyang, Minhui and Tan, Shufang and Guo, Jianlin and Sun, Lianglong and He, Yong and Huang, Hao},
-  journal={arXiv preprint arXiv:2503.02685},
-  year={2025}, 
+      <pre><code>@InProceedings{MohSov_TReND_MICCAI2025,
+        author = { Mohapatra, Sovesh AND Ouyang, Minhui AND Tan, Shufang AND Guo, Jianlin AND Sun, Lianglong AND He, Yong AND Huang, Hao},
+        title = { { TReND: Transformer derived features and Regularized NMF for neonatal functional network Delineation } },
+        booktitle = {proceedings of Medical Image Computing and Computer Assisted Intervention -- MICCAI 2025},
+        year = {2025},
+        publisher = {Springer Nature Switzerland},
+        volume = {LNCS 15971},
+        month = {September},
+        page = {660 -- 669},
 }</code></pre>
     </div>
 </section>
