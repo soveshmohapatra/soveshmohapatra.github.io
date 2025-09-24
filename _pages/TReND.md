@@ -67,7 +67,7 @@ permalink: /research/TReND/
                     <div class="publication-links">
                          <!-- Arxiv PDF link -->
                       <span class="link-block">
-                        <a href="https://arxiv.org/pdf/2503.02685" target="_blank"
+                        <a href="https://papers.miccai.org/miccai-2025/paper/4481_paper.pdf" target="_blank"
                         class="external-link button is-normal is-rounded is-dark">
                         <span class="icon">
                           <i class="fas fa-file-pdf"></i>
