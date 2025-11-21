@@ -4,7 +4,7 @@ layout: page
 
 {% include JB/setup %}
 
-<img style="float: right; width: 35%; padding: 6px;" src=" {{ site.url }}/assets/1.jpeg">
+<img style="float: right; width: 35%; padding: 6px;" src=" {{ site.url }}/assets/2.jpg">
 
 My name is Sovesh Mohapatra, a PhD Candidate in BioEngineering department at the  [University of Pennsylvania](https://be.seas.upenn.edu/) under [Dani S Bassett](https://live-sas-physics.pantheon.sas.upenn.edu/people/standing-faculty/danielle-bassett)
 
