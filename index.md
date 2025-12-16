@@ -24,6 +24,7 @@ Email ID: [soveshm@seas.upenn.edu](mailto:soveshm@seas.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Dec 2025:</b></td><td>  New <a href="https://ieeexplore.ieee.org/document/11297440"> paper</a> on Lesion Segmentation Challenge in BOston Neonatal Brain Injury Data for Hypoxic Ischemic Encephalopathy</td></tr>
 <tr><td><b>Jul 2025:</b></td><td>  Chaired Gordon Research Seminar on Tissue Microstructure Imaging</td></tr>
 <tr><td><b>Jun 2025:</b></td><td>  TReND-Neonatal Functional Parcellation paper accepted in the Main track of MICCAI 2025</td></tr>
 <tr><td><b>Jun 2025:</b></td><td> Presented TReND-derived Neonatal Functional Atlas at 2025 Organization of Human Brain Mapping</td></tr>
