@@ -30,6 +30,13 @@ I am broadly interested in Neuroimaging, Computer Vision and Natural Language Pr
 
 ### Peer-Reviewed Journal
 
+#### 2025
+
+* [Mapping Functional Brain Organization Using Artificial Intelligence](https://pubs.acs.org/doi/full/10.1021/cbmi.5c00092)  
+Tianjia Zhu, **Sovesh Mohapatra**, Shufang Tan, Minhui Ouyang, Hao Huang   
+**Chemical & Biomedical Imaging**
+
+
 #### 2024
 
 * [Machine-learning based prediction of future outcome using multimodal MRI during early childhood](https://www.sciencedirect.com/science/article/pii/S1744165X2400043X)  
