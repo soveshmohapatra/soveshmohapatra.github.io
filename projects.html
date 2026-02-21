@@ -1,0 +1,187 @@
+---
+layout: null
+title: Projects
+group: navigation
+order: 4
+permalink: /projects/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects & Blog | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+</head>
+
+<body>
+
+    <!-- Optional: Navigation could go here, for now keeping it focused on the Projects section -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <header class="section-hero">
+            <h1 class="hero-title">Projects & <span>Thoughts</span></h1>
+            <p class="hero-subtitle">A collection of my recent live projects, tutorials, and computational explorations.
+            </p>
+        </header>
+
+        <!-- Projects Grid -->
+        <section class="projects-grid">
+
+            <!-- Project Card 1: Live Project Example -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Feb 2026</span>
+                    </div>
+                    <h2 class="card-title">Neonatal HIE Lesion Segmentation AI</h2>
+                    <p class="card-desc">An end-to-end pipeline leveraging multimodal MRI to predict hypoxic-ischemic
+                        encephalopathy outcomes in neonates. Includes novel transfer learning integration.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value">85%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 85%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra" target="_blank" class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repository</span>
+                        </a>
+                        <a href="https://linkedin.com/in/sovesh" target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                        <a href="#" class="read-more-btn">Read More <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 2: Tutorial Example -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-tutorial">Tutorial</span>
+                        <span class="card-date">Jan 2026</span>
+                    </div>
+                    <h2 class="card-title">Extracting Phase Information with Kuramoto Oscillators</h2>
+                    <p class="card-desc">A deep dive into setting up the Kuramoto model on empirical fMRI data. We cover
+                        adjacency scaling, frequency extraction, and coupling parameter calibration.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Completion</span>
+                            <span class="progress-value">100%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill fill-complete" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra" target="_blank" class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Code snippet</span>
+                        </a>
+                        <a href="#" class="read-more-btn">Read More <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 3: Old Blog Migration Example -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-blog">Blog</span>
+                        <span class="card-date">Feb 2023</span>
+                    </div>
+                    <h2 class="card-title">Breaking Barriers: Neuroscience & AI Language Models</h2>
+                    <p class="card-desc">Exploring how principles of computational neuroscience are revolutionizing the
+                        way we train and evaluate large language models.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Status</span>
+                            <span class="progress-value">Archived</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill fill-archived" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://linkedin.com/in/sovesh" target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Discuss</span>
+                        </a>
+                        <a href="#" class="read-more-btn">Read More <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 4: Upcoming Example -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-upcoming">Upcoming</span>
+                        <span class="card-date">Spring 2026</span>
+                    </div>
+                    <h2 class="card-title">Interactive Controllability Landscape Dashboard</h2>
+                    <p class="card-desc">A web-based interactive tool for visualizing control energy and mutual
+                        information across varying network topologies in real-time.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Planning Phase</span>
+                            <span class="progress-value">20%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill fill-planning" style="width: 20%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="#" class="social-btn github-btn disabled">
+                            <i class="fab fa-github"></i> <span style="font-size:0.7em;">Coming Soon</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+        </section>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
