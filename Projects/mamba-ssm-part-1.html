@@ -1,0 +1,370 @@
+---
+layout: null
+title: "Deconstructing State Space Models: Part 1"
+permalink: /projects/mamba-ssm-part-1/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing State Space Models: Part 1 | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay from the projects page -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Projects
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing State Space Models: Part 1</h1>
+            <h2 class="article-subtitle">The Mathematical Foundations (Control Theory 101 for AI)</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>February 21, 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>As sequence models push the boundaries of context length—handling entire books, massive genomic
+                    sequences, and high-frequency brain signals—the quadratic scaling of Attention in Transformers has
+                    become a critical bottleneck. State Space Models (SSMs), rooted in classical Control Theory, have
+                    recently emerged as a promising alternative. They offer linear-time scaling, potentially infinite
+                    context windows, and fast inference. In this post, we unpack the mathematical foundations of SSMs,
+                    starting from continuous-time differential equations to their discrete-time approximations, and
+                    highlight how recent architectures like Mamba achieve data-dependent selective state spaces.</p>
+            </div>
+
+            <h2>1. Introduction: The Memory Wall of Transformers</h2>
+            <p>For years, the Transformer architecture has dominated deep learning. From natural language processing to
+                computer vision, the core mechanism—Self-Attention—has proven extraordinarily capable at modeling
+                complex relationships in data.</p>
+
+            <p>However, Self-Attention has a fatal flaw: it scales quadratically with respect to sequence length. Every
+                token in a sequence must be compared to every other token. Let $L$ be the sequence length; the
+                computational complexity and memory footprint of calculating the Attention matrix grow as
+                $\mathcal{O}(L^2)$.</p>
+
+            <p>If you double the sequence length, you multiply the compute cost by four. For extremely long sequences,
+                this quickly hits a "memory wall." We need architectures that provide the rich representational power of
+                Transformers but scale linearly, $\mathcal{O}(L)$, with sequence length. This brings us to State Space
+                Models (SSMs).</p>
+
+            <h2>2. Control Theory 101: Continuous-Time State Space</h2>
+            <p>State Space Models are fundamentally mathematical models from classical control theory used to describe
+                physical systems (like robotics, aerospace, and fluid dynamics).</p>
+
+            <p>Instead of cross-referencing all past inputs (like Attention), an SSM compresses the entire sequence
+                history into a hidden "state." As new data flows in, this state is updated.</p>
+
+            <p>Formally, a continuous-time State Space Model maps a 1-dimensional input signal $x(t) \in \mathbb{R}$ to
+                an output signal $y(t) \in \mathbb{R}$ via an $N$-dimensional latent state $h(t) \in \mathbb{R}^N$. This
+                system is governed by a set of linear differential equations:</p>
+
+            <div class="math-block">
+                $$ h'(t) = \mathbf{A} h(t) + \mathbf{B} x(t) $$
+                $$ y(t) = \mathbf{C} h(t) + \mathbf{D} x(t) $$
+            </div>
+
+            <p>Here is what these matrices represent:</p>
+            <ul>
+                <li><strong>$\mathbf{A} \in \mathbb{R}^{N \times N}$</strong>: The <strong>State Matrix</strong>. By far
+                    the most critical parameter, it dictates how the hidden state evolves over time and how memory of
+                    past inputs decays.</li>
+                <li><strong>$\mathbf{B} \in \mathbb{R}^{N \times 1}$</strong>: The <strong>Input Matrix</strong>. It
+                    controls how the current input $x(t)$ influences the hidden state.</li>
+                <li><strong>$\mathbf{C} \in \mathbb{R}^{1 \times N}$</strong>: The <strong>Output Matrix</strong>. It
+                    projects the hidden state $h(t)$ into the output $y(t)$.</li>
+                <li><strong>$\mathbf{D} \in \mathbb{R}^{1 \times 1}$</strong>: The <strong>Feedthrough Matrix</strong>.
+                    Often treated as a skip connection operating directly on $x(t)$ (and typically skipped or treated as
+                    a separate linear layer in deep learning).</li>
+            </ul>
+
+            <h2>3. From Analog to Digital: Discretization</h2>
+            <p>In deep learning, we do not operate on continuous analog signals $x(t)$; we process discrete tokens $x_k$
+                sampled at specific time intervals. To make SSMs computable on discrete data (like text or discretized
+                time series), we must discretize the continuous system.</p>
+
+            <p>We introduce a timestep parameter $\Delta$ that represents the resolution of our discrete sampling. The
+                continuous parameters $(\mathbf{A}, \mathbf{B})$ are transformed into discrete parameters
+                $(\bar{\mathbf{A}}, \bar{\mathbf{B}})$ using a discretization rule, such as the <em>Zero-Order Hold
+                    (ZOH)</em>:</p>
+
+            <div class="math-block">
+                $$ \bar{\mathbf{A}} = \exp(\Delta \mathbf{A}) $$
+                $$ \bar{\mathbf{B}} = (\Delta \mathbf{A})^{-1} (\exp(\Delta \mathbf{A}) - \mathbf{I}) \cdot \Delta
+                \mathbf{B} $$
+            </div>
+
+            <p>With the discretized matrices, the continuous differential equations become a standard discrete-time
+                recurrence:</p>
+
+            <div class="math-block">
+                $$ h_k = \bar{\mathbf{A}} h_{k-1} + \bar{\mathbf{B}} x_k $$
+                $$ y_k = \mathbf{C} h_k + \mathbf{D} x_k $$
+            </div>
+
+            <p>This formulation is incredibly powerful because $\bar{\mathbf{A}}$ and $\bar{\mathbf{B}}$ are constant
+                over time (in the standard setup). This is known as a Linear Time-Invariant (LTI) system.</p>
+
+            <h2>4. The Duality: Recurrence vs. Convolution</h2>
+            <p>One of the most elegant properties of LTI SSMs is that they can be computed in two completely different
+                ways depending on whether we are training or inferencing.</p>
+
+            <h3>4.1 Recurrent Representation (Fast Inference)</h3>
+            <p>During autoregressive generation (inference), we compute the system step-by-step just like a Recurrent
+                Neural Network (RNN):</p>
+
+            <div class="math-block">
+                $$ h_k = \bar{\mathbf{A}} h_{k-1} + \bar{\mathbf{B}} x_k $$
+            </div>
+
+            <p>Because the state $h_k$ acts as a compressed summary of all past context, memory remains constant
+                $\mathcal{O}(1)$, and generation scales linearly $\mathcal{O}(L)$.</p>
+
+            <h3>4.2 Convolutional Representation (Fast Training)</h3>
+            <p>During training, we have the entire sequence $x = (x_1, x_2, \dots, x_L)$ available at once. Because the
+                system is linear, we can unroll the recurrence. Assuming $h_{-1} = 0$:</p>
+
+            <div class="math-block">
+                $$ h_0 = \bar{\mathbf{B}} x_0 $$
+                $$ h_1 = \bar{\mathbf{A}} \bar{\mathbf{B}} x_0 + \bar{\mathbf{B}} x_1 $$
+                $$ h_2 = \bar{\mathbf{A}}^2 \bar{\mathbf{B}} x_0 + \bar{\mathbf{A}} \bar{\mathbf{B}} x_1 +
+                \bar{\mathbf{B}} x_2 $$
+            </div>
+
+            <p>Substituting into the output equation $y_k = \mathbf{C} h_k$, we can express the entire output sequence
+                as a single 1D convolution:</p>
+
+            <div class="math-block">
+                $$ y = x * \bar{\mathbf{K}} \quad \text{where} \quad \bar{\mathbf{K}} = \left(
+                \mathbf{C}\bar{\mathbf{B}}, \mathbf{C}\bar{\mathbf{A}}\bar{\mathbf{B}},
+                \mathbf{C}\bar{\mathbf{A}}^2\bar{\mathbf{B}}, \dots \right) $$
+            </div>
+
+            <p>This allows us to leverage Highly Optimized Convolution primitives and the Fast Fourier Transform (FFT)
+                to train the model in parallel across the sequence, avoiding the sequential bottleneck of RNNs.</p>
+
+            <h2>5. The Evolution: Mamba and Selective State Spaces</h2>
+            <p>In 2023, Gu and Dao addressed a major limitation of standard SSMs: the LTI property. Because
+                $\bar{\mathbf{A}}$ and $\bar{\mathbf{B}}$ are constant across the sequence, an LTI model applies the
+                exact same state transitions to every token, regardless of the token's content. It cannot flexibly
+                choose to ignore useless filler words or strongly remember crucial names.</p>
+
+            <p>To solve this, <strong>Mamba</strong> introduced <em>Selective State Spaces</em>. The matrices
+                $\mathbf{B}$, $\mathbf{C}$, and the step size $\Delta$ are no longer constants; they are parameterized
+                as linear projections of the input token $x_k$:</p>
+
+            <div class="math-block">
+                $$ \mathbf{B}_k = \text{Linear}_B(x_k) $$
+                $$ \mathbf{C}_k = \text{Linear}_C(x_k) $$
+                $$ \Delta_k = \text{Softplus}(\text{Parameter} + \text{Linear}_\Delta(x_k)) $$
+            </div>
+
+            <p>This deceptively simple change is profound. The model is now <strong>data-dependent</strong>. $\Delta_k$
+                acts as an intensive gating mechanism: a large $\Delta_k$ focuses on the current input (resetting
+                memory), while a small $\Delta_k$ ignores the current input (maintaining memory). Mamba bridges the gap
+                between the constant memory of SSMs and the content-aware routing of Attention.</p>
+
+            <p>Because the system is no longer Time-Invariant, we lose the Convolutional representation. However, Mamba
+                solves this by utilizing a parallel hardware-aware scan algorithm, keeping training as fast as
+                Transformers without sacrificing the linear scaling benefit.</p>
+
+            <h2>Conclusion</h2>
+            <p>State Space Models offer a mathematically beautiful bridge between continuous dynamical systems and
+                modern deep learning. By moving from purely quadratic attention frameworks to linear selective state
+                spaces, we unlock architectures capable of reasoning over millions of tokens with extreme efficiency.
+            </p>
+
+            <p>In Part 2 of this series, we will move from theory to practice, writing a 1D State Space layer in under
+                100 lines of pure PyTorch.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
