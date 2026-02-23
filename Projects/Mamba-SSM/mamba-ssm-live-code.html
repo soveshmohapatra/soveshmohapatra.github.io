@@ -236,7 +236,11 @@ permalink: /projects/mamba-ssm-live-code/
             <h1 class="article-title">Deconstructing State Space Models: Part 2</h1>
             <h2 class="article-subtitle">Writing a 1D State Space Layer in PyTorch</h2>
             <div class="article-meta">
-                <span>By Sovesh Mohapatra</span> &bull; <span>February 2026</span>
+                <span>By Sovesh Mohapatra</span> &bull; <span>February 2026</span> &bull;
+                <a href="https://github.com/soveshmohapatra/Mamba-SSM" target="_blank"
+                    style="color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; transition: color 0.2s;">
+                    <i class="fab fa-github"></i> GitHub repo
+                </a>
             </div>
         </header>
 
@@ -323,7 +327,8 @@ permalink: /projects/mamba-ssm-live-code/
         return A_bar, B_bar</code></pre>
 
             <p>The mathematical magic here is how elegantly dense matrix exponentials collapse into fast, standard
-                <code>torch.exp()</code> calls since $\mathbf{A}$ is modeled as a diagonal vector.</p>
+                <code>torch.exp()</code> calls since $\mathbf{A}$ is modeled as a diagonal vector.
+            </p>
 
             <h3>2.3 Massive Sequence Convolutions (Fast Training)</h3>
             <p>During training, we have entire sequences available simultaneously. Because an LTI model applies exact
@@ -358,7 +363,8 @@ permalink: /projects/mamba-ssm-live-code/
                 sequence by $L - 1$ zeros is a crucial trick to maintain causality. Furthermore, this code explicitly
                 addresses a notorious <strong>PyTorch gotcha</strong>: <code>F.conv1d</code> structurally performs
                 <em>cross-correlation</em>, not mathematical convolution. We must physically flip our sequence kernel
-                before applying it; otherwise, future tokens bleed backwards in time.</p>
+                before applying it; otherwise, future tokens bleed backwards in time.
+            </p>
 
             <h3>2.4 O(1) Autoregressive Inference</h3>
             <p>When generating tokens one-by-one under deployment, we swap to a recurrent mode. At every step, we ingest
@@ -392,7 +398,8 @@ permalink: /projects/mamba-ssm-live-code/
                     <code>torch.randn()</code>, allowing positive continuous values. A positive state parameter
                     undergoing exponential mapping inside ZOH causes the rolling state memory to blow up mathematically.
                     I corrected this by using strictly negative initializations (<code>-torch.rand() - 1.0</code>),
-                    forcing the dynamical system to stabilize into a healthy decay.</li>
+                    forcing the dynamical system to stabilize into a healthy decay.
+                </li>
                 <li><strong>Cross-Correlation vs Convolution:</strong> The aforementioned mathematical divergence was
                     rooted in PyTorch's <code>F.conv1d</code> not actually behaving as formal convolution. The output
                     only matched identically ($\sim 1 \times 10^{-6}$ float error) once the unrolled response kernel was
