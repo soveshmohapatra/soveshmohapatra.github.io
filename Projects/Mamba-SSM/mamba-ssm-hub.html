@@ -1,0 +1,218 @@
+---
+layout: null
+permalink: /projects/mamba-ssm/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>State Space Models & Mamba | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .hub-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            text-align: center;
+        }
+
+        .hub-header {
+            margin-bottom: 4rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+            text-align: left;
+            width: 100%;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .hub-title {
+            font-size: 3rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .hub-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .hub-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .hub-card {
+            background: rgba(var(--bg-card-rgb), 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+            text-decoration: none;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .hub-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .hub-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+            border-color: var(--accent-light);
+        }
+
+        .hub-card-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent-light);
+            z-index: 1;
+        }
+
+        .hub-card-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            z-index: 1;
+        }
+
+        .hub-card-desc {
+            font-size: 1rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            z-index: 1;
+        }
+
+        .hub-card.disabled {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .hub-card.disabled .hub-card-tag {
+            background: rgba(var(--text-color-rgb), 0.1);
+            color: var(--text-muted);
+        }
+
+        .hub-card-tag {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-light);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="hub-container">
+        <a href="{{ site.baseurl }}/projects/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Projects
+        </a>
+
+        <header class="hub-header">
+            <h1 class="hub-title">State Space Models & Mamba</h1>
+            <p class="hub-subtitle">Explore the theoretical foundations, implementation details, and live applications
+                of SSMs.</p>
+        </header>
+
+        <section class="hub-grid">
+            <!-- Theory -->
+            <a href="{{ site.baseurl }}/projects/mamba-ssm-theory/" class="hub-card">
+                <div class="hub-card-tag">Available</div>
+                <i class="fas fa-book-open hub-card-icon"></i>
+                <h2 class="hub-card-title">Theory</h2>
+                <p class="hub-card-desc">Dive into the mathematical foundations, from control theory basics to
+                    discrete-time approximations and selective state spaces.</p>
+            </a>
+
+            <!-- Live Code -->
+            <a href="#" class="hub-card disabled">
+                <div class="hub-card-tag">Coming Soon</div>
+                <i class="fas fa-laptop-code hub-card-icon"></i>
+                <h2 class="hub-card-title">Live Code</h2>
+                <p class="hub-card-desc">Interactive PyTorch implementation of a 1D State Space layer, scaling it
+                    against baseline Transformers.</p>
+            </a>
+
+            <!-- Application -->
+            <a href="#" class="hub-card disabled">
+                <div class="hub-card-tag">Coming Soon</div>
+                <i class="fas fa-rocket hub-card-icon"></i>
+                <h2 class="hub-card-title">Application</h2>
+                <p class="hub-card-desc">Real-world deployments and interactive demos showcasing the linear scaling
+                    capabilities of Mamba.</p>
+            </a>
+        </section>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
