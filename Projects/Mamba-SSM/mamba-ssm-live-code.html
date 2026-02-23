@@ -1,0 +1,428 @@
+---
+layout: null
+permalink: /projects/mamba-ssm-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing State Space Models: Part 2 | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Highlight.js for code formatting -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .article-content a {
+            color: var(--accent-light);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--accent-light);
+            transition: color 0.2s;
+        }
+
+        .article-content a:hover {
+            color: var(--accent-hover);
+            border-bottom-style: solid;
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        pre {
+            background-color: #282c34 !important;
+            border-radius: 8px;
+            padding: 1rem !important;
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.95rem;
+        }
+
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+        }
+
+        p>code {
+            background-color: rgba(var(--bg-card-rgb), 0.5);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            border: 1px solid var(--border-color);
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/mamba-ssm/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing State Space Models: Part 2</h1>
+            <h2 class="article-subtitle">Writing a 1D State Space Layer in PyTorch</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>February 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>In Part 1, we explored the beautiful mathematics driving State Space Models (SSMs) and Mamba,
+                    breaking down the underlying continuous differential equations, Zero-Order Hold discretization, and
+                    the core duality between recurrent inference and convolutional training. In Part 2, we leave the
+                    whiteboards behind and step into the code. While the official implementations of architectures like
+                    S4 and Mamba rely on highly optimized, complex custom CUDA kernels and hardware-aware associative
+                    scans for production performance, the mathematical heart of an SSM is surprisingly straightforward.
+                    In this post, we will walk through the core components of a functional, educational 1-Dimensional
+                    Linear State Space layer written in pure PyTorch. The complete source code is available in my <a
+                        href="https://github.com/soveshmohapatra/Mamba-SSM" target="_blank">GitHub repository <i
+                            class="fab fa-github"></i></a>.</p>
+            </div>
+
+            <h2>1. Introduction</h2>
+            <p>Deep learning architectures often seem intimidating when you glance at their official repositories.
+                Production-grade models must run efficiently on hardware, so the foundational logic is frequently hidden
+                behind layers of Triton blocks, parallel prefix scans, and low-level memory optimizations.</p>
+
+            <p>However, the mathematical heart of an SSM—mapping a 1D sequence of inputs $x$ to an output sequence $y$
+                via a hidden state $h$—merely involves standard tensor operations. In this post, we will dissect a
+                minimal PyTorch <code>nn.Module</code> that acts as a 1D Linear Time-Invariant (LTI) sequence model.</p>
+
+            <p>Our unoptimized, educational implementation will demonstrate three essential concepts:</p>
+            <ol>
+                <li>Defining the continuous parameters $(\mathbf{A}, \mathbf{B}, \mathbf{C}, \Delta)$ and computing
+                    their discrete counterparts $(\bar{\mathbf{A}}, \bar{\mathbf{B}})$.</li>
+                <li>Unrolling the system into a massive 1D convolutional kernel to process entire sequences in parallel
+                    during training.</li>
+                <li>Processing inputs dynamically, step-by-step using recurrent state updates during autoregressive
+                    inference.</li>
+            </ol>
+
+            <h2>2. Breaking Down the Components</h2>
+            <p>We make a standard assumption to simplify the mathematics and avoid computing dense matrix exponentials
+                (which are slow and numerically unstable): the state matrix $\mathbf{A}$ is <em>diagonal</em>. Instead
+                of maintaining an $N \times N$ matrix, $\mathbf{A}$ becomes an $N$-dimensional vector that strictly
+                operates element-wise.</p>
+
+            <p>Let's dissect the most critical mechanisms of our layer.</p>
+
+            <h3>2.1 Continuous Initialization</h3>
+            <p>Real language models process discrete tokens, yet an SSM actually <em>learns</em> continuous parameters
+                representing a physical dynamical system. This separation lets the model learn real underlying dynamics
+                mapped into discrete token space via a step size $\Delta$.</p>
+
+            <pre><code class="language-python">class Simple1DSSM(nn.Module):
+    def __init__(self, d_state: int):
+        super().__init__()
+        # Continuous-time parameters
+        # A: (d_state) initialized with negative values for stable decay
+        self.A = nn.Parameter(-torch.rand(d_state) - 1.0)
+        
+        # B: (d_state, 1) mapping scalar input to state
+        self.B = nn.Parameter(torch.randn(d_state, 1))
+        
+        # C: (1, d_state) mapping state to scalar output
+        self.C = nn.Parameter(torch.randn(1, d_state))
+        
+        # Delta: The step size, enforced strictly positive
+        self.log_delta = nn.Parameter(torch.randn(1))</code></pre>
+
+            <p>By constraining $\mathbf{A}$ to be diagonal, we drastically reduce memory footprint while retaining rich
+                expressive capacity.</p>
+
+            <h3>2.2 ZOH Discretization</h3>
+            <p>To process discrete text tokens, we use Zero-Order Hold (ZOH) to bridge continuous physics with discrete
+                sequence modeling. This maps our continuous $\mathbf{A}$ onto discrete steps $\bar{\mathbf{A}}$.</p>
+
+            <pre><code class="language-python">    def discretize(self):
+        delta = torch.exp(self.log_delta)
+        
+        # The matrix exponential simplifies to an element-wise exp
+        A_bar = torch.exp(delta * self.A) 
+        
+        # Algebraic simplification for a diagonal A
+        B_bar = ((A_bar - 1.0) / self.A).unsqueeze(-1) * self.B
+        
+        return A_bar, B_bar</code></pre>
+
+            <p>The mathematical magic here is how elegantly dense matrix exponentials collapse into fast, standard
+                <code>torch.exp()</code> calls since $\mathbf{A}$ is modeled as a diagonal vector.</p>
+
+            <h3>2.3 Massive Sequence Convolutions (Fast Training)</h3>
+            <p>During training, we have entire sequences available simultaneously. Because an LTI model applies exact
+                static matrix transitions to every token, we compute an $L$-dimensional unrolled response kernel
+                $\mathbf{K}$ ahead of time. This kernel defines how much token $x_{T-k}$ influences token $x_{T}$.</p>
+
+            <pre><code class="language-python">    def forward(self, x):
+        """ Convolutional execution for rapid parallel training. """
+        batch, L = x.shape
+        A_bar, B_bar = self.discretize()
+        
+        # Compute global convolutional kernel: [CB, CAB, CA^2B, ...]
+        K = torch.zeros(L, device=x.device)
+        A_pow = torch.ones_like(self.A) 
+        
+        for k in range(L):
+            K[k] = (self.C @ (A_pow.unsqueeze(-1) * B_bar)).squeeze()
+            A_pow = A_pow * A_bar
+            
+        K = K.view(1, 1, L)
+        x = x.view(batch, 1, L)
+        
+        # Note: PyTorch's F.conv1d computes cross-correlation!
+        # We must reverse/flip the kernel to make it a true causal convolution.
+        K_flipped = torch.flip(K, dims=(-1,))
+        y = F.conv1d(x, K_flipped, padding=L-1)
+        
+        y = y[..., :L] # Slice to original length
+        return y.squeeze(1)</code></pre>
+
+            <p>Once $\mathbf{K}$ is materialized, we use PyTorch's optimized <code>F.conv1d</code>. Padding the input
+                sequence by $L - 1$ zeros is a crucial trick to maintain causality. Furthermore, this code explicitly
+                addresses a notorious <strong>PyTorch gotcha</strong>: <code>F.conv1d</code> structurally performs
+                <em>cross-correlation</em>, not mathematical convolution. We must physically flip our sequence kernel
+                before applying it; otherwise, future tokens bleed backwards in time.</p>
+
+            <h3>2.4 O(1) Autoregressive Inference</h3>
+            <p>When generating tokens one-by-one under deployment, we swap to a recurrent mode. At every step, we ingest
+                a scalar $x_k$, multiply the pre-existing constant-sized hidden state $h$ by $\bar{\mathbf{A}}$, inject
+                the new token via $\bar{\mathbf{B}}$, and emit $y_k$.</p>
+
+            <pre><code class="language-python">    def step(self, x_k, h_prev):
+        """ Recurrent execution for O(1) memory autoregressive inference. """
+        A_bar, B_bar = self.discretize()
+        
+        # State Update: h_k = A_bar * h_prev + B_bar * x_k
+        h_k = A_bar * h_prev + (B_bar.squeeze(-1) * x_k)
+        
+        # Output Projection: y_k = C * h_k
+        y_k = (self.C * h_k).sum(dim=-1, keepdim=True)
+        
+        return y_k, h_k</code></pre>
+
+            <p>Whether calculating the response for token 10 or token 10,000, the computation overhead stays perfectly
+                flat, effectively bypassing the memory-scaling wall that cripples standard Attention models.</p>
+
+            <h2>3. Debugging the Duality</h2>
+            <p>When building this implementation, my initial test to ensure both functions mathematically matched failed
+                dramatically—the difference between the unrolled Convolution and the Step-by-Step recurrence was massive
+                ($1.4 \times 10^{11}$).</p>
+
+            <p>This highlighted two vital, non-obvious engineering realities when translating Control Theory to code:
+            </p>
+            <ul>
+                <li><strong>Exploding Exponentials:</strong> Initially, $\mathbf{A}$ was initialized via a standard
+                    <code>torch.randn()</code>, allowing positive continuous values. A positive state parameter
+                    undergoing exponential mapping inside ZOH causes the rolling state memory to blow up mathematically.
+                    I corrected this by using strictly negative initializations (<code>-torch.rand() - 1.0</code>),
+                    forcing the dynamical system to stabilize into a healthy decay.</li>
+                <li><strong>Cross-Correlation vs Convolution:</strong> The aforementioned mathematical divergence was
+                    rooted in PyTorch's <code>F.conv1d</code> not actually behaving as formal convolution. The output
+                    only matched identically ($\sim 1 \times 10^{-6}$ float error) once the unrolled response kernel was
+                    flipped explicitly via <code>torch.flip</code>.</li>
+            </ul>
+
+            <h2>4. Conclusion and Next Steps</h2>
+            <p>By examining isolated chunks, we've dissected the theoretical bedrock of State Space Models in PyTorch.
+                The duality between recurrent step-by-step $O(1)$ memory execution and parallel sequence convolutional
+                training is an elegant property inherent to classical Control Theory mapped into neural networks.</p>
+
+            <p>You can find the full, unbroken <code>Simple1DSSM</code> module implementation in my <a
+                    href="https://github.com/soveshmohapatra/Mamba-SSM" target="_blank">GitHub repository</a>, ready for
+                experimentation.</p>
+
+            <p>However, the architecture we built maps a 1D scalar to another scalar. Real language models are composed
+                of deep, multi-channel embeddings operating over $D_{model}$ dimensions.</p>
+
+            <p>In Part 3 of our series, we will integrate this basic 1D component into a multi-headed block, enabling it
+                to handle modern token embeddings natively, and pit it competitively against a Transformer on a
+                long-sequence task.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <!-- Highlight.js Initialization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
