@@ -10,7 +10,7 @@ My name is Sovesh Mohapatra, a PhD Candidate in BioEngineering department at the
 
 I completed my bachelors with a triple major in Computer Science, Linguistics, and Mathematics in three years from [University of Massachusetts Amherst](http://umass.edu/). At UMass, I worked with [Dr. Gottfried Schlaug](http://profiles.umassmed.edu/display/22559132) in gearing towards predicting and enhancing a patient’s recovery potential and optimizing rehabilitation techniques for stroke patients.
 
-I maintain a list of my publications under the [Research]({{ site.url }}/research) tab. I also [blog]({{ site.url }}/archive) every now and then compiling my personal experiences.
+I maintain a list of my publications under the [Research]({{ site.url }}/research) tab. I also [blog]({{ site.url }}/projects) every now and then compiling my personal experiences.
 
 [Resume]({{ site.url }}/assets/resume.pdf) 
 
