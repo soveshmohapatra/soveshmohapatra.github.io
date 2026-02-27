@@ -1,0 +1,361 @@
+---
+layout: null
+permalink: /projects/kans-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing KANs: Part 2 - Live Code | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Prism JS for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Customizes Code Blocks for better blending with dark glassmorphism theme */
+        pre[class*="language-"] {
+            background: rgba(var(--bg-card-rgb), 0.6) !important;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            backdrop-filter: blur(10px);
+        }
+
+        code[class*="language-"] {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            text-shadow: none !important;
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/kans/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to KANs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Kolmogorov-Arnold Networks (KANs)</h1>
+            <h2 class="article-subtitle">Part 2: Pure PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>February 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1 of this series, we explored the elegant mathematical foundation of Kolmogorov-Arnold
+                    Networks (KANs). We discussed how the theorem allows us to represent complex multivariate functions
+                    using sums of 1D functions, and how B-splines provide the perfect differentiable basis to learn
+                    these functions.</p>
+                <p>Theory is powerful, but implementation represents true understanding. In Part 2, we will take those
+                    continuous mathematical formulations and translate them into a discrete, highly optimized PyTorch
+                    module. Our goal is to write a single <code>KANLayer</code> that acts as a drop-in replacement for
+                    PyTorch's standard <code>nn.Linear</code>.</p>
+            </div>
+
+            <h2>1. The Architecture of a KAN Layer</h2>
+            <p>A standard Linear layer computes $y = Wx + b$ and then applies a trailing activation $y = \sigma(y)$. Our
+                <code>KANLayer</code> computes $y = \sum \phi(x)$.</p>
+
+            <p>Following the original KAN paper, the edge function $\phi(x)$ is a combination of a base activation and a
+                spline activation:</p>
+
+            <div class="math-block">
+                $$ \phi(x) = w_b \text{SiLU}(x) + \sum_{i=1}^{c} c_i B_i(x) $$
+            </div>
+
+            <p>Our PyTorch module needs to manage three distinct components:</p>
+            <ol>
+                <li><strong>The Grid:</strong> A set of fixed knots that define where our B-splines are evaluated.</li>
+                <li><strong>Base Weights:</strong> $w_b$, which act similarly to a standard linear layer applied to a
+                    SiLU activation.</li>
+                <li><strong>Spline Weights:</strong> $c_i$, the coefficients that determine the shape of the learned
+                    curve on each edge.</li>
+            </ol>
+
+            <h2>2. Implementing B-Splines: The Cox-de Boor Algorithm</h2>
+            <p>The most complex part of the implementation is evaluating the B-spline basis functions $B_i(x)$ for a
+                batch of inputs natively in PyTorch. We want to avoid Python <code>for</code> loops over the batch or
+                feature dimensions to ensure GPU acceleration.</p>
+
+            <p>We use the Cox-de Boor recursion formula. We define degree 0 splines as simple indicator functions (1 if
+                the input is within a specific grid interval, 0 otherwise). Higher-degree splines are built by linearly
+                interpolating between lower-degree splines.</p>
+
+            <h3>Vectorized Code Snippet</h3>
+            <p>Here is the core logical block within our module that handles the recursion:</p>
+
+            <pre><code class="language-python">def b_spline(self, x):
+    # Add dimension for broadcasting: x becomes [batch, in_features, 1]
+    x = x.unsqueeze(-1)
+    
+    # Degree 0: Indicator functions
+    bases = ((x >= self.grid[:-1]) & (x < self.grid[1:])).to(x.dtype)
+    
+    # Cox-de Boor recursion for higher degrees
+    for k in range(1, self.spline_order + 1):
+        left_num = x - self.grid[:-k-1]
+        left_den = self.grid[k:-1] - self.grid[:-k-1]
+        left = (left_num / left_den) * bases[:, :, :-1]
+        
+        right_num = self.grid[k+1:] - x
+        right_den = self.grid[k+1:] - self.grid[1:-k]
+        right = (right_num / right_den) * bases[:, :, 1:]
+        
+        bases = left + right
+        
+    return bases</code></pre>
+
+            <p>By utilizing PyTorch's broadcasting capabilities, we process the entire batch and all input features
+                simultaneously.</p>
+
+            <h2>3. The Forward Pass</h2>
+            <p>Once we have our evaluated B-spline bases, the forward pass is surprisingly simple. It reduces to a large
+                linear combination. We compute the base SiLU output, then compute the spline output by multiplying the
+                evaluated bases by our learnable spline coefficients.</p>
+
+            <pre><code class="language-python">def forward(self, x):
+    # 1. Base activation
+    base_output = F.linear(F.silu(x), self.base_weight)
+    
+    # 2. Spline activation
+    splines = self.b_spline(x)
+    splines = splines.view(x.shape[0], -1) 
+    spline_weight_flat = self.spline_weight.view(self.out_features, -1)
+    spline_output = F.linear(splines, spline_weight_flat)
+    
+    # 3. Combine
+    return self.scale_base * base_output + self.scale_spline * spline_output</code></pre>
+
+            <p>Notice how we flatten the splines and the spline weights. This allows us to use PyTorch's highly
+                optimized <code>F.linear</code> to perform the summation across all edges in a single matrix
+                multiplication, making the execution speed comparable to standard deep learning operations.</p>
+
+            <h2>4. Common Implementation Errors & Gotchas</h2>
+            <p>While this clean 100-line implementation is functional, it is important to understand the common failure
+                modes and errors that can arise when training KANs in practice:</p>
+
+            <ol>
+                <li><strong>Grid Bound Violations (Dead Gradients):</strong> Standard B-splines are only active within
+                    their defined knot vector. In our implementation, the grid spans from roughly $-1$ to $1$. If the
+                    inputs $x$ to the layer exceed this range, the spline evaluation returns exactly zero. This will
+                    immediately "kill" the gradient for that edge.<br>
+                    <em>Solution:</em> Strictly normalize inputs (e.g., LayerNorm) before passing them into a KAN Layer,
+                    or implement a dynamic grid update that expands bounds based on activation statistics.
+                </li>
+
+                <li><strong>Exploding Spline Variance:</strong> The spline coefficients $c_i$ represent the $y$-values
+                    of the control points. If these are initialized with high variance, the resulting curves will be
+                    extremely volatile, causing immediate <code>NaN</code> losses.<br>
+                    <em>Solution:</em> Initialize the spline weights with a very small standard deviation (e.g., $\sigma
+                    = 0.1$) to ensure the initial learning phase is dominated by the stable base SiLU activation.
+                </li>
+
+                <li><strong>Division by Zero in Cox-de Boor:</strong> In scenarios involving dynamic grid updates, if
+                    two knot values become identical, the denominator in the Cox-de Boor recursion becomes zero,
+                    resulting in <code>NaN</code> values.<br>
+                    <em>Solution:</em> Ensure grids strictly monotonically increase and safely handle division.
+                </li>
+            </ol>
+
+            <h2>Conclusion</h2>
+            <p>We have successfully built a mathematically rigorous KAN layer in under 100 lines of code. It is heavily
+                modular, GPU compatible, and exposes all mathematical levers (grid size, spline order) directly to the
+                user.</p>
+
+            <p>In Part 3, the grand finale, we will stack these <code>KANLayers</code> together and benchmark them
+                against a traditional MLP on a complex symbolic regression task to see if the parameter-efficiency
+                claims hold true.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

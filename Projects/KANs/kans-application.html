@@ -1,0 +1,305 @@
+---
+layout: null
+permalink: /projects/kans-application/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing KANs: Part 3 - Scaling & Benchmarks | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/kans/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to KANs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Kolmogorov-Arnold Networks (KANs)</h1>
+            <h2 class="article-subtitle">Part 3: Scaling, Benchmarking, and Parameter Efficiency</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>February 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Over the past two weeks, we have deconstructed Kolmogorov-Arnold Networks (KANs). In Part 1, we
+                    explored the foundational mathematics of replacing fixed node activations with learnable, dynamic 1D
+                    edge functions. In Part 2, we brought the theory to life, writing a highly optimized 1D KAN layer in
+                    pure PyTorch that calculates B-spline curves natively on the GPU.</p>
+                <p>Today, in the final part of our mini-series, we answer the most critical question: <em>Does this
+                        mathematically elegant architecture actually perform better than a standard Multi-Layer
+                        Perceptron (MLP)?</em></p>
+                <p>To answer this, we will dive into a practical benchmark focusing on symbolic regression—a task where
+                    KANs theoretically hold a massive advantage.</p>
+            </div>
+
+            <h2>1. The Experiment: Symbolic Regression</h2>
+            <p>Symbolic regression is the task of discovering a mathematical expression that best fits a given dataset.
+                MLPs historically struggle with this. Because MLPs rely on piecewise linear approximations (via ReLUs)
+                or simple sigmoidal curves, they struggle to model high-frequency oscillations or multiplicative
+                interactions without requiring massive width and depth.</p>
+
+            <p>KANs, however, inherently try to represent the data using localized polynomial splines, which are
+                perfectly suited for tracing out symbolic mathematical curves.</p>
+
+            <h3>The Target Function</h3>
+            <p>To push both models to their limits, we attempt to fit the following highly non-linear, oscillatory
+                target function:</p>
+
+            <div class="math-block">
+                $$ y = \sin(3x) + \cos(5x) \cdot \exp(-x^2) $$
+            </div>
+
+            <p>The function exhibits both high-frequency localized oscillations (due to the $5x$ and exponential decay)
+                and lower-frequency global waves (due to the $3x$).</p>
+
+            <h2>2. Model Architecture & Parameters</h2>
+            <p>To ensure a fair comparison regarding learning capacity, we must consider the vastly different ways
+                parameters are distributed in MLPs vs KANs.</p>
+
+            <p>For an MLP, the parameters are the weight matrices $W \in \mathbb{R}^{out \times in}$. A network with
+                layers [1, 32, 32, 1] requires:</p>
+            <ul>
+                <li>$L_1$: $1 \times 32 + 32 = 64$ parameters</li>
+                <li>$L_2$: $32 \times 32 + 32 = 1056$ parameters</li>
+                <li>$L_3$: $32 \times 1 + 1 = 33$ parameters</li>
+            </ul>
+            <p>Total MLP Parameters $\approx \mathbf{1,150}$</p>
+
+            <p>For a KAN, the parameters are the spline coefficients. For an edge connecting node $i$ to node $j$, the
+                number of parameters is $(grid\_size + spline\_order)$. The total parameters per layer are $in \times
+                out \times (grid\_size + spline\_order)$.</p>
+
+            <p>We construct a much smaller KAN: [1, 4, 1] with a grid size of 10 and spline order of 3 (13 parameters
+                per edge):</p>
+            <ul>
+                <li>$L_1$: $1 \times 4 \times 13 = 52$ parameters</li>
+                <li>$L_2$: $4 \times 1 \times 13 = 52$ parameters</li>
+                <li>Base weights: $\approx 8$</li>
+            </ul>
+            <p>Total KAN Parameters $\approx \mathbf{112}$</p>
+
+            <p>Notice that the KAN has <strong>10x fewer parameters</strong> than the MLP!</p>
+
+            <h2>3. Results: The Power of Splines</h2>
+            <p>We trained both networks using the Adam optimizer (learning rate $0.001$) and Mean Squared Error (MSE)
+                loss for 10,000 epochs.</p>
+
+            <p>Despite operating at a massive parameter deficit, the KAN substantially outperformed the MLP in both
+                training speed and final test loss.</p>
+
+            <ul>
+                <li><strong>The MLP</strong> struggled to trace the high-frequency peaks of the function. The linear
+                    ReLUs attempted to form jagged approximations of the smooth curves. The loss plateaued early,
+                    stubbornly remaining around $0.0118$ MSE.</li>
+                <li><strong>The KAN</strong> essentially traced the function perfectly. Because the edges themselves are
+                    parameterized as B-splines, the model simply warped its 1D edge functions into the exact shape of
+                    the underlying symbolic curve. The ability of the grid to "lock on" to the local features allowed
+                    the KAN to achieve a remarkable near-zero MSE ($\approx 0.00013$).</li>
+            </ul>
+
+            <h2>Conclusion: Are KANs the Future?</h2>
+            <p>The benchmark results are compelling. For scientific computing, solving partial differential equations
+                (PDEs), or modeling complex physical systems, KANs represent a massive step forward in parameter
+                efficiency and interpretability.</p>
+
+            <p>However, KANs are currently slower to process on modern hardware than massive dense matrix
+                multiplications. The challenge for the community moving forward will be optimizing the CUDA kernels for
+                evaluating B-splines at scale to allow KANs to compete with MLPs in billion-parameter language modeling
+                tasks.</p>
+
+            <p>This concludes our "Deconstructing KANs" series. The math is beautiful, the implementation is tractable,
+                and the results speak for themselves. The paradigm of deep learning is expanding, and learning to write
+                these architectures from scratch is the best way to stay ahead of the curve.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
