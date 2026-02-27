@@ -233,11 +233,15 @@ permalink: /projects/kans-live-code/
                     continuous mathematical formulations and translate them into a discrete, highly optimized PyTorch
                     module. Our goal is to write a single <code>KANLayer</code> that acts as a drop-in replacement for
                     PyTorch's standard <code>nn.Linear</code>.</p>
+                <p style="margin-top: 1rem;"><a href="https://github.com/soveshmohapatra/KANs" target="_blank"
+                        style="color: var(--accent-light); text-decoration: none; font-weight: 500;"><i
+                            class="fab fa-github"></i> View the complete source code on GitHub</a></p>
             </div>
 
             <h2>1. The Architecture of a KAN Layer</h2>
             <p>A standard Linear layer computes $y = Wx + b$ and then applies a trailing activation $y = \sigma(y)$. Our
-                <code>KANLayer</code> computes $y = \sum \phi(x)$.</p>
+                <code>KANLayer</code> computes $y = \sum \phi(x)$.
+            </p>
 
             <p>Following the original KAN paper, the edge function $\phi(x)$ is a combination of a base activation and a
                 spline activation:</p>
