@@ -66,8 +66,8 @@ We trained both networks using the Adam optimizer (learning rate $0.001$) and Me
 Despite operating at a massive parameter deficit, the KAN substantially outperformed the MLP in both training speed and final test loss.
 
 \begin{itemize}
-    \item \textbf{The MLP} struggled to trace the high-frequency peaks of the function. The linear ReLUs attempted to form jagged approximations of the smooth curves. The loss plateaued early, stubbornly remaining around $0.0118$ MSE.
-    \item \textbf{The KAN} essentially traced the function perfectly. Because the edges themselves are parameterized as B-splines, the model simply warped its 1D edge functions into the exact shape of the underlying symbolic curve. The ability of the grid to "lock on" to the local features allowed the KAN to achieve a remarkable near-zero MSE ($\approx 0.00013$).
+    \item \textbf{The MLP} struggled to trace the high-frequency peaks of the function. The linear ReLUs attempted to form jagged approximations of the smooth curves. The loss plateaued early, stubbornly remaining around $0.0057$ MSE.
+    \item \textbf{The KAN} essentially traced the function perfectly. Because the edges themselves are parameterized as B-splines, the model simply warped its 1D edge functions into the exact shape of the underlying symbolic curve. The ability of the grid to "lock on" to the local features allowed the KAN to achieve a remarkable near-zero MSE ($\approx 0.00015$).
 \end{itemize}
 
 \section*{Conclusion: Are KANs the Future?}
