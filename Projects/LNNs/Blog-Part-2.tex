@@ -1,0 +1,72 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\title{\textbf{Deconstructing Liquid Neural Networks \\ Part 2: Writing a Liquid Layer in Pure PyTorch}}
+\author{Sovesh Mohapatra}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+In Part 1 of this series, we explored the continuous-time mathematics behind Liquid Time-Constant (LTC) networks. We saw how they differ from standard discrete RNNs by defining the hidden state evolution as a system of differential equations constrained by dynamic time constants.
+
+Today, we take that continuous math and force it to run on standard, discrete digital hardware. We will build a minimal, functional Liquid layer in PyTorch from scratch.
+
+\section*{Translating ODEs to Discrete Steps}
+To run a Liquid Time-Constant (LTC) network on digital hardware, we must approximate its continuous differential equations using a discrete numerical solver. The fundamental equation governing the LTC hidden state relates the rate of change ($\frac{dx}{dt}$) to a state-dependent time constant $\tau_{sys}$ and the current state $x$. We can discretize this using the forward Euler method:
+\begin{equation}
+x(t + \Delta t) = x(t) + \Delta t \cdot \left[ - \frac{x(t)}{\tau_{sys}} + A \cdot f(x(t), I(t)) \right]
+\end{equation}
+
+Here, $f$ is the output of a standard non-linear layer, $A$ is a steady-state parameter, and $\tau_{sys}$ is our dynamic, data-dependent time constant.
+
+\section*{The PyTorch Implementation}
+Instead of dealing with massive recurrent matrices like an LSTM, our PyTorch implementation only needs to learn the non-linear mapping $f$ and the base time-constant $\tau$.
+
+\begin{lstlisting}[language=Python]
+import torch
+import torch.nn as nn
+
+class LiquidLayer(nn.Module):
+    def __init__(self, input_size: int, state_size: int, dt: float = 0.1):
+        super().__init__()
+        self.dt = dt
+        self.fc = nn.Linear(input_size + state_size, state_size)
+        self.A = nn.Parameter(torch.randn(state_size))
+        self.tau = nn.Parameter(torch.ones(state_size))
+        
+    def forward(self, x: torch.Tensor, state: torch.Tensor):
+        combined = torch.cat([x, state], dim=1)
+        f = torch.sigmoid(self.fc(combined))
+        
+        # Calculate dynamic time constant
+        tau_val = nn.functional.softplus(self.tau)
+        tau_sys = tau_val / (1.0 + tau_val * f)
+        
+        # Evaluate continuous derivative and take a discrete Euler step
+        dx_dt = - (state / tau_sys) + self.A * f
+        new_state = state + self.dt * dx_dt
+        
+        return new_state
+\end{lstlisting}
+
+\section*{Analyzing the Code}
+Notice how small the parameter footprint is. The only major weight matrix is inside the \texttt{self.fc} linear layer, which calculates $f$. Rather than memorizing the sequence directly in a static matrix, the network learns to continuously modulate its own time constant $\tau_{sys}$ via $f$. If the input is rapidly changing or noisy, the network can instantly shrink its time constant to adapt quickly. If the input is stable, it can increase its time constant to hold memory over longer durations.
+
+\section*{Next Steps: Benchmarking}
+Now that we have a working, parameter-efficient Liquid layer, how does it stack up against an industry-standard LSTM? In Part 3, we will throw a highly noisy, chaotic time-series prediction task at both models and compare their accuracy vs. parameter limits.
+
+\vspace{1em}
+\noindent \textit{Stay tuned for Part 3, and follow along on LinkedIn for the final benchmark drop.}
+
+\end{document}

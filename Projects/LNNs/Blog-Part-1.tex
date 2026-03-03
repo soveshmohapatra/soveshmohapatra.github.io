@@ -1,0 +1,72 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\title{\textbf{Deconstructing Liquid Neural Networks \\ Part 1: Neural ODEs and Liquid Time-Constants}}
+\author{Sovesh Mohapatra}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+In the world of time-series analysis and sequence modeling, standard Recurrent Neural Networks (RNNs) and Long Short-Term Memory networks (LSTMs) have long been the gold standard. They process data step-by-step, updating a hidden state to retain memory of the past. 
+
+However, these traditional models operate in discrete time. They assume that data arrives at perfectly regular intervals and that the underlying mechanism governing the hidden state remains fixed once trained. But the real world is continuous, noisy, and dynamic. 
+
+What if a neural network's equations weren't just fixed weights, but continuous differential equations that actively adapt and change their underlying structure depending on the incoming data?
+
+Enter \textbf{Liquid Neural Networks (LNNs)}.
+
+In this 3-part series, we will completely deconstruct Liquid Time-Constant (LTC) networks—a highly efficient and robust class of LNNs. We will move from the mathematical theory of bounded continuous-time models to a functional PyTorch implementation, and finally benchmark them against an LSTM on a chaotic trajectory task.
+
+\section*{The Problem with Discrete Time}
+When an LSTM processes a sequence of video frames, audio samples, or stock prices, it assumes that the time between step $t$ and step $t+1$ is uniform. The hidden state transition $h_t = f(h_{t-1}, x_t)$ is applied exactly once per input, regardless of whether the physical time difference was 1 millisecond or 1 hour. This makes standard RNNs incredibly sensitive to irregularly sampled data. If a sensor drops a packet, the discrete RNN structurally fails to interpret the temporal gap correctly.
+
+Furthermore, the "rules" of the transition (the weight matrices) are static. Once the LSTM is trained, it applies the exact same set of matrices to every single input. In highly noisy, chaotic environments (like autonomous driving or high-frequency trading), a network needs the ability to fundamentally shift \textit{how} it processes information on the fly. 
+
+\section*{Neural Ordinary Differential Equations (Neural ODEs)}
+The first step toward solving this is tossing out discrete transitions. Instead of defining the hidden state at step $t+1$, what if we define the \textit{derivative} (the continuous rate of change) of the hidden state?
+
+In a Neural ODE, the evolution of the network's hidden state $x(t)$ is parameterized by a neural network $f$:
+\begin{equation}
+\frac{dx(t)}{dt} = f(x(t), I(t), \theta)
+\end{equation}
+
+Here, $I(t)$ is the continuous input stream and $\theta$ are the learned weights. The state $x$ flows continuously. If we want to know the state at any arbitrary time $T$, we simply integrate the equation from $t=0$ to $t=T$ using an ODE solver (like Euler or Runge-Kutta). This cleanly solves the irregular sampling problem—we can evaluate the network at any precise decimal of time we want. 
+
+\section*{The Liquid Time-Constant (LTC) Architecture}
+While Neural ODEs are powerful, standard implementations still use static weights $\theta$ to govern the derivative. The authors of Liquid Neural Networks (Hasani et al., 2021) observed the neural wiring of the \textit{C. elegans} worm and designed the Liquid Time-Constant (LTC) model. 
+
+In an LTC, the derivative equation is heavily structured. The rate of change of a neuron's voltage (state) is determined by a leak term and a synaptic input:
+\begin{equation}
+\frac{dx(t)}{dt} = - \left[ \frac{1}{\tau} + f(x(t), I(t), \theta) \right] x(t) + A \cdot f(x(t), I(t), \theta)
+\end{equation}
+
+By rearranging this equation, we reveal the magic of the model. We can define a dynamic, state-dependent time constant $\tau_{sys}$:
+\begin{equation}
+\tau_{sys} = \frac{\tau}{1 + \tau \cdot f(x(t), I(t), \theta)}
+\end{equation}
+
+This means the actual fundamental "speed" or "memory" of the neuron ($\tau_{sys}$) changes fluidly based on the input $I(t)$ and its current state $x(t)$. 
+
+\section*{Why ``Liquid''?}
+This is why the architecture is called "Liquid". The underlying differential equation of the system adapts itself to the incoming data stream. If the network sees standard, slow-moving data, its equations stabilize. If there is a sudden spike of chaotic noise, the non-linear function $f$ spikes. This instantly drives the dynamic time constant $\tau_{sys}$ down, causing the network to rapidly react and wash away old memory to focus on the immediate structural change.
+
+Because the intelligence is baked directly into the continuous differential structure rather than massive arrays of parameters, Liquid Neural Networks can achieve state-of-the-art performance on control tasks using tens of parameters instead of thousands or millions.
+
+\section*{Next Steps: Building it in PyTorch}
+The continuous mathematics of LTCs are elegant, but running them on a digital computer requires discrete solvers. In Part 2 of this series, we will drop the theory and open up an IDE. We will construct a numerical solver and build a Liquid Time-Constant layer in pure PyTorch.
+
+\vspace{1em}
+\noindent \textit{Stay tuned for Part 2, and follow along on LinkedIn for the live code drop and discussion.}
+
+\end{document}

@@ -1,0 +1,317 @@
+---
+layout: null
+permalink: /projects/lnns-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing LNNs: Part 3 - Benchmarking LNNs vs LSTMs | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        .figure-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .figure-caption {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/lnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to LNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Liquid Neural Networks (LNNs)</h1>
+            <h2 class="article-subtitle">Part 3: Benchmarking LNNs vs LSTMs</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>We’ve explored the continuous mathematics (Part 1) and written a custom Liquid Time-Constant (LTC)
+                    layer in pure PyTorch (Part 2). Now it is time to prove why Liquid Neural Networks matter.</p>
+                <p>The defining feature of an LNN is out-of-distribution robustness and extreme parameter efficiency. In
+                    this finale, we will benchmark our custom Liquid layer against a standard PyTorch LSTM on a chaotic,
+                    noisy time-series prediction task.</p>
+            </div>
+
+            <h2>The Benchmark Task</h2>
+            <p>We generated a chaotic, noisy time-series trajectory using a summation of various sine distributions
+                offset with standard Gaussian noise. We then trained both models to predict the next time-step given the
+                noisy current time-step.</p>
+
+            <h2>Model Architectures</h2>
+            <p>We pitted a standard PyTorch <code>nn.LSTM</code> against our custom <code>LiquidLayer</code>. To
+                demonstrate extreme parameter efficiency, we severely constrained our LNN, allowing it only 105
+                learnable parameters. The standard LSTM, even with a small hidden dimension, required 1,233
+                parameters—over 10$\times$ the size of our LNN.</p>
+
+            <h2>Results: Efficiency vs Generalization</h2>
+            <p>To ensure we aren't just measuring memorization, we split the 300-step generated trajectory into a
+                training set (first 200 steps) and a completely unseen test set (final 100 steps). Over 1000 epochs of
+                training on the sequence dataset:</p>
+
+            <ul>
+                <li><strong>LSTM (1,233 params):</strong>
+                    <ul>
+                        <li>Train MSE: 0.0007</li>
+                        <li>Test MSE: 0.0047</li>
+                    </ul>
+                    <em>The LSTM shows classic signs of overfitting on the training data, with a test loss nearly 7
+                        times higher than its train loss.</em>
+                </li>
+
+                <li><strong>Liquid Network (105 params):</strong>
+                    <ul>
+                        <li>Train MSE: 0.0179</li>
+                        <li>Test MSE: 0.0204</li>
+                    </ul>
+                    <em>The LNN demonstrates spectacular generalization. Despite having less than 10% of the parameters,
+                        its test performance is nearly identical to its training performance.</em>
+                </li>
+            </ul>
+
+            <p>While the massive LSTM precisely memorized the training trajectory at the cost of generalization, our
+                Liquid layer successfully modeled the underlying continuous dynamics themselves. In a real-world edge
+                deployment scenario where robustness to unseen data and memory limits are strictly constrained, the LNN
+                provides a profound mathematical alternative to fixed recurrent weights.</p>
+
+            <h2>Visualizing the "Liquid" Behavior</h2>
+            <p>If we plot the underlying time-constant $\tau_{sys}$ alongside the input sequence during inference, we
+                can see exactly why the model is "liquid." During relatively smooth portions of the time series,
+                $\tau_{sys}$ remains high, allowing the network state to integrate information slowly and stably. </p>
+
+            <p>However, right when a significant, discontinuous jump or chaotic noise spike occurs in the dataset,
+                $\tau_{sys}$ plummets toward zero. The network rapidly drops its old memory, shifting its internal
+                dynamics to immediately respond to the sudden change. The differential equations governing the network
+                actively restructure themselves based on the input!</p>
+
+            <p>We have included a plot of our generated benchmark in the repository that visually compares the learning
+                trajectory. </p>
+
+            <div class="figure-container">
+                <img src="/assets/projects/lnns/lnn_vs_lstm_benchmark.png"
+                    alt="Training loss comparison over 1000 epochs. Our 105-parameter Liquid layer learns the core sequence dynamics comparably to a 1,233-parameter LSTM.">
+                <p class="figure-caption">Training loss comparison over 1000 epochs. Our 105-parameter Liquid layer
+                    learns the core sequence dynamics comparably to a 1,233-parameter LSTM.</p>
+            </div>
+
+            <h2>Conclusion</h2>
+            <p>The era of massive, heavily-parameterized, static-weight recursive matrices may be facing tough
+                competition in edge-deployment environments.</p>
+
+            <p>Liquid Neural Networks and Liquid Time-Constant (LTC) models prove that if we rethink the mathematical
+                structure of a neuron—shifting from discrete static weight transitions to continuous, state-dependent
+                differential equations—we can extract more intelligence, adaptability, and robustness out of
+                significantly fewer parameters.</p>
+
+            <p>By building the LTC step from scratch in PyTorch in Part 2, and benchmarking it here in Part 3, we have
+                seen firsthand how continuous mathematics can run elegantly on discrete hardware.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
