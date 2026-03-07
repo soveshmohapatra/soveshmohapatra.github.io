@@ -1,0 +1,449 @@
+---
+layout: null
+permalink: /projects/snns-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing SNNs: Part 3 - Same Accuracy. Half the Energy. | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        .figure-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .figure-caption {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 1rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .results-table th {
+            background: rgba(var(--bg-card-rgb), 0.8);
+            color: var(--accent-light);
+            font-weight: 600;
+            padding: 0.85rem 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.04em;
+        }
+
+        .results-table td {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/snns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to SNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Spiking Neural Networks (SNNs)</h1>
+            <h2 class="article-subtitle">Part 3: Same Accuracy. Half the Energy.</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>We have explored the continuous biology of the LIF neuron (Part 1) and built a full
+                    surrogate-gradient SNN in pure PyTorch (Part 2). The key question is: does a spiking network earn
+                    its biological complexity, and why should an ML practitioner care?</p>
+                <p>The answer is not in the accuracy column. It is in the energy column.</p>
+                <p>In this finale, we benchmark our custom <code>SNNClassifier</code> against a nearly
+                    parameter-identical ANN (MLP with ReLU) on MNIST over 10 epochs, and we compute the
+                    <strong>effective inference energy cost</strong> using Synaptic Operation (SOP) counting—the
+                    standard proxy used on neuromorphic hardware platforms.
+                </p>
+                <p><strong>The headline result:</strong> At essentially the same accuracy ($\Delta = 0.47$ pp), the SNN
+                    achieves <strong>51.7% lower energy cost</strong>—more than $2\times$ more efficient at inference
+                    time.</p>
+            </div>
+
+            <h2>The Benchmark Setup</h2>
+            <h3>Task</h3>
+            <p>MNIST handwritten digit classification: 60,000 training images, 10,000 test images, 10 classes. Each
+                $28 \times 28$ grayscale image is flattened to a 784-dimensional input vector, normalized with the
+                MNIST mean and standard deviation (0.1307, 0.3081).</p>
+
+            <h3>Model Architectures</h3>
+            <p>Both models share a hidden dimension of 256 neurons, a batch size of 256, and are trained with the Adam
+                optimizer at a learning rate of $10^{-3}$ for 10 epochs.</p>
+
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Architecture</th>
+                        <th>Parameters</th>
+                        <th>Timesteps $T$</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>ANN (MLP)</td>
+                        <td>Linear(784,256) → ReLU → Linear(256,256) → ReLU → Linear(256,10)</td>
+                        <td>269,322</td>
+                        <td>—</td>
+                    </tr>
+                    <tr>
+                        <td>SNN (LIF)</td>
+                        <td>Linear(784,256) → LIF → Linear(256,256) → LIF → Linear(256,10)</td>
+                        <td>269,834</td>
+                        <td>25</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Accuracy Results</h2>
+
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Params</th>
+                        <th>Train Acc.</th>
+                        <th>Test Acc.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>ANN (MLP)</strong></td>
+                        <td>269,322</td>
+                        <td>99.52%</td>
+                        <td>97.92%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>SNN (LIF)</strong></td>
+                        <td>269,834</td>
+                        <td>98.70%</td>
+                        <td>97.45%</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>The accuracy gap of 0.47 percentage points is not the story here. Both models are competitive
+                classifiers. The question is: <em>at what cost?</em></p>
+
+            <h2>The Energy Argument: Why Spikes Change the Hardware Game</h2>
+
+            <h3>MACs vs. ACs: A Fundamental Hardware Distinction</h3>
+            <p>In a standard ANN forward pass, every weight interaction is a <strong>Multiply-Accumulate
+                    (MAC)</strong> operation:</p>
+            <div class="math-block">
+                $$ \text{output} \mathrel{+}= \text{weight} \times \text{activation} $$
+            </div>
+
+            <p>On <strong>neuromorphic hardware</strong> (Intel Loihi, IBM TrueNorth, SpiNNaker), spiking neurons
+                communicate via binary spikes (0 or 1). When a spike arrives at a synapse, the hardware simply
+                accumulates the synaptic weight:</p>
+            <div class="math-block">
+                $$ \text{membrane} \mathrel{+}= \text{weight} \qquad (\text{if spike received}) $$
+            </div>
+
+            <p>This is an <strong>Accumulate (AC)</strong> operation—no multiplication required. Empirically, ACs are
+                approximately $5\times$ cheaper in energy than MACs on neuromorphic platforms. And if a neuron does not
+                fire, it performs <em>zero operations</em>—the synaptic weight is never even read.</p>
+
+            <h3>Synaptic Operation (SOP) Count</h3>
+            <p>We estimate total SOPs for one SNN inference as:</p>
+            <div class="math-block">
+                $$ \text{SOPs} = \sum_{\ell} \text{fan-in}_\ell \times \text{fan-out}_\ell \times \bar{r} \times T $$
+            </div>
+
+            <p>where $\bar{r}$ is the measured average fraction of neurons firing per timestep (the <em>average firing
+                    rate</em>), and $T=25$ is the number of simulation steps. For the ANN, the equivalent is:</p>
+            <div class="math-block">
+                $$ \text{MACs} = \sum_{\ell} \text{fan-in}_\ell \times \text{fan-out}_\ell $$
+            </div>
+
+            <h3>Results</h3>
+            <ul>
+                <li><strong>ANN MACs per inference:</strong> 268,800 (each is a float MAC)</li>
+                <li><strong>SNN SOPs per inference:</strong> 649,765 (each is a cheap AC, not a MAC)</li>
+                <li><strong>Average SNN firing rate $\bar{r}$:</strong> <strong>9.7%</strong></li>
+            </ul>
+
+            <p>The 9.7% firing rate means that at any given timestep, <strong>90.3% of the SNN's hidden neurons are
+                    completely silent</strong>. Their synaptic weights are never read; no current accumulates; no energy
+                is spent. This is sparse, event-driven computation—exactly what biological neural circuits exploit.</p>
+
+            <h3>Effective Energy: The Key Calculation</h3>
+            <p>Converting SOPs to MAC-equivalent energy units by dividing by the AC/MAC factor:</p>
+            <div class="math-block">
+                $$ \text{SNN effective energy} = \frac{\text{SOPs}}{5} = \frac{649{,}765}{5} \approx 129{,}953
+                \text{ MAC-equivalent units} $$
+            </div>
+
+            <p>Compared to the ANN's 268,800 MACs, this represents a <strong>51.7% energy reduction</strong>—the SNN
+                uses just 48% of the energy of the ANN, at only 0.47 percentage points lower accuracy.</p>
+
+            <div class="figure-container">
+                <img src="/assets/projects/snns/snn_vs_ann_energy.png"
+                    alt="Three-panel energy benchmark. Left: Nearly identical test accuracy. Center: Raw SOP and MAC counts. Right: Effective energy cost after applying the 5× AC/MAC factor—the SNN uses 2.07× less energy than the ANN.">
+                <p class="figure-caption">Three-panel energy benchmark. <strong>Left:</strong> Nearly identical test
+                    accuracy ($\Delta = 0.47$ pp). <strong>Center:</strong> Raw operations—the SNN appears more
+                    expensive in raw SOP count. <strong>Right:</strong> Effective energy cost after applying the
+                    $5\times$ AC/MAC factor—the SNN uses <strong>2.07$\times$ less energy</strong> than the ANN for
+                    the same task.</p>
+            </div>
+
+            <p>The center panel is a common misconception trap: the raw SOP count of 649,765 looks higher than the
+                ANN's 268,800 MACs. But the right panel corrects this by converting to comparable energy units. The
+                SNN's SOPs are cheap integer accumulates, not expensive floating-point MACs—and the 9.7% firing rate
+                means most of those synaptic slots are never even touched. The net result is a $2\times$ energy
+                advantage.</p>
+
+            <div class="figure-container">
+                <img src="/assets/projects/snns/snn_vs_ann_benchmark.png"
+                    alt="Training accuracy curves comparing SNN and ANN over 10 epochs on MNIST.">
+                <p class="figure-caption">Training accuracy curves over 10 epochs. Both models converge to competitive
+                    performance, with the ANN marginally ahead at 97.92% vs. 97.45% test accuracy.</p>
+            </div>
+
+            <h2>Scaling Perspective</h2>
+            <p>On a 10-class, 784-input benchmark like MNIST, the raw numbers are modest. The energy gains compound
+                significantly at scale:</p>
+            <ul>
+                <li>At <strong>larger network widths</strong>, spiking sparsity ($\bar{r} \ll 1$) becomes increasingly
+                    valuable—the majority of weights sit idle per timestep.</li>
+                <li>On <strong>neuromorphic chips</strong> like Intel Loihi 2, spike-based communication also avoids
+                    the Von Neumann bottleneck (memory bandwidth), a major energy sink in large inference workloads.
+                </li>
+                <li><strong>Temporal coding</strong> improvements can reduce $\bar{r}$ below 5%, amplifying energy
+                    efficiency further.</li>
+            </ul>
+
+            <h2>Conclusion</h2>
+            <p>The Spiking Neural Network we built from scratch in Part 2 achieves competitive MNIST accuracy (97.45%
+                vs. 97.92%) while consuming <strong>51.7% less energy</strong> per inference on neuromorphic hardware.
+                The story of SNNs is not about winning accuracy leaderboards—it is about delivering intelligence at
+                radically lower power, which becomes decisive in edge deployment scenarios: wearables, implants,
+                autonomous sensors, and neuromorphic accelerators.</p>
+
+            <p>By building the LIF layer, surrogate gradient, and energy estimator entirely from first principles in
+                PyTorch—no external SNN frameworks required—we have shown that the mathematical foundations are both
+                elegant and practically implementable.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+SNN Parameters: 269834
+ANN Parameters: 269322
+Epochs: 10
+SNN Timesteps (T): 25
+Final SNN Train Accuracy: 98.70
+Final SNN Test Accuracy:  97.45
+Final ANN Train Accuracy: 99.52
+Final ANN Test Accuracy:  97.92
+Avg SNN Firing Rate: 0.0967
+SNN SOPs per Inference: 649765
+ANN MACs per Inference: 268800
+MAC/SOP Ratio: 0.41

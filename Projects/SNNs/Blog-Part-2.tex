@@ -1,0 +1,145 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue},
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!8},
+}
+
+\title{\textbf{Deconstructing Spiking Neural Networks \\ Part 2: Writing a LIF Layer in Pure PyTorch}}
+\author{Sovesh Mohapatra}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+In Part 1, we established the mathematical model of the Leaky Integrate-and-Fire (LIF) neuron and identified its core training challenge: the spike emission step $S[t] = \Theta(V[t] - V_{th})$ is a Heaviside function with a zero/undefined derivative. Standard backpropagation fails.
+
+In this part, we solve that problem and build a complete, functional LIF layer in pure PyTorch—no external SNN frameworks required.
+
+\section*{The Surrogate Gradient Trick}
+The key insight is that we do not actually need the \textit{true} gradient of the Heaviside function. We only need a gradient signal that is ``good enough'' to steer the weights in a useful direction. We substitute the zero gradient of $\Theta$ with a smooth approximation during the backward pass only.
+
+The forward pass remains exact:
+\begin{equation}
+    S[t] = \Theta(V[t] - V_{th}) = \begin{cases} 1 & \text{if } V[t] \geq V_{th} \\ 0 & \text{otherwise} \end{cases}
+\end{equation}
+
+But for the backward pass, we use the derivative of the \textbf{fast sigmoid} (also called the piece-wise linear or boxcar surrogate in some works):
+\begin{equation}
+    \frac{\partial \hat{S}}{\partial V} \approx \frac{1}{\left(1 + k \cdot |V - V_{th}|\right)^2}
+\end{equation}
+
+This function peaks at $V = V_{th}$ (where firing is ``about to happen'') and smoothly falls to zero away from the threshold. The sharpness factor $k$ controls how closely the surrogate matches the true Heaviside gradient. In our implementation, we use $k = 10$.
+
+\section*{Implementing the Surrogate in PyTorch}
+PyTorch's \texttt{torch.autograd.Function} interface lets us precisely specify a custom forward and backward pass:
+
+\begin{lstlisting}
+class SurrogateHeaviside(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, membrane_potential, threshold):
+        ctx.save_for_backward(membrane_potential)
+        ctx.threshold = threshold
+        return (membrane_potential >= threshold).float()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        (membrane_potential,) = ctx.saved_tensors
+        threshold = ctx.threshold
+        k = 10.0
+        shifted = membrane_potential - threshold
+        surrogate = 1.0 / (1.0 + k * shifted.abs()) ** 2
+        return grad_output * surrogate, None
+\end{lstlisting}
+
+\section*{The LIF Neuron Layer}
+With the surrogate defined, the LIF update equations from Part 1 translate directly into a clean \texttt{nn.Module}:
+
+\begin{lstlisting}
+class LIFNeuron(nn.Module):
+    def __init__(self, num_neurons, decay=0.9, threshold=1.0):
+        super().__init__()
+        self.threshold = threshold
+        # Learnable decay per neuron (kept in (0,1) via sigmoid)
+        self._decay_logit = nn.Parameter(
+            torch.full((num_neurons,), inv_sigmoid(decay))
+        )
+
+    @property
+    def decay(self):
+        return torch.sigmoid(self._decay_logit)
+
+    def forward(self, current, membrane):
+        # 1. Leak + integrate
+        new_membrane = self.decay * membrane + current
+        # 2. Fire (surrogate gradient backward)
+        spike = SurrogateHeaviside.apply(new_membrane, self.threshold)
+        # 3. Soft reset: subtract threshold from fired neurons
+        new_membrane = new_membrane - spike * self.threshold
+        return spike, new_membrane
+\end{lstlisting}
+
+Notice that the decay factor $\beta$ is a \textit{learnable} parameter per neuron, constrained to $(0,1)$ by a sigmoid. This allows the network to learn how much memory each neuron should retain—akin to the adaptive time constant in Liquid Neural Networks.
+
+\section*{Assembling the SNN Classifier}
+A 2-hidden-layer SNN classifier for MNIST consists of alternating linear and LIF layers. The same input is presented at each of the $T$ timesteps, and output spikes accumulate to form the final prediction:
+
+\begin{lstlisting}
+class SNNClassifier(nn.Module):
+    def __init__(self, input_size=784, hidden_size=256, output_size=10):
+        super().__init__()
+        self.fc1   = nn.Linear(input_size, hidden_size)
+        self.fc2   = nn.Linear(hidden_size, hidden_size)
+        self.fc_out = nn.Linear(hidden_size, output_size)
+        self.lif1  = LIFNeuron(hidden_size)
+        self.lif2  = LIFNeuron(hidden_size)
+
+    def forward(self, x, num_steps=25):
+        mem1, mem2 = self.lif1.init_membrane(x.shape[0]), \
+                     self.lif2.init_membrane(x.shape[0])
+        accumulator = torch.zeros(x.shape[0], 10)
+        for _ in range(num_steps):
+            spk1, mem1 = self.lif1(self.fc1(x), mem1)
+            spk2, mem2 = self.lif2(self.fc2(spk1), mem2)
+            accumulator += self.fc_out(spk2)
+        return accumulator
+\end{lstlisting}
+
+At each of the $T=25$ timesteps the input $x$ is replicated, spiked through both hidden LIF layers, and the readout accumulates. The final class is the argmax of the accumulated logits.
+
+\section*{A Note on Energy: Spikes vs. Floats}
+The compelling motivation for SNNs is not just biological plausibility—it is hardware efficiency. On standard GPUs, every operation in an ANN is a floating-point \textbf{Multiply-Accumulate (MAC)}. On neuromorphic chips (Intel Loihi, IBM TrueNorth), a spike triggers a simple integer \textbf{Accumulate (AC)} only—no multiplication required. ACs are approximately 5$\times$ cheaper than MACs in energy.
+
+There are two multiplicative sources of efficiency:
+\begin{enumerate}
+    \item \textbf{Operation type}: AC instead of MAC ($\sim$5$\times$ cheaper per operation).
+    \item \textbf{Sparsity}: only neurons that fire generate SOPs. Silent neurons cost zero energy.
+\end{enumerate}
+
+In Part 3, we will measure the average firing rate of our trained SNN and compute its effective energy cost in MAC-equivalent units. As a preview: our SNN achieves \textbf{2$\times$ lower effective energy} than the ANN, at essentially identical accuracy ($\Delta = 0.47$ percentage points on MNIST). The accumulated result is a 51.7\% energy reduction—the kind of efficiency that makes SNNs compelling in edge deployment and neuromorphic hardware contexts.
+
+\section*{Next Steps: Benchmarking}
+We now have a complete, trainable SNN in pure PyTorch. In Part 3, we pit it head-to-head against a standard 2-layer ANN (MLP) on MNIST across 10 training epochs, measure final accuracy for both models, estimate the Synaptic Operation (SOP) count versus MAC count, and visualize the full training curve comparison.
+
+\vspace{1em}
+\noindent \textit{Stay tuned for Part 3, and follow along on LinkedIn for the final benchmark drop.}
+
+\end{document}

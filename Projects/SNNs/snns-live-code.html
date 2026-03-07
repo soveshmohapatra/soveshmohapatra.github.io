@@ -1,0 +1,361 @@
+---
+layout: null
+permalink: /projects/snns-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing SNNs: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+
+        pre[class*="language-"] {
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/snns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to SNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Spiking Neural Networks (SNNs)</h1>
+            <h2 class="article-subtitle">Part 2: Writing a LIF Layer in Pure PyTorch</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we established the mathematical model of the Leaky Integrate-and-Fire (LIF) neuron and
+                    identified its core training challenge: the spike emission step $S[t] = \Theta(V[t] - V_{th})$ is a
+                    Heaviside function with a zero/undefined derivative. Standard backpropagation fails.</p>
+                <p>In this part, we solve that problem and build a complete, functional LIF layer in pure PyTorch—no
+                    external SNN frameworks required.</p>
+            </div>
+
+            <h2>The Surrogate Gradient Trick</h2>
+            <p>The key insight is that we do not actually need the <em>true</em> gradient of the Heaviside function.
+                We only need a gradient signal that is "good enough" to steer the weights in a useful direction. We
+                substitute the zero gradient of $\Theta$ with a smooth approximation during the backward pass only.</p>
+
+            <p>The forward pass remains exact:</p>
+            <div class="math-block">
+                $$ S[t] = \Theta(V[t] - V_{th}) = \begin{cases} 1 & \text{if } V[t] \geq V_{th} \\ 0 &
+                \text{otherwise} \end{cases} $$
+            </div>
+
+            <p>But for the backward pass, we use the derivative of the <strong>fast sigmoid</strong> surrogate:</p>
+            <div class="math-block">
+                $$ \frac{\partial \hat{S}}{\partial V} \approx \frac{1}{\left(1 + k \cdot |V -
+                V_{th}|\right)^2} $$
+            </div>
+
+            <p>This function peaks at $V = V_{th}$ (where firing is "about to happen") and smoothly falls to zero away
+                from the threshold. The sharpness factor $k$ controls how closely the surrogate matches the true
+                Heaviside gradient. In our implementation, we use $k = 10$.</p>
+
+            <h2>Implementing the Surrogate in PyTorch</h2>
+            <p>PyTorch's <code>torch.autograd.Function</code> interface lets us precisely specify a custom forward and
+                backward pass:</p>
+
+            <pre><code class="language-python">class SurrogateHeaviside(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, membrane_potential, threshold):
+        ctx.save_for_backward(membrane_potential)
+        ctx.threshold = threshold
+        return (membrane_potential >= threshold).float()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        (membrane_potential,) = ctx.saved_tensors
+        threshold = ctx.threshold
+        k = 10.0
+        shifted = membrane_potential - threshold
+        surrogate = 1.0 / (1.0 + k * shifted.abs()) ** 2
+        return grad_output * surrogate, None</code></pre>
+
+            <h2>The LIF Neuron Layer</h2>
+            <p>With the surrogate defined, the LIF update equations from Part 1 translate directly into a clean
+                <code>nn.Module</code>:
+            </p>
+
+            <pre><code class="language-python">class LIFNeuron(nn.Module):
+    def __init__(self, num_neurons, decay=0.9, threshold=1.0):
+        super().__init__()
+        self.threshold = threshold
+        # Learnable decay per neuron (kept in (0,1) via sigmoid)
+        self._decay_logit = nn.Parameter(
+            torch.full((num_neurons,), inv_sigmoid(decay))
+        )
+
+    @property
+    def decay(self):
+        return torch.sigmoid(self._decay_logit)
+
+    def forward(self, current, membrane):
+        # 1. Leak + integrate
+        new_membrane = self.decay * membrane + current
+        # 2. Fire (surrogate gradient backward)
+        spike = SurrogateHeaviside.apply(new_membrane, self.threshold)
+        # 3. Soft reset: subtract threshold from fired neurons
+        new_membrane = new_membrane - spike * self.threshold
+        return spike, new_membrane</code></pre>
+
+            <p>Notice that the decay factor $\beta$ is a <em>learnable</em> parameter per neuron, constrained to
+                $(0,1)$ by a sigmoid. This allows the network to learn how much memory each neuron should retain—akin
+                to the adaptive time constant in Liquid Neural Networks.</p>
+
+            <h2>Assembling the SNN Classifier</h2>
+            <p>A 2-hidden-layer SNN classifier for MNIST consists of alternating linear and LIF layers. The same input
+                is presented at each of the $T$ timesteps, and output spikes accumulate to form the final prediction:
+            </p>
+
+            <pre><code class="language-python">class SNNClassifier(nn.Module):
+    def __init__(self, input_size=784, hidden_size=256, output_size=10):
+        super().__init__()
+        self.fc1    = nn.Linear(input_size, hidden_size)
+        self.fc2    = nn.Linear(hidden_size, hidden_size)
+        self.fc_out = nn.Linear(hidden_size, output_size)
+        self.lif1   = LIFNeuron(hidden_size)
+        self.lif2   = LIFNeuron(hidden_size)
+
+    def forward(self, x, num_steps=25):
+        mem1, mem2 = self.lif1.init_membrane(x.shape[0]), \
+                     self.lif2.init_membrane(x.shape[0])
+        accumulator = torch.zeros(x.shape[0], 10)
+        for _ in range(num_steps):
+            spk1, mem1 = self.lif1(self.fc1(x), mem1)
+            spk2, mem2 = self.lif2(self.fc2(spk1), mem2)
+            accumulator += self.fc_out(spk2)
+        return accumulator</code></pre>
+
+            <p>At each of the $T=25$ timesteps the input $x$ is replicated, spiked through both hidden LIF layers, and
+                the readout accumulates. The final class is the argmax of the accumulated logits.</p>
+
+            <h2>A Note on Energy: Spikes vs. Floats</h2>
+            <p>The compelling motivation for SNNs is not just biological plausibility—it is hardware efficiency. On
+                standard GPUs, every operation in an ANN is a floating-point <strong>Multiply-Accumulate (MAC)</strong>
+                operation. On neuromorphic chips (Intel Loihi, IBM TrueNorth), a spike triggers a simple integer
+                <strong>Accumulate (AC)</strong> only—no multiplication required. ACs are approximately $5\times$
+                cheaper than MACs in energy.
+            </p>
+
+            <p>There are two multiplicative sources of efficiency:</p>
+            <ol>
+                <li><strong>Operation type:</strong> AC instead of MAC (~$5\times$ cheaper per operation).</li>
+                <li><strong>Sparsity:</strong> only neurons that fire generate operations. Silent neurons cost zero
+                    energy.</li>
+            </ol>
+
+            <p>In Part 3, we will measure the average firing rate of our trained SNN and compute its effective energy
+                cost in MAC-equivalent units. As a preview: our SNN achieves <strong>2× lower effective energy</strong>
+                than the ANN, at essentially identical accuracy ($\Delta = 0.47$ percentage points on MNIST)—a 51.7%
+                energy reduction.</p>
+
+            <h2>Next Steps: Benchmarking</h2>
+            <p>We now have a complete, trainable SNN in pure PyTorch. In Part 3, we pit it head-to-head against a
+                standard 2-layer ANN (MLP with ReLU) on MNIST across 10 training epochs, measure final accuracy for
+                both models, estimate the Synaptic Operation (SOP) count versus MAC count, and visualize the full
+                training curve and energy comparison.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

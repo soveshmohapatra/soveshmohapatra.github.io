@@ -1,0 +1,81 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\title{\textbf{Deconstructing Spiking Neural Networks \\ Part 1: Biology, Spikes, and the LIF Model}}
+\author{Sovesh Mohapatra}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+Every neural network you have ever trained—CNN, Transformer, LSTM—shares one fundamental assumption: neurons communicate via continuous-valued activations. A ReLU neuron outputs a floating-point number; a softmax layer produces a probability vector. These real-valued signals flow through dense matrix multiplications on every forward pass, demanding billions of multiply-accumulate (MAC) operations for even modest models.
+
+The brain does none of this.
+
+Biological neurons communicate via discrete, all-or-nothing electrical pulses called \textbf{action potentials} (or \textbf{spikes}). A neuron only fires when its internal charge crosses a threshold; the rest of the time it is silent. This sparse, event-driven communication is why a human brain can perform remarkable cognitive feats consuming roughly 20 Watts—less than a laptop screen—while a GPU-accelerated Transformer requires kilowatts for comparable tasks.
+
+\textbf{Spiking Neural Networks (SNNs)} are the attempt to bring this paradigm into machine learning. In this 3-part series, we will completely deconstruct SNNs: from the biological neuron model and the infamous gradient problem, to a full PyTorch implementation, to a benchmark against a standard ANN on MNIST.
+
+\section*{The Biological Neuron: A Brief Engineering Summary}
+A biological neuron integrates electrical charge from thousands of synaptic inputs through its dendrites. This charge gradually builds the neuron's \textit{membrane potential} $V_m$. If $V_m$ crosses a threshold $V_{th}$, the neuron fires a spike—a stereotyped 1–2 ms voltage pulse—which travels down the axon to stimulate or inhibit downstream neurons.
+
+Crucially, after firing the neuron's potential is rapidly reset and then hyperpolarized (driven below resting potential) for a short refractory period. The neuron is then silent, leaking charge back to resting potential before it can integrate new input.
+
+Information is not encoded in the amplitude of the spike (they are all the same height). It is encoded in \textit{timing} and \textit{rate}—when and how often the neuron fires.
+
+\section*{The Leaky Integrate-and-Fire (LIF) Model}
+The simplest and most widely used computational model of the spiking neuron is the \textbf{Leaky Integrate-and-Fire (LIF)} model. It captures the essential dynamics in a single first-order differential equation:
+\begin{equation}
+    \tau_m \frac{dV(t)}{dt} = -V(t) + RI(t)
+    \label{eq:lif_continuous}
+\end{equation}
+
+Here, $V(t)$ is the membrane potential, $\tau_m$ is the membrane time constant (governing how fast the potential leaks back to rest), $I(t)$ is the synaptic input current, and $R$ is the membrane resistance.
+
+The simulation dynamics are augmented by two firing rules:
+\begin{enumerate}
+    \item \textbf{Fire}: If $V(t) \geq V_{th}$, emit a spike $S(t) = 1$.
+    \item \textbf{Reset}: After firing, immediately reset $V(t) \leftarrow 0$.
+\end{enumerate}
+
+For implementation on a digital computer, we discretize Equation \ref{eq:lif_continuous} using a simple Euler step. Defining $\beta = \exp(-\Delta t / \tau_m) \in (0, 1)$ as the discrete \textit{membrane decay factor}, we get the update rule used in our PyTorch implementation:
+\begin{align}
+    V[t] &= \beta \cdot V[t-1] + I[t] \label{eq:lif_discrete_integrate} \\
+    S[t] &= \Theta\bigl(V[t] - V_{th}\bigr) \label{eq:lif_discrete_fire} \\
+    V[t] &= V[t] \cdot \bigl(1 - S[t]\bigr) \label{eq:lif_discrete_reset}
+\end{align}
+
+where $\Theta(\cdot)$ is the Heaviside step function (outputs 1 if positive, 0 otherwise), and Equation \ref{eq:lif_discrete_reset} implements the \textit{soft reset}: after a spike, the membrane drops by $V_{th}$.
+
+\section*{Rate Coding vs. Temporal Coding}
+How does a spiking neuron encode information? There are two primary paradigms:
+
+\begin{itemize}
+    \item \textbf{Rate Coding}: The information is the \textit{average firing rate} over a time window $T$. A strongly stimulated neuron fires many times in $T$ steps; a weakly stimulated one fires rarely or not at all. This is the most common encoding scheme used in computational SNNs because it maps naturally onto probabilities.
+    \item \textbf{Temporal Coding}: The information is encode in the \textit{precise timing} of individual spikes. The first neuron to spike wins (Time-to-First-Spike coding), or patterns of spike timing carry information. This is believed to be the dominant coding scheme in the biological brain and offers extreme efficiency, but is much harder to train computationally.
+\end{itemize}
+
+In our PyTorch implementation (Part 2), we use rate coding: the same input pixel values are presented at every timestep $t \in \{1, \ldots, T\}$, and the output class is determined by which output neuron accumulates the most spikes over $T$ steps. This is conceptually identical to integrating the output firing rate.
+
+\section*{The Gradient Problem: Why SNNs Are Hard to Train}
+This is where SNNs diverge sharply from standard deep learning. The spike emission step $S[t] = \Theta(V[t] - V_{th})$ is a Heaviside step function. Its derivative is a Dirac delta: zero almost everywhere, and undefined at the threshold. Backpropagation requires computing $\frac{\partial S}{\partial V}$ at every neuron—and with the true gradient, the entire chain rule collapses to zero.
+
+SNNs appeared, for decades, to be fundamentally untrainable via gradient descent. The solution, explored in Part 2, is the \textbf{surrogate gradient} trick.
+
+\section*{Next Steps: Building an SNN in PyTorch}
+The equations in this post are clean and compact, but translating them to a trainable PyTorch module requires solving the gradient problem. In Part 2, we will implement the LIF update from Equations \ref{eq:lif_discrete_integrate}--\ref{eq:lif_discrete_reset} in a custom \texttt{nn.Module}, introduce the fast-sigmoid surrogate gradient via a custom \texttt{torch.autograd.Function}, and assemble a full 2-layer SNN classifier for MNIST.
+
+\vspace{1em}
+\noindent \textit{Stay tuned for Part 2, and follow along on LinkedIn for the live code drop.}
+
+\end{document}

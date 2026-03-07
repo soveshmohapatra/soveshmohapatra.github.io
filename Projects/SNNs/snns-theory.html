@@ -1,0 +1,311 @@
+---
+layout: null
+permalink: /projects/snns-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing SNNs: Part 1 - Biology, Spikes & the LIF Model | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/snns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to SNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Spiking Neural Networks (SNNs)</h1>
+            <h2 class="article-subtitle">Part 1: Biology, Spikes, and the LIF Model</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Every neural network you have ever trained—CNN, Transformer, LSTM—shares one fundamental
+                    assumption: neurons communicate via continuous-valued activations. A ReLU neuron outputs a
+                    floating-point number; a softmax layer produces a probability vector. These real-valued signals flow
+                    through dense matrix multiplications on every forward pass, demanding billions of
+                    multiply-accumulate (MAC) operations for even modest models.</p>
+                <p>The brain does none of this. Biological neurons communicate via discrete, all-or-nothing electrical
+                    pulses called <strong>action potentials</strong> (or <strong>spikes</strong>). This sparse,
+                    event-driven communication is why a human brain performs remarkable cognitive feats on roughly 20
+                    Watts—while a GPU-accelerated Transformer requires kilowatts for comparable tasks.</p>
+                <p><strong>Spiking Neural Networks (SNNs)</strong> are the attempt to bring this paradigm into machine
+                    learning. In this 3-part series, we will completely deconstruct SNNs: from the biological neuron
+                    model and the infamous gradient problem, to a full PyTorch implementation, to a benchmark against a
+                    standard ANN on MNIST.</p>
+            </div>
+
+            <h2>The Biological Neuron</h2>
+            <p>A biological neuron integrates electrical charge from thousands of synaptic inputs through its
+                dendrites. This charge gradually builds the neuron's <em>membrane potential</em> $V_m$. If $V_m$
+                crosses a threshold $V_{th}$, the neuron fires a spike—a stereotyped 1–2 ms voltage pulse—which
+                travels down the axon to stimulate or inhibit downstream neurons.</p>
+
+            <p>Crucially, after firing the neuron's potential is rapidly reset and then hyperpolarized (driven below
+                resting potential) for a short refractory period. Information is not encoded in the amplitude of the
+                spike (they are all the same height). It is encoded in <em>timing</em> and <em>rate</em>—when and how
+                often the neuron fires.</p>
+
+            <h2>The Leaky Integrate-and-Fire (LIF) Model</h2>
+            <p>The simplest and most widely used computational model of the spiking neuron is the <strong>Leaky
+                    Integrate-and-Fire (LIF)</strong> model. It captures the essential dynamics in a single first-order
+                differential equation:</p>
+
+            <div class="math-block">
+                $$ \tau_m \frac{dV(t)}{dt} = -V(t) + RI(t) $$
+            </div>
+
+            <p>Here, $V(t)$ is the membrane potential, $\tau_m$ is the membrane time constant (governing how fast the
+                potential leaks back to rest), $I(t)$ is the synaptic input current, and $R$ is the membrane
+                resistance. The dynamics are augmented by two firing rules:</p>
+
+            <ol>
+                <li><strong>Fire:</strong> If $V(t) \geq V_{th}$, emit a spike $S(t) = 1$.</li>
+                <li><strong>Reset:</strong> After firing, immediately reset $V(t) \leftarrow 0$.</li>
+            </ol>
+
+            <p>For implementation on a digital computer, we discretize using an Euler step. Defining $\beta =
+                \exp(-\Delta t / \tau_m) \in (0,1)$ as the discrete <em>membrane decay factor</em>, we get the update
+                rule used in our PyTorch implementation:</p>
+
+            <div class="math-block">
+                $$
+                V[t] = \beta \cdot V[t-1] + I[t]
+                $$
+                $$
+                S[t] = \Theta\bigl(V[t] - V_{th}\bigr)
+                $$
+                $$
+                V[t] = V[t] \cdot \bigl(1 - S[t]\bigr)
+                $$
+            </div>
+
+            <p>where $\Theta(\cdot)$ is the Heaviside step function, and the final equation implements the <em>soft
+                    reset</em>: after a spike, the membrane drops by $V_{th}$.</p>
+
+            <h2>Rate Coding vs. Temporal Coding</h2>
+            <p>How does a spiking neuron encode information? There are two primary paradigms:</p>
+            <ul>
+                <li><strong>Rate Coding:</strong> The information is the <em>average firing rate</em> over a time
+                    window $T$. A strongly stimulated neuron fires many times; a weakly stimulated one fires rarely.
+                    This is the most common encoding scheme in computational SNNs because it maps naturally onto
+                    probabilities.</li>
+                <li><strong>Temporal Coding:</strong> The information is encoded in the <em>precise timing</em> of
+                    individual spikes. This is believed to be the dominant coding scheme in the biological brain and
+                    offers extreme efficiency, but is much harder to train computationally.</li>
+            </ul>
+            <p>In our PyTorch implementation (Part 2), we use rate coding: the same input pixel values are presented
+                at every timestep $t \in \{1, \ldots, T\}$, and the output class is determined by which output neuron
+                accumulates the most spikes over $T$ steps.</p>
+
+            <h2>The Gradient Problem</h2>
+            <p>This is where SNNs diverge sharply from standard deep learning. The spike emission step $S[t] =
+                \Theta(V[t] - V_{th})$ is a Heaviside step function. Its derivative is a Dirac delta: zero almost
+                everywhere, and undefined at the threshold. Backpropagation requires computing $\frac{\partial
+                S}{\partial V}$ at every neuron—and with the true gradient, the entire chain rule collapses to zero.
+            </p>
+
+            <p>SNNs appeared, for decades, to be fundamentally untrainable via gradient descent. The solution, explored
+                in Part 2, is the <strong>surrogate gradient</strong> trick.</p>
+
+            <h2>Next Steps: Building an SNN in PyTorch</h2>
+            <p>The equations in this post are clean and compact, but translating them to a trainable PyTorch module
+                requires solving the gradient problem. In Part 2, we will implement the LIF update in a custom
+                <code>nn.Module</code>, introduce the fast-sigmoid surrogate gradient via a custom
+                <code>torch.autograd.Function</code>, and assemble a full 2-layer SNN classifier for MNIST.
+            </p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
