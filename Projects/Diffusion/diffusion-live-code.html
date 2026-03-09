@@ -1,0 +1,327 @@
+---
+layout: null
+permalink: /projects/diffusion-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Diffusion Models: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+
+        pre[class*="language-"] {
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/diffusion/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Diffusion Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Diffusion Models</h1>
+            <h2 class="article-subtitle">Part 2: Pure PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we established the mathematical objective of a Denoising Diffusion Probabilistic Model
+                    (DDPM): forward-corrupt an image with a specific noise profile $\beta_t$, and train a neural network
+                    to predict the exact noise vector $\epsilon$ that was added at timestep $t$.</p>
+                <p>Today, we take that math and translate it into a pure PyTorch implementation. We will build an
+                    unconditional DDPM that learns to generate handwritten MNIST digits from scratch.</p>
+                <p style="margin-top: 1rem; font-weight: 500; color: var(--accent-light);">
+                    <i class="fab fa-github"></i>
+                    <a href="https://github.com/soveshmohapatra/Diffusion-Models-From-Scratch" target="_blank"
+                        style="color: inherit; text-decoration: underline;">View Full Setup on GitHub</a>
+                </p>
+            </div>
+
+            <h2>The Noise Schedule</h2>
+            <p>First, we need a scheduler to precompute the coefficients for the forward and reverse processes over
+                $T=1000$ timesteps.</p>
+
+            <pre><code class="language-python">class LinearNoiseSchedule:
+    def __init__(self, num_timesteps=1000, beta_start=1e-4, beta_end=2e-2):
+        self.betas = torch.linspace(beta_start, beta_end, num_timesteps)
+        self.alphas = 1.0 - self.betas
+        self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
+        
+        # We need these components for the forward process (q_sample)
+        self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
+        self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - self.alphas_cumprod)</code></pre>
+
+            <h2>The Network: A Time-Conditioned UNet</h2>
+            <p>A standard UNet maps an input image to an output image. Our UNet must map a noisy image $x_t$ <strong>and
+                    the current timestep $t$</strong> to a predicted noise tensor $\epsilon_\theta$. The network needs
+                to know $t$ because the noise scale varies drastically between $t=1$ and $t=1000$.</p>
+
+            <p>We inject $t$ into the network using a <strong>Sinusoidal Position Embedding</strong>—the exact same
+                mechanism used in Transformers. We map the scalar $t$ into a high-dimensional continuous representation,
+                run it through an MLP, and add it to the feature maps at the bottleneck of the UNet.</p>
+
+            <pre><code class="language-python">class SimpleUNet(nn.Module):
+    def __init__(self):
+        # Time embedding structure
+        self.time_mlp = nn.Sequential(
+            SinusoidalPositionEmbeddings(256),
+            nn.Linear(256, 256),
+            nn.GELU()
+        )
+        # Standard Down/Up Conv blocks...
+        
+    def forward(self, x, time):
+        # Compute time embedding
+        t_emb = self.time_mlp(time)[:, :, None, None]
+        
+        # Standard encoder passes ...
+        x = self.bottleneck(x)
+        
+        # Inject time conditioning
+        x = x + t_emb
+        
+        # Standard decoder passes with skip connections ...
+        return self.output(x)</code></pre>
+
+            <h2>The Training Loop</h2>
+            <p>The training algorithm (Ho et al., Algorithm 1) is stunningly simple to implement in PyTorch:</p>
+
+            <pre><code class="language-python"># For each batch of clean images x_0:
+optimizer.zero_grad()
+
+# 1. Pick a random timestep t for each image in the batch
+t = torch.randint(0, T, (batch_size,), device=device)
+
+# 2. Sample random normal noise
+noise = torch.randn_like(x_0)
+
+# 3. Corrupt x_0 to x_t using the forward process formula
+x_t = schedule.sqrt_alphas_cumprod[t] * x_0 + \
+      schedule.sqrt_one_minus_alphas_cumprod[t] * noise
+
+# 4. Ask the UNet to predict the noise
+predicted_noise = model(x_t, t)
+
+# 5. The loss is simply the Mean Squared Error
+loss = F.mse_loss(predicted_noise, noise)
+
+loss.backward()
+optimizer.step()</code></pre>
+
+            <p>That is the entire forward training process. The network learns to pull out structure from noise at every
+                possible noise level.</p>
+
+            <h2>The Sampling Loop (Reverse Process)</h2>
+            <p>Once trained, we generate new data by starting from pure Gaussian noise $\mathcal{N}(0, \mathbf{I})$ and
+                running the reverse process parameterized by our UNet. At each step from $T$ down to 0, we subtract a
+                scaled fraction of the network's predicted noise, and add back a small amount of Langevin noise to
+                prevent collapse.</p>
+
+            <h2>Next Steps: Visualizing the Generation</h2>
+            <p>We now have a complete mathematical theory and a pure PyTorch implementation. In <strong>Part 3</strong>,
+                we will run this network on the MNIST dataset and visualize the results. We will see the exact grid of
+                pure static slowly resolving into clear, recognizable digits as the model steps backward through time.
+            </p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,76 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+
+\title{\textbf{Deconstructing Diffusion Models \\ Part 1: The Forward Process and the Math of Forgetting}}
+\author{Sovesh Mohapatra}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+If standard deep learning is about recognizing patterns, \textbf{diffusion models} are about creating them from scratch. From DALL-E to Midjourney, scaling diffusion models has fundamentally changed generative AI. But how do we teach a neural network to create structure from pure randomness?
+
+The answer is counterintuitive: \textit{first, teach it to systematically forget}.
+
+In this new 3-part ``Build in Public'' series, we will deconstruct Denoising Diffusion Probabilistic Models (DDPMs) from first principles. Today, we look at the mathematical foundation: the Forward Process, the Reparameterization Trick, and the Evidence Lower Bound (ELBO). In Part 2, we will build the UNet and the PyTorch implementation. In Part 3, we will generate handwritten MNIST digits from pure noise and trace their denoising trajectories.
+
+\section*{The Forward Process: Order to Chaos}
+
+A standard diffusion model defines a Markov chain over $T$ timesteps (often $T=1000$). We start with a real image $x_0 \sim q(x)$ and incrementally add Gaussian noise according to a fixed variance schedule $\beta_1, \beta_2, \dots, \beta_T$.
+
+The transition probability from step $t-1$ to $t$ is:
+\begin{equation}
+    q(x_t \mid x_{t-1}) := \mathcal{N}(x_t; \sqrt{1-\beta_t} x_{t-1}, \beta_t \mathbf{I})
+\end{equation}
+
+By scaling the mean by $\sqrt{1-\beta_t}$, the variance of $x_t$ remains bounded near 1.0 throughout the process. As $t \to T$, the image $x_T$ becomes indistinguishable from an isotropic Gaussian distribution $\mathcal{N}(0, \mathbf{I})$.
+
+\section*{The Reparameterization Trick: Sampling at Arbitrary Timesteps}
+
+If we want to train a network on timestep $t=500$, applying Equation 1 sequentially 500 times is computationally absurd. Luckily, a property of Gaussians allows us to sample $x_t$ directly from $x_0$ in a single closed-form step.
+
+Let $\alpha_t = 1 - \beta_t$ and let $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$. By recursively applying the noise addition, you can prove that:
+\begin{equation}
+    q(x_t \mid x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t} x_0, (1 - \bar{\alpha}_t)\mathbf{I})
+\end{equation}
+
+To sample from this distribution cleanly, we use the \textbf{reparameterization trick}:
+\begin{equation}
+    x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon \quad \text{where} \quad \epsilon \sim \mathcal{N}(0, \mathbf{I})
+\end{equation}
+
+This single equation is the engine of diffusion model training. It allows us to pick any image $x_0$, any random timestep $t$, and instantly generate the corrupted image $x_t$ and the exact noise $\epsilon$ that was added to it.
+
+\section*{The Reverse Process and the ELBO}
+
+If the forward process $q(x_t \mid x_{t-1})$ destroys structure, the \textbf{reverse process} $p_\theta(x_{t-1} \mid x_t)$ must learn to restore it. 
+\begin{equation}
+    p_\theta(x_{t-1} \mid x_t) := \mathcal{N}(x_{t-1}; \mu_\theta(x_t, t), \Sigma_\theta(x_t, t))
+\end{equation}
+
+To train $\theta$, we maximize the log-likelihood of the data. Because exact likelihood is intractable, we optimize a Variational Lower Bound, or \textbf{Evidence Lower Bound (ELBO)}. After extensive algebraic manipulation, Ho et al. (2020) showed that the ELBO simplifies into an intuitively beautiful objective: we do not need to predict the entire cleanly denoised image $x_0$. Instead, the optimal strategy is to train a neural network \textbf{to predict the noise $\epsilon$ that was added to $x_t$ at timestep $t$}.
+
+\section*{The Simplified Objective}
+
+The final, stripped-down loss function that powers state-of-the-art DDPMs is simply the Mean Squared Error between the true noise $\epsilon$ and the network's predicted noise $\epsilon_\theta$:
+\begin{equation}
+    L(\theta) := \mathbb{E}_{t, x_0, \epsilon} \left[ \| \epsilon - \epsilon_\theta(x_t, t) \|^2 \right]
+\end{equation}
+
+\section*{Next Steps: From Math to Code}
+We have reduced a complex, intractable stochastic process into a surprisingly simple objective: noise an image, ask the network to guess the noise, and penalize the difference.
+
+In \textbf{Part 2}, we will implement this exact formulation in pure PyTorch. We will construct the $T=1000$ noise schedule, build a UNet architecture modified to accept sinusoidal time embeddings, and write the training and sampling loops.
+
+\vspace{1em}
+\noindent \textit{Stay tuned for the code drop as we build a generative diffusion model from scratch!}
+
+\end{document}

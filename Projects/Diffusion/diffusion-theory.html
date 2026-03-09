@@ -1,0 +1,299 @@
+---
+layout: null
+permalink: /projects/diffusion-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Diffusion Models: Part 1 - Mathematics | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/diffusion/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Diffusion Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Diffusion Models</h1>
+            <h2 class="article-subtitle">Part 1: The Forward Process and the Math of Forgetting</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>If standard deep learning is about recognizing patterns, <strong>diffusion models</strong> are about
+                    creating them from scratch. From DALL-E to Midjourney, scaling diffusion models has fundamentally
+                    changed generative AI. But how do we teach a neural network to create structure from pure
+                    randomness?</p>
+                <p>The answer is counterintuitive: <em>first, teach it to systematically forget</em>.</p>
+                <p>In this new 3-part "Build in Public" series, we will deconstruct Denoising Diffusion Probabilistic
+                    Models (DDPMs) from first principles. Today, we look at the mathematical foundation: the Forward
+                    Process, the Reparameterization Trick, and the Evidence Lower Bound (ELBO). In Part 2, we will build
+                    the UNet and the PyTorch implementation. In Part 3, we will generate handwritten MNIST digits from
+                    pure noise and trace their denoising trajectories.</p>
+            </div>
+
+            <h2>The Forward Process: Order to Chaos</h2>
+            <p>A standard diffusion model defines a Markov chain over $T$ timesteps (often $T=1000$). We start with a
+                real image $x_0 \sim q(x)$ and incrementally add Gaussian noise according to a fixed variance schedule
+                $\beta_1, \beta_2, \dots, \beta_T$.</p>
+
+            <p>The transition probability from step $t-1$ to $t$ is:</p>
+            <div class="math-block">
+                $$ q(x_t \mid x_{t-1}) := \mathcal{N}(x_t; \sqrt{1-\beta_t} x_{t-1}, \beta_t \mathbf{I}) $$
+            </div>
+
+            <p>By scaling the mean by $\sqrt{1-\beta_t}$, the variance of $x_t$ remains bounded near 1.0 throughout the
+                process. As $t \to T$, the image $x_T$ becomes indistinguishable from an isotropic Gaussian distribution
+                $\mathcal{N}(0, \mathbf{I})$.</p>
+
+            <h2>The Reparameterization Trick: Sampling at Arbitrary Timesteps</h2>
+            <p>If we want to train a network on timestep $t=500$, applying the transition equation sequentially 500
+                times is computationally absurd. Luckily, a property of Gaussians allows us to sample $x_t$ directly
+                from $x_0$ in a single closed-form step.</p>
+
+            <p>Let $\alpha_t = 1 - \beta_t$ and let $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$. By recursively applying
+                the noise addition, you can prove that:</p>
+
+            <div class="math-block">
+                $$ q(x_t \mid x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t} x_0, (1 - \bar{\alpha}_t)\mathbf{I}) $$
+            </div>
+
+            <p>To sample from this distribution cleanly, we use the <strong>reparameterization trick</strong>:</p>
+
+            <div class="math-block">
+                $$ x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon \quad \text{where} \quad
+                \epsilon \sim \mathcal{N}(0, \mathbf{I}) $$
+            </div>
+
+            <p>This single equation is the engine of diffusion model training. It allows us to pick any image $x_0$, any
+                random timestep $t$, and instantly generate the corrupted image $x_t$ and the exact noise $\epsilon$
+                that was added to it.</p>
+
+            <h2>The Reverse Process and the ELBO</h2>
+            <p>If the forward process $q(x_t \mid x_{t-1})$ destroys structure, the <strong>reverse process</strong>
+                $p_\theta(x_{t-1} \mid x_t)$ must learn to restore it.</p>
+
+            <div class="math-block">
+                $$ p_\theta(x_{t-1} \mid x_t) := \mathcal{N}(x_{t-1}; \mu_\theta(x_t, t), \Sigma_\theta(x_t, t)) $$
+            </div>
+
+            <p>To train $\theta$, we maximize the log-likelihood of the data. Because exact likelihood is intractable,
+                we optimize a Variational Lower Bound, or <strong>Evidence Lower Bound (ELBO)</strong>. After extensive
+                algebraic manipulation, Ho et al. (2020) showed that the ELBO simplifies into an intuitively beautiful
+                objective: we do not need to predict the entire cleanly denoised image $x_0$. Instead, the optimal
+                strategy is to train a neural network <strong>to predict the noise $\epsilon$ that was added to $x_t$ at
+                    timestep $t$</strong>.</p>
+
+            <h2>The Simplified Objective</h2>
+            <p>The final, stripped-down loss function that powers state-of-the-art DDPMs is simply the Mean Squared
+                Error between the true noise $\epsilon$ and the network's predicted noise $\epsilon_\theta$:</p>
+
+            <div class="math-block">
+                $$ L(\theta) := \mathbb{E}_{t, x_0, \epsilon} \left[ \| \epsilon - \epsilon_\theta(x_t, t) \|^2 \right]
+                $$
+            </div>
+
+            <h2>Next Steps: From Math to Code</h2>
+            <p>We have reduced a complex, intractable stochastic process into a surprisingly simple objective: noise an
+                image, ask the network to guess the noise, and penalize the difference.</p>
+
+            <p>In <strong>Part 2</strong>, we will implement this exact formulation in pure PyTorch. We will construct
+                the $T=1000$ noise schedule, build a UNet architecture modified to accept sinusoidal time embeddings,
+                and write the training and sampling loops.</p>
+
+            <p><em>Stay tuned for the code drop as we build a generative diffusion model from scratch!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
