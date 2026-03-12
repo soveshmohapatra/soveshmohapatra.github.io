@@ -1,15 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
   <head>
     {% include head.html %}
     {% include mathjax.html %}
     {% seo %}
+    {% include json-ld.html %}
     {% if page.image %}
       <meta content="{{ page.image }}" property="og:image" />
+      <meta property="og:image:alt" content="{{ page.title | default: site.title }}" />
     {% else %}
       <meta content="{{ site.url }}/assets/1.jpeg" property="og:image" />
+      <meta property="og:image:alt" content="{{ site.title }}" />
     {% endif %}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@soveshspeaks" />
+    <meta name="twitter:creator" content="@soveshspeaks" />
   </head>
 
   <body>

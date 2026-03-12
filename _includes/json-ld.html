@@ -1,0 +1,62 @@
+{% if page.url == "/" or page.url == "" %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Sovesh Mohapatra",
+  "url": "https://soveshmohapatra.com",
+  "image": "https://soveshmohapatra.com/assets/2.jpg",
+  "sameAs": [
+    "https://scholar.google.com/citations?user=_IqJIZcAAAAJ&hl=en",
+    "https://www.semanticscholar.org/author/Sovesh-Mohapatra/2186185878",
+    "https://www.researchgate.net/profile/Sovesh-Mohapatra-2",
+    "https://github.com/soveshmohapatra",
+    "https://www.linkedin.com/in/sovesh"
+  ],
+  "jobTitle": "PhD Candidate",
+  "worksFor": {
+    "@type": "CollegeOrUniversity",
+    "name": "University of Pennsylvania",
+    "url": "https://www.upenn.edu"
+  },
+  "alumniOf": {
+    "@type": "CollegeOrUniversity",
+    "name": "University of Massachusetts Amherst",
+    "url": "https://www.umass.edu"
+  },
+  "description": "PhD Candidate in BioEngineering at the University of Pennsylvania researching neuroimaging, brain connectivity, and AI for medical imaging.",
+  "email": "soveshm@seas.upenn.edu",
+  "knowsAbout": ["Neuroimaging", "Brain Connectivity", "Medical Image Segmentation", "Machine Learning", "Natural Language Processing"]
+}
+</script>
+{% elsif page.url contains "/research" %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfilePage",
+  "name": "Research | Sovesh Mohapatra",
+  "url": "https://soveshmohapatra.com/research/",
+  "description": "Publications and research by Sovesh Mohapatra covering neuroimaging, brain tumor segmentation, neonatal brain parcellation, transfer learning, and NLP.",
+  "mainEntity": {
+    "@type": "Person",
+    "name": "Sovesh Mohapatra",
+    "url": "https://soveshmohapatra.com"
+  }
+}
+</script>
+{% else %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "{{ page.title | default: site.title | escape }}",
+  "url": "{{ site.url }}{{ page.url }}",
+  "description": "{{ page.description | default: site.description | strip_html | strip_newlines | truncate: 160 }}",
+  "author": {
+    "@type": "Person",
+    "name": "Sovesh Mohapatra",
+    "url": "https://soveshmohapatra.com"
+  }
+}
+</script>
+{% endif %}

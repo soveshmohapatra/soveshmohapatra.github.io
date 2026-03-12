@@ -1,5 +1,7 @@
 ---
 layout: page
+title: Sovesh Mohapatra
+description: "PhD Candidate in BioEngineering at the University of Pennsylvania researching neuroimaging, brain connectivity, and AI for medical imaging."
 ---
 
 {% include JB/setup %}

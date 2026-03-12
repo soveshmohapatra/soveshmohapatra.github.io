@@ -1,6 +1,7 @@
 ---
 layout: page
 title: About
+description: "About Sovesh Mohapatra — PhD Candidate in BioEngineering at UPenn with a triple major in CS, Linguistics, and Math from UMass Amherst. Researching neuroimaging and brain connectivity."
 permalink: /about/
 order: 1
 ---

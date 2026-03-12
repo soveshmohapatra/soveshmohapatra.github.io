@@ -1,6 +1,7 @@
 ---
 layout: page
 title: Research
+description: "Publications and research by Sovesh Mohapatra covering neuroimaging, brain tumor segmentation, neonatal brain parcellation, transfer learning, and NLP. Papers in MICCAI, PLOS, and more."
 permalink: /research/
 order: 2
 ---
