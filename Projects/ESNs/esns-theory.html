@@ -1,0 +1,251 @@
+---
+layout: null
+permalink: /projects/esns-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Echo State Networks: Part 1 - Mathematics | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/esns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to ESNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Echo State Networks</h1>
+            <h2 class="article-subtitle">Part 1: The End of BPTT and the Power of the Reservoir</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>If you have ever trained an LSTM or standard Recurrent Neural Network (RNN) on a long time series, you know the pain of <strong>Backpropagation Through Time (BPTT)</strong>. Gradients vanish exponentially, training takes forever, and the network struggles to capture truly long-term dependencies.</p>
+                <p>But what if you didn't have to backpropagate through time at all? What if you could train an RNN in literally milliseconds using just a single line of closed-form linear algebra?</p>
+                <p>Welcome to the paradigm of <strong>Reservoir Computing</strong>, and its most famous realization: the <strong>Echo State Network (ESN)</strong>. In this new 3-part "Build in Public" series, we will deconstruct ESNs from scratch in pure PyTorch, culminating in a chaotic time series forecasting benchmark that destroys LSTMs in training speed.</p>
+            </div>
+
+            <h2>The Trappings of BPTT</h2>
+            <p>In a standard RNN, every weight matrix—input weights $W_{in}$, hidden weights $W_{rec}$, and output weights $W_{out}$—is learned via gradient descent. To find the gradient at time $t=0$, the loss from $t=1000$ must be multiplied by $W_{rec}$ one thousand times. If the eigenvalues of $W_{rec}$ are slightly less than 1, the gradient vanishes to zero. If they are slightly greater than 1, the gradient explodes to infinity.</p>
+
+            <h2>Enter the Reservoir</h2>
+            <p>Echo State Networks take a radically different approach. Instead of training $W_{in}$ and $W_{rec}$, we simply randomly generate them, make them extremely large (e.g., thousands of neurons) and sparse, and <strong>freeze them completely</strong>. This giant, frozen, random RNN is called the <strong>Reservoir</strong>.</p>
+            <p>We feed our input sequence into this reservoir, and simply record the activation states of the network over time. Because the network is huge and randomly connected, it acts as a massive, non-linear temporal expansion of the input signal.</p>
+
+            <h2>The Echo State Property & Spectral Radius</h2>
+            <p>The magic of an ESN relies entirely on the <strong>Echo State Property (ESP)</strong>. The ESP guarantees that the effect of a previous input state gradually decays over time—meaning the network won't blow up or oscillate infinitely.</p>
+            <p>To ensure the ESP, we only need to enforce a single mathematical rule when creating our random reservoir matrix $W_{rec}$: its <strong>Spectral Radius</strong> (the maximum absolute value of its eigenvalues, denoted $\rho$) must be strictly less than 1.</p>
+
+            <div class="math-block">
+                $$ \rho(W_{rec}) < 1 $$
+            </div>
+
+            <p>By scaling our random matrix so that $\rho = 0.9$, we mathematically guarantee that the reservoir behaves as a stable, fading-memory system.</p>
+
+            <h2>Closed-Form Readout</h2>
+            <p>If we don't use backpropagation, how do we train the network?</p>
+            <p>We only train the very last layer: $W_{out}$. Because the reservoir states ($X$) are fixed and harvested in a single forward pass, predicting the target sequence ($Y$) reduces to a simple linear regression problem: $Y \approx W_{out} X$.</p>
+            <p>Instead of gradient descent, we use <strong>Ridge Regression (Tikhonov Regularization)</strong> to solve for $W_{out}$ exactly, in one shot, using the closed-form normal equations:</p>
+
+            <div class="math-block">
+                $$ W_{out} = Y X^T (X X^T + \lambda \mathbf{I})^{-1} $$
+            </div>
+
+            <h2>Next Steps: From Math to Code</h2>
+            <p>We have just established a framework that hallucinates a massive recurrent structure, mathematically guarantees its stability via the spectral radius, and trains its readout linearly.</p>
+            <p>In <strong>Part 2</strong>, we will implement this entire architecture in pure PyTorch—including the exact algorithm to randomly initialize the reservoir and scale its eigenvalues.</p>
+            <p><em>Stay tuned for the code drop as we build a Reservoir Computer from scratch!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

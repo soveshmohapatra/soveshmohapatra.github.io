@@ -1,0 +1,302 @@
+---
+layout: null
+permalink: /projects/esns-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Echo State Networks: Part 3 - Predicting Chaos | Sovesh Mohapatra</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        .figure-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .figure-caption {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Result tables styling based off glassmorphism themes */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: rgba(var(--bg-card-rgb), 0.4);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .results-table th {
+            background: rgba(var(--bg-card-rgb), 0.8);
+            color: var(--accent-light);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/esns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to ESNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Echo State Networks</h1>
+            <h2 class="article-subtitle">Part 3: Predicting Chaos and the 1000x Speedup</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we outlined the math of Reservoir Computing and the Echo State Property. In Part 2, we built the ESN Core in pure PyTorch, bypassing iterative gradient descent entirely in favor of an instant, closed-form linear algebra fit.</p>
+                <p>Now, the benchmark. We pit our mathematically guaranteed Echo State Network (ESN) against a standard PyTorch Long Short-Term Memory (LSTM) network trained via Adam and Backpropagation Through Time (BPTT).</p>
+                <p>The arena? Forecasting the highly chaotic <strong>Mackey-Glass time-delay system</strong>.</p>
+            </div>
+
+            <h2>The Chaotic Time Series</h2>
+            <p>The Mackey-Glass equation describes a nonlinear time-delay system commonly used to model physiological processes. Most importantly, it is highly chaotic. Small deviations in initial conditions rapidly amplify, making long-term prediction exceptionally difficult.</p>
+            <p>We generate a 3,000-step sequence, train on the first 2,000 steps, and rigorously evaluate the models on their ability to accurately forecast the remaining 1,000 unseen steps into the chaotic future.</p>
+
+            <h2>The Training Paradigm</h2>
+            <p>The fundamental difference between the architectures defines their training efficiency.</p>
+            <ul>
+                <li><strong>LSTM (BPTT)</strong> requires 150 passes over the sequence, unrolling the recurrence graph through time, calculating gradients at every step, and iteratively nudging weights via the Adam optimizer.</li>
+                <li><strong>ESN (Ridge Regression)</strong> requires <strong>exactly one pass</strong>. It harvests the non-linear states from the sparse 500-neuron reservoir, and computes a single deterministic pseudo-inverse to perfectly fit the readout weights.</li>
+            </ul>
+
+            <h2>Benchmark Results</h2>
+            <p>The results of our script are stark:</p>
+
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Training Method</th>
+                        <th>Test MSE</th>
+                        <th>Training Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>LSTM (BPTT)</td>
+                        <td>Adam (150 epochs)</td>
+                        <td>0.0058</td>
+                        <td>24.3 seconds</td>
+                    </tr>
+                    <tr>
+                        <td>ESN</td>
+                        <td>Ridge Regression</td>
+                        <td>0.2663</td>
+                        <td><strong>73.9 milliseconds</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/esns/esn_vs_lstm_forecast.png" alt="Visualizing the 500-step chaotic forecast.">
+                <p class="figure-caption">Visualizing the unseen 1,000-step chaotic forecast. The ESN successfully tracks the high-frequency chaotic oscillations of the Mackey-Glass system despite zero iterative gradient descent training.</p>
+            </div>
+
+            <h2>The Speed vs. Precision Tradeoff</h2>
+            <p>Looking at the figure above, the ESN perfectly captures the fundamental chaotic attractor and the frequency of oscillation. The LSTM, heavily optimized over 150 epochs, achieves a tighter visual fit and lower Test MSE (0.0058 vs 0.2663).</p>
+            <p>However, <strong>the ESN trained 329 times faster than the LSTM.</strong></p>
+            <p>Let that sink in: 73 ms versus 24.3 seconds. The ESN trains quite literally before you can take your finger off the return key. In scenarios where extremely low latency and continuous online re-training are required (e.g., edge-device robotics, high-frequency signal processing), the ESN offers a monumental advantage over BPTT.</p>
+
+            <h2>Conclusion</h2>
+            <p>Our obsession with gradient descent often blinds us to alternative optimization paradigms. Echo State Networks prove that random projections, extreme sparsity, and linear algebra can solve highly non-linear, chaotic sequence problems in fractions of a second.</p>
+            <p>By deconstructing the spectral radius and the closed-form Tikhonov readout in PyTorch, we unlock a powerful, computationally cheap architecture that belongs in every ML engineer's toolkit.</p>
+            <p><em>Thank you for following this 3-part "Build in Public" series on Echo State Networks. Stay connected on LinkedIn for future architectural tear-downs!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
