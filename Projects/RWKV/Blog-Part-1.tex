@@ -1,0 +1,141 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+
+\title{\textbf{Deconstructing RWKV \\ Part 1: Linear Attention and the WKV Operator}}
+\author{Sovesh Mohapatra}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+The Transformer architecture has dominated deep learning for nearly a decade. Its core mechanism—self-attention—enables rich contextual representations by comparing every token to every other token. But this comes at a steep cost: attention scales quadratically with sequence length, and autoregressive generation requires storing all past key-value pairs, leading to $O(L)$ memory that grows linearly with context.
+
+Recurrent Neural Networks (RNNs) sit at the opposite extreme. They process sequences token-by-token, maintaining a fixed-size hidden state. This gives them $O(1)$ memory during inference and constant-time token generation. But RNNs suffer from vanishing gradients, cannot be parallelized during training, and typically underperform Transformers on complex tasks.
+
+What if there existed an architecture that combined the best of both worlds? An architecture that trains in parallel like a Transformer but infers sequentially like an RNN?
+
+Enter \textbf{RWKV (Receptance Weighted Key Value)}.
+
+In this 3-part series, we will completely deconstruct RWKV from theory to pure PyTorch implementation, culminating in a benchmark comparing it against Transformers and LSTMs.
+
+\section*{The Key Insight: Attention as Linear Recurrence}
+
+The breakthrough behind RWKV comes from a deceptively simple observation: \textit{attention can be rewritten as a linear recurrence}.
+
+Recall the standard self-attention formula:
+\begin{equation}
+    \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d}}\right)V
+\end{equation}
+
+For a single query position $t$, the output is:
+\begin{equation}
+    y_t = \sum_{i=1}^{t} \frac{\exp(q_t \cdot k_i / \sqrt{d})}{\sum_{j=1}^{t} \exp(q_t \cdot k_j / \sqrt{d})} v_i
+\end{equation}
+
+The denominator is a normalization term that depends on all previous keys. This is what makes attention quadratic—we must recompute it for every query.
+
+Now consider a \textbf{linear attention} variant where we remove the softmax and use a different kernel:
+\begin{equation}
+    y_t = \frac{\sum_{i=1}^{t} \phi(q_t, k_i) v_i}{\sum_{i=1}^{t} \phi(q_t, k_i)}
+\end{equation}
+
+If we choose $\phi(q, k) = \exp(q) \cdot \exp(k)$ (an exponential kernel), something remarkable happens. The numerator becomes:
+\begin{equation}
+    \sum_{i=1}^{t} \exp(q_t) \cdot \exp(k_i) \cdot v_i = \exp(q_t) \cdot \sum_{i=1}^{t} \exp(k_i) \cdot v_i
+\end{equation}
+
+The term $\sum_{i=1}^{t} \exp(k_i) \cdot v_i$ is a \textbf{cumulative sum} that can be computed recursively:
+\begin{equation}
+    \text{kv}_t = \text{kv}_{t-1} + \exp(k_t) \cdot v_t
+\end{equation}
+
+This is the essence of RWKV: attention reformulated as a linear recurrence that can be computed in $O(1)$ memory.
+
+\section*{The WKV Operator}
+
+RWKV introduces the \textbf{WKV (Weighted Key-Value)} operator, which formalizes this recurrence with additional refinements:
+
+\begin{equation}
+    \text{wkv}_t = \frac{\sum_{i=1}^{t-1} \exp(-(t-1-i)w + k_i) v_i + \exp(u + k_t) v_t}{\sum_{i=1}^{t-1} \exp(-(t-1-i)w + k_i) + \exp(u + k_t)}
+\end{equation}
+
+Here:
+\begin{itemize}
+    \item $w$ is a learned \textbf{decay} parameter controlling how fast past information fades.
+    \item $u$ is a learned \textbf{time-first} parameter giving extra weight to the current token.
+    \item The exponential decay $\exp(-(t-1-i)w)$ implements a fading memory similar to an RNN's hidden state.
+\end{itemize}
+
+The numerator can be computed recursively:
+\begin{equation}
+    \text{num}_t = \exp(u + k_t) v_t + \exp(-w) \cdot \text{num}_{t-1}
+\end{equation}
+
+And similarly for the denominator:
+\begin{equation}
+    \text{den}_t = \exp(u + k_t) + \exp(-w) \cdot \text{den}_{t-1}
+\end{equation}
+
+The final output is simply:
+\begin{equation}
+    \text{wkv}_t = \frac{\text{num}_t}{\text{den}_t}
+\end{equation}
+
+\section*{Time Mixing vs. Channel Mixing}
+
+RWKV decomposes the Transformer block into two distinct modules:
+
+\subsection*{Time Mixing (TM)}
+The Time Mixing module is RWKV's equivalent of self-attention. It computes the WKV recurrence to mix information across time. The key components are:
+\begin{itemize}
+    \item \textbf{Key projection}: $k_t = x_t W_k$
+    \item \textbf{Value projection}: $v_t = x_t W_v$
+    \item \textbf{Receptance}: $r_t = \sigma(x_t W_r)$ (a sigmoid gate, analogous to query)
+    \item \textbf{WKV output}: $\text{wkv}_t$ computed via the recurrence above
+    \item \textbf{Final output}: $o_t = r_t \odot \text{wkv}_t$ (element-wise multiplication)
+\end{itemize}
+
+The receptance gate is crucial—it controls how much of the WKV output flows through, similar to how a query determines which values to attend to.
+
+\subsection*{Channel Mixing (CM)}
+The Channel Mixing module is RWKV's equivalent of the feed-forward network (FFN). It uses a gated linear unit (GLU) variant with squared ReLU activation:
+\begin{align}
+    k_t &= x_t W_k \\
+    r_t &= \sigma(x_t W_r) \\
+    v_t &= \text{ReLU}(k_t)^2 W_v \\
+    o_t &= r_t \odot v_t
+\end{align}
+
+The squared ReLU activation ($\text{ReLU}(x)^2$) is a key design choice that provides smoother gradients than standard ReLU while maintaining sparsity.
+
+\section*{Why RWKV Matters}
+
+RWKV offers several compelling advantages:
+
+\begin{itemize}
+    \item \textbf{Parallel Training}: The WKV recurrence can be unrolled and computed in parallel during training using a clever cumulative sum trick, achieving throughput comparable to Transformers.
+    
+    \item \textbf{O(1) Inference}: During autoregressive generation, RWKV maintains a constant-size hidden state (the accumulated numerator and denominator). No growing KV cache.
+    
+    \item \textbf{Linear Scaling}: Both training and inference scale linearly with sequence length, unlike Transformer's quadratic attention.
+    
+    \item \textbf{Transformer Performance}: RWKV achieves perplexity and accuracy comparable to Transformers on language modeling tasks, unlike standard RNNs.
+\end{itemize}
+
+\section*{Next Steps: From Math to Code}
+
+The WKV operator may seem abstract, but implementing it in PyTorch is surprisingly straightforward. In \textbf{Part 2}, we will build the Time Mixing and Channel Mixing modules from scratch, implement both parallel training and recurrent inference modes, and assemble a complete RWKV model capable of autoregressive text generation.
+
+\vspace{1em}
+\noindent \textit{Stay tuned for the code drop as we reinvent RNNs for the Transformer era!}
+
+\end{document}

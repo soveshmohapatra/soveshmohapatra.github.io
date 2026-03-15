@@ -1,0 +1,207 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\title{\textbf{Deconstructing RWKV \\ Part 2: Pure PyTorch Implementation}}
+\author{Sovesh Mohapatra}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Introduction}
+In Part 1 of this series, we explored the mathematical foundations of RWKV: how attention can be rewritten as a linear recurrence via the WKV operator, enabling parallel training and $O(1)$ inference.
+
+Today, in Part 2, we turn that math into code.
+
+I've written a complete RWKV implementation in pure PyTorch—no external libraries, no CUDA kernels, just clean tensor operations. The code supports both parallel training mode (for efficiency) and recurrent inference mode (for memory-flat generation).
+
+\section*{The Implementation Strategy}
+
+RWKV's elegance lies in its simplicity. The architecture decomposes into two modules:
+
+\begin{enumerate}
+    \item \textbf{Time Mixing (TM)}: The attention equivalent, computing the WKV recurrence.
+    \item \textbf{Channel Mixing (CM)}: The FFN equivalent, using gated squared ReLU.
+\end{enumerate}
+
+Each module follows a pre-norm pattern similar to Transformers:
+\begin{equation}
+    x \leftarrow x + \text{Module}(\text{LayerNorm}(x))
+\end{equation}
+
+\section*{Time Mixing: Parallel Training Mode}
+
+The key challenge in implementing RWKV is computing the WKV operator efficiently. During training, we have access to the entire sequence at once, so we want to parallelize the recurrence.
+
+Recall the WKV recurrence from Part 1:
+\begin{align}
+    \text{num}_t &= \exp(u + k_t) v_t + \exp(-w) \cdot \text{num}_{t-1} \\
+    \text{den}_t &= \exp(u + k_t) + \exp(-w) \cdot \text{den}_{t-1} \\
+    \text{wkv}_t &= \frac{\text{num}_t}{\text{den}_t}
+\end{align}
+
+For parallel computation, we can unroll this recurrence. The numerator at time $t$ is:
+\begin{equation}
+    \text{num}_t = \exp(u + k_t) v_t + \sum_{i=0}^{t-1} \exp(-(t-1-i)w + k_i) v_i
+\end{equation}
+
+This can be computed using a \textbf{cumulative sum with decay}:
+\begin{enumerate}
+    \item Compute $kv_t = k_t \cdot v_t$ for all $t$.
+    \item Compute decay powers: $\text{decay}^t = \exp(-tw)$.
+    \item Weight each $kv_t$ by its decay: $\text{weighted}_t = kv_t \cdot \text{decay}^t$.
+    \item Cumulative sum: $\text{cumsum}_t = \sum_{i=0}^t \text{weighted}_i$.
+    \item Rescale to get proper numerator.
+\end{enumerate}
+
+In PyTorch, this becomes:
+\begin{lstlisting}[language=Python, basicstyle=\small\ttfamily]
+# Compute weighted kv
+kv = k * v  # element-wise
+decay_powers = torch.pow(decay, time_indices)
+weighted_kv = kv * decay_powers
+
+# Cumulative sum gives the recurrence
+cumsum = torch.cumsum(weighted_kv, dim=1)
+
+# First token uses time_first, rest use decay
+wkv[:, 0] = time_first * kv[:, 0]
+wkv[:, 1:] = time_first * kv[:, 1:] + decay * cumsum[:, :-1]
+\end{lstlisting}
+
+\section*{Time Mixing: Recurrent Inference Mode}
+
+During inference, we generate tokens one at a time. Here, the recurrence shines—we simply maintain the accumulated state:
+
+\begin{lstlisting}[language=Python, basicstyle=\small\ttfamily]
+def forward_recurrent(self, x_t, state):
+    # Project
+    k_t = self.key(x_t)
+    v_t = self.value(x_t)
+    r_t = self.receptance(x_t)
+    
+    # WKV recurrence (single step)
+    wkv_t = time_first * k_t * v_t + decay * state
+    
+    # Apply receptance gate
+    output = sigmoid(r_t) * wkv_t
+    
+    # Return output and new state
+    return output, wkv_t
+\end{lstlisting}
+
+The state is just a single tensor of shape $(B, C)$—constant size regardless of how many tokens we've generated. Compare this to Transformers, which must store $(B, L, C)$ for the KV cache!
+
+\section*{Channel Mixing: Squared ReLU Gating}
+
+The Channel Mixing module is simpler. It uses a GLU-style gating mechanism with squared ReLU:
+
+\begin{lstlisting}[language=Python, basicstyle=\small\ttfamily]
+def forward(self, x):
+    x = self.ln(x)  # pre-norm
+    
+    # Key projection with squared ReLU
+    k = self.key(x)
+    k_squared = F.relu(k) ** 2
+    
+    # Receptance gate
+    r = torch.sigmoid(self.receptance(x))
+    
+    # Value projection and gate
+    v = self.value(k_squared)
+    output = r * v
+    
+    return output
+\end{lstlisting}
+
+The squared ReLU ($\text{ReLU}(x)^2$) provides smoother gradients than standard ReLU while maintaining sparsity. This is a subtle but important design choice that improves training stability.
+
+\section*{The Complete RWKV Model}
+
+Stacking Time Mixing and Channel Mixing blocks gives us the full RWKV model:
+
+\begin{lstlisting}[language=Python, basicstyle=\small\ttfamily]
+class RWKV(nn.Module):
+    def __init__(self, vocab_size, embed_dim, num_layers):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.blocks = nn.ModuleList([
+            RWKVBlock(embed_dim) for _ in range(num_layers)
+        ])
+        self.ln_out = nn.LayerNorm(embed_dim)
+        self.head = nn.Linear(embed_dim, vocab_size, bias=False)
+        
+        # Weight tying (like Transformers)
+        self.head.weight = self.embedding.weight
+    
+    def forward(self, x, state=None, use_recurrent=False):
+        x = self.embedding(x)
+        
+        for block in self.blocks:
+            x, state = block(x, state, use_recurrent)
+        
+        x = self.ln_out(x)
+        return self.head(x), state
+\end{lstlisting}
+
+Weight tying between the embedding and output projection is a standard technique that improves parameter efficiency and training stability.
+
+\section*{Autoregressive Generation}
+
+With the recurrent mode implemented, autoregressive generation is straightforward:
+
+\begin{lstlisting}[language=Python, basicstyle=\small\ttfamily]
+@torch.no_grad()
+def generate(self, prompt, max_new_tokens, temperature=1.0):
+    self.eval()
+    context = prompt.clone()
+    state = None
+    
+    # Process prompt in parallel
+    logits, state = self(context, use_recurrent=True)
+    
+    for _ in range(max_new_tokens):
+        # Sample next token
+        probs = F.softmax(logits / temperature, dim=-1)
+        next_token = torch.multinomial(probs, 1)
+        
+        # Append and step
+        context = torch.cat([context, next_token], dim=1)
+        logits, state = self(next_token, state, use_recurrent=True)
+    
+    return context
+\end{lstlisting}
+
+The key insight: after processing the prompt in parallel, each new token requires only a single recurrent step with $O(1)$ memory.
+
+\section*{Implementation Gotchas}
+
+A few pitfalls I encountered while implementing RWKV:
+
+\begin{enumerate}
+    \item \textbf{Decay Parameterization}: The decay $w$ must be positive to ensure stable fading memory. I parameterize it via sigmoid to keep it in $(0, 1)$.
+    
+    \item \textbf{Time First Initialization}: The $u$ parameter (time\_first) should be initialized to emphasize the current token. I use $u = 1.0$ (giving $\sigma(u) \approx 0.73$).
+    
+    \item \textbf{Gradient Clipping}: RWKV can have gradient explosions in early training. Gradient clipping at norm 1.0 is essential.
+    
+    \item \textbf{State Initialization}: During recurrent inference, the state starts at zero. This represents no prior context.
+\end{enumerate}
+
+\section*{Next Steps: Benchmarking}
+
+The code is complete. In Part 3, we'll put RWKV to the test against Transformer and LSTM baselines on synthetic sequence tasks, measuring training convergence, inference latency, and memory usage.
+
+\vspace{1em}
+\noindent \textit{The full PyTorch implementation is available on GitHub. Stay tuned for the benchmark results!}
+
+\end{document}

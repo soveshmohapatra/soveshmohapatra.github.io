@@ -1,0 +1,390 @@
+---
+layout: null
+title: "Deconstructing RWKV: Part 2 — Pure PyTorch Implementation"
+description: "Building a complete RWKV model in pure PyTorch with parallel training and O(1) recurrent inference modes. By Sovesh Mohapatra."
+permalink: /projects/rwkv-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing RWKV: Part 2 - Pure PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+
+        pre[class*="language-"] {
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/rwkv/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to RWKV Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing RWKV</h1>
+            <h2 class="article-subtitle">Part 2: Pure PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we explored the mathematical foundations of RWKV: how attention can be rewritten as a
+                    linear recurrence via the WKV operator, enabling parallel training and $O(1)$ inference.</p>
+                <p>Today, in Part 2, we turn that math into code. I've written a complete RWKV implementation in
+                    pure PyTorch—no external libraries, no CUDA kernels, just clean tensor operations. The code
+                    supports both <strong>parallel training mode</strong> (for efficiency) and
+                    <strong>recurrent inference mode</strong> (for memory-flat generation).</p>
+            </div>
+
+            <h2>The Implementation Strategy</h2>
+            <p>RWKV's elegance lies in its simplicity. The architecture decomposes into two modules:</p>
+            <ol>
+                <li><strong>Time Mixing (TM):</strong> The attention equivalent, computing the WKV recurrence.</li>
+                <li><strong>Channel Mixing (CM):</strong> The FFN equivalent, using gated squared ReLU.</li>
+            </ol>
+            <p>Each module follows a pre-norm pattern similar to Transformers: $x \leftarrow x +
+                \text{Module}(\text{LayerNorm}(x))$</p>
+
+            <h2>Time Mixing: Parallel Training Mode</h2>
+            <p>The key challenge is computing the WKV operator efficiently. During training, we have access to the
+                entire sequence at once, so we want to parallelize the recurrence.</p>
+
+            <p>Recall from Part 1 that the numerator at time $t$ is:</p>
+            <div class="math-block">
+                $$ \text{num}_t = \exp(u + k_t) v_t + \sum_{i=0}^{t-1} \exp(-(t-1-i)w + k_i) v_i $$
+            </div>
+
+            <p>This can be computed using a <strong>cumulative sum with decay</strong>. The key steps are: compute
+                $kv_t = k_t \cdot v_t$ for all $t$, apply decay weights, accumulate, and rescale. In PyTorch:</p>
+
+            <pre><code class="language-python">def _compute_wkv_parallel(self, kv, time_decay, time_first, T):
+    B, T, C = kv.shape
+    time_decay = time_decay.expand(B, T, C)
+    time_first = time_first.expand(B, T, C)
+    time_indices = torch.arange(T, device=kv.device).view(1, T, 1)
+    weighted_kv = kv * torch.pow(time_decay, time_indices)
+    cumsum = torch.cumsum(weighted_kv, dim=1)
+    wkv = torch.zeros_like(kv)
+    wkv[:, 0] = time_first[:, 0] * kv[:, 0]
+    if T > 1:
+        wkv[:, 1:] = time_first[:, 1:] * kv[:, 1:] + time_decay[:, 1:] * cumsum[:, :-1]
+    return wkv</code></pre>
+
+            <h2>Time Mixing: Recurrent Inference Mode</h2>
+            <p>During inference, we generate tokens one at a time. Here, the recurrence shines—we simply maintain
+                the accumulated state:</p>
+
+            <pre><code class="language-python">def forward_recurrent(self, x, state=None):
+    # x is (B, C) for a single token
+    x = self.ln(x)
+    time_decay, time_first = self._get_wkv_weights(B, C, x.device)
+    wkv_state = torch.zeros(B, C, device=x.device) if state is None else state[0]
+
+    k_t = self.key(x)
+    v_t = self.value(x)
+    r_t = self.receptance(x)
+
+    # WKV recurrence: single step
+    wkv_t = time_first[:, 0] * k_t * v_t + time_decay[:, 0] * wkv_state
+
+    # Apply receptance gate
+    output = self.output(torch.sigmoid(r_t) * wkv_t)
+    return output, (wkv_t,)</code></pre>
+
+            <p>The state is just a single tensor of shape $(B, C)$—constant size regardless of how many tokens
+                we've generated. Compare this to Transformers, which must store $(B, L, C)$ for the KV cache that
+                grows with each token!</p>
+
+            <h2>Channel Mixing: Squared ReLU Gating</h2>
+            <p>The Channel Mixing module uses a GLU-style gating mechanism with squared ReLU:</p>
+
+            <pre><code class="language-python">class RWKVChannelMixer(nn.Module):
+    def __init__(self, embed_dim, expand_factor=4):
+        super().__init__()
+        self.hidden_dim = embed_dim * expand_factor
+        self.key = nn.Linear(embed_dim, self.hidden_dim, bias=False)
+        self.receptance = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.value = nn.Linear(self.hidden_dim, embed_dim, bias=False)
+        self.ln = nn.LayerNorm(embed_dim)
+
+    def forward(self, x):
+        x = self.ln(x)
+        return torch.sigmoid(self.receptance(x)) * self.value(F.relu(self.key(x)) ** 2)</code></pre>
+
+            <p>The squared ReLU ($\text{ReLU}(x)^2$) provides smoother gradients than standard ReLU while
+                maintaining sparsity—a subtle but important design choice for training stability.</p>
+
+            <h2>The Complete RWKV Model</h2>
+            <p>Stacking Time Mixing and Channel Mixing blocks gives us the full RWKV model:</p>
+
+            <pre><code class="language-python">class RWKV(nn.Module):
+    def __init__(self, vocab_size, embed_dim, num_layers, num_heads=1, expand_factor=4):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.blocks = nn.ModuleList([
+            RWKVBlock(embed_dim, num_heads, expand_factor) for _ in range(num_layers)
+        ])
+        self.ln_out = nn.LayerNorm(embed_dim)
+        self.head = nn.Linear(embed_dim, vocab_size, bias=False)
+        # Weight tying (like Transformers)
+        self.head.weight = self.embedding.weight
+
+    def forward(self, x, states=None, use_recurrent=False):
+        x = self.embedding(x)
+        for i, block in enumerate(self.blocks):
+            if use_recurrent:
+                x, new_state = block(x, states[i], use_recurrent=True)
+            else:
+                x, _ = block(x)
+        return self.head(self.ln_out(x)), states</code></pre>
+
+            <p>Weight tying between the embedding and output projection is a standard technique that improves
+                parameter efficiency and training stability—the same weights learn to both encode inputs and predict
+                outputs.</p>
+
+            <h2>Autoregressive Generation</h2>
+            <p>With the recurrent mode implemented, autoregressive generation is straightforward:</p>
+
+            <pre><code class="language-python">@torch.no_grad()
+def generate(self, prompt_tokens, max_new_tokens, temperature=1.0):
+    self.eval()
+    context = prompt_tokens.clone()
+    states = None
+
+    # Process prompt in parallel for efficiency
+    logits, _ = self(context, use_recurrent=False)
+    logits = logits[:, -1, :]  # get last token logits
+
+    for _ in range(max_new_tokens):
+        next_token = torch.multinomial(
+            F.softmax(logits / temperature, dim=-1), num_samples=1
+        )
+        context = torch.cat([context, next_token], dim=1)
+        # Single recurrent step: O(1) memory
+        logits, states = self(next_token.squeeze(1), states, use_recurrent=True)
+
+    return context</code></pre>
+
+            <p>After processing the prompt in parallel, each new token requires only a single recurrent step with
+                $O(1)$ memory—no KV cache to grow.</p>
+
+            <h2>Implementation Gotchas</h2>
+            <p>A few pitfalls to watch for when implementing RWKV:</p>
+            <ol>
+                <li><strong>Decay Parameterization:</strong> The decay $w$ must be positive to ensure stable fading
+                    memory. Parameterize via sigmoid to keep it in $(0, 1)$.</li>
+                <li><strong>Time First Initialization:</strong> The $u$ parameter should be initialized to
+                    emphasize the current token ($u = 1.0$, giving $\sigma(u) \approx 0.73$).</li>
+                <li><strong>Gradient Clipping:</strong> RWKV can have gradient explosions in early training.
+                    Gradient clipping at norm 1.0 is essential.</li>
+                <li><strong>State Initialization:</strong> During recurrent inference, the state starts at zero,
+                    representing no prior context.</li>
+            </ol>
+
+            <h2>Next Steps: Benchmarking</h2>
+            <p>The code is complete. In Part 3, we'll put RWKV to the test against Transformer and LSTM baselines
+                on synthetic sequence tasks, measuring training convergence, inference latency, and memory
+                usage—validating the $O(1)$ inference promise in practice.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>
