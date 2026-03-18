@@ -1,0 +1,332 @@
+---
+layout: null
+title: "Deconstructing Predictive Coding Networks: Part 3 — Benchmark Showdown"
+description: "Benchmarking Predictive Coding Networks against standard backpropagation on regression and MNIST classification — local learning vs global gradients. By Sovesh Mohapatra."
+permalink: /projects/pcn-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Predictive Coding Networks: Part 3 - Benchmark Showdown | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        .figure-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .figure-caption {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/pcn/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to PCN Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Predictive Coding Networks</h1>
+            <h2 class="article-subtitle">Part 3: The Benchmark Showdown and Neuromorphic Futures</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In our series on Predictive Coding Networks (PCNs), we explored the profound biological theory of
+                    top-down predictive processing in Part 1. In Part 2, we translated that local, heuristic learning
+                    rule into a functional, iterative codebase in pure PyTorch, successfully retiring
+                    <code>loss.backward()</code> in favor of local energy minimization.</p>
+                <p>But theoretical elegance is only half the battle. The ultimate question remains: <em>How do these
+                        biologically plausible models actually perform against standard Artificial Neural Networks (ANNs)
+                        trained with backpropagation?</em></p>
+                <p>Today, we benchmark a Predictive Coding Network against a standard Multilayer Perceptron (MLP) of the
+                    exact same size on two distinct tasks: Non-linear Regression and Image Classification.</p>
+            </div>
+
+            <h2>Experiment 1: Non-Linear Regression</h2>
+            <p>For our first test, we modeled a noisy sine wave to evaluate continuous function approximation. The
+                architecture for both the standard MLP and the PCN was <code>1 -> 32 -> 32 -> 1</code>.</p>
+            <p>For the standard MLP, we used an Adam optimizer and standard backpropagation. For the PCN, we used 20
+                steps of internal inference to settle the local energy landscape before applying the local Hebbian weight
+                update rule.</p>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/pcn/pcn_vs_mlp_regression.png"
+                    alt="Training Loss Comparison: Standard MLP vs PCN on nonlinear sine wave regression.">
+                <p class="figure-caption">Training Loss Comparison: Standard MLP vs PCN on nonlinear sine wave
+                    regression. Both networks learn the underlying function, but the MLP converges faster with less
+                    noise.</p>
+            </div>
+
+            <h3>Results & Analysis</h3>
+            <p>Both networks successfully learned the underlying non-linear sine function, but their learning dynamics
+                were radically different:</p>
+            <ul>
+                <li><strong>MLP:</strong> The standard MLP converged extremely efficiently in wall-clock time and
+                    requires significantly fewer epochs to reach a structurally low Mean Squared Error (MSE). Because
+                    backpropagation has instantaneous access to the exact global gradient chain, it optimizes the network
+                    without hesitation.</li>
+                <li><strong>PCN:</strong> The Predictive Coding Network successfully approximated the sine wave, but its
+                    learning trajectory was inherently noisier. This noise stems from the <em>inference phase</em>. If
+                    the latent nodes do not perfectly minimize their local prediction errors before the learning phase
+                    begins, the subsequent synaptic weight update will be misaligned. Tuned learning rates for the
+                    inference walk are critical to stability.</li>
+            </ul>
+
+            <h2>Experiment 2: Image Classification (MNIST)</h2>
+            <p>To push the models into a high-dimensional space, we built an architecture of
+                <code>784 -> 128 -> 10</code> to classify the classic MNIST digit dataset.</p>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/pcn/pcn_vs_mlp_mnist.png"
+                    alt="Test Accuracy Comparison: Standard MLP vs PCN on MNIST image classification.">
+                <p class="figure-caption">Test Accuracy Comparison: Standard MLP vs PCN on MNIST image classification.
+                    The MLP reaches >94% quickly while the PCN climbs to 72% using purely local learning.</p>
+            </div>
+
+            <p>Here, the "Generative" nature of the Predictive Coding Network shines through, shedding light on a
+                unique architectural challenge:</p>
+            <ul>
+                <li><strong>MLP Accuracy:</strong> As expected, the MLP quickly hit $>94\%$ test accuracy within the
+                    first 10 epochs. It acts as a flawless discriminative pipeline.</li>
+                <li><strong>PCN Accuracy:</strong> Training the PCN for classification proved highly unstable when using
+                    standard practices. Using <code>ReLU</code> activations caused the negative latent states to
+                    zero-gradient, halting the bottom-up inference phase entirely and flatlining accuracy at exactly 10%
+                    (random guessing). After swapping the structural activations to <code>Tanh</code> and boosting the
+                    inference walk to $T=50$ steps, the PCN successfully escaped the flatline to climb beyond $72\%$
+                    accuracy.</li>
+            </ul>
+            <p>The PCN achieved learning <em>with absolutely no global loss propagation</em>. It learned to classify
+                handwritten digits purely by minimizing local discrepancies layer by layer.</p>
+
+            <h2>The Verdict: Why Use PCNs?</h2>
+            <p>If standard backpropagation wins decisively on parameter efficiency, convergence speed, and stability,
+                why research Predictive Coding?</p>
+
+            <p><strong>1. Algorithmic Biology:</strong> Backpropagation requires a hyper-optimized global supervisor.
+                PCNs offer empirical, mathematical proof that complex, non-linear feature clustering (like MNIST) can
+                emerge natively from entirely local, unsupervised rules within node clusters.</p>
+
+            <p><strong>2. The Neuromorphic Hardware Paradigm:</strong> Our current multi-trillion dollar GPU acceleration
+                architectures (from NVIDIA and AMD) are fundamentally constrained by global matrix multiplication and
+                rigid memory bandwidth specifically tailored to the backward pass. PCNs do not require synchronous
+                global memory locking to pass errors backwards. This paradigm shift perfectly correlates with
+                next-generation <strong>Neuromorphic Hardware</strong> (such as IBM NorthPole or analog crossbar
+                arrays), where strictly local weight updates map 1:1 to physical variable-resistance synapses.</p>
+
+            <p><strong>3. Generative by Default:</strong> A PCN is fundamentally bidirectional. Because it structurally
+                learns by actively predicting a layer's output from the top down, a fully trained PCN can run "in
+                reverse" to imagine or hallucinate inputs purely by fixing the label constraint.</p>
+
+            <p>Predictive Coding is the bleeding edge of making Artificial Intelligence algorithmically and physically
+                identical to Natural Intelligence.</p>
+
+            <p><em>Thank you for following this 3-part "Build in Public" series on Predictive Coding Networks. Stay
+                    connected on LinkedIn for future architectural tear-downs!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
