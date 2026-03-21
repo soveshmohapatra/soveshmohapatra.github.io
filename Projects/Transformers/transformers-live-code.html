@@ -1,0 +1,150 @@
+---
+layout: null
+title: "Transformers from Scratch: Part 2 — Pure PyTorch Implementation"
+description: "Translating self-attention equations into pure PyTorch code — building the Encoder-Decoder and causal masks. By Sovesh Mohapatra."
+permalink: /projects/transformers-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformers from Scratch: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Prism Syntax Highlighting Theme (Dark) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .code-block-container { margin: 2rem 0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+        .code-header { background: #1d1e22; color: #a9b7c6; padding: 0.5rem 1rem; font-family: monospace; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        pre[class*="language-"] { margin: 0; border-radius: 0; }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/transformers/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Transformers Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Transformers from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: Pure PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Welcome to Part 2 of our series on Transformers. In Part 1, we outlined the mathematical foundations of Self-Attention and Positional Encodings. Now, it is time to turn those equations into running code.</p>
+                <p>Rather than relying on the high-level <code>nn.Transformer</code> module, we are building the entire sequence-to-sequence model from scratch in PyTorch. This requires precise management of tensor dimensions, multi-head reshapes, and causality masks.</p>
+            </div>
+
+            <h2>Implementing Scaled Dot-Product Attention</h2>
+            <p>The attention mechanism requires projecting our inputs, performing batched matrix multiplications, and applying masking.</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>attention.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">class ScaledDotProductAttention(nn.Module):
+    def forward(self, q, k, v, mask=None):
+        d_k = q.size(-1)
+        scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(d_k)
+        
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, -1e9)
+            
+        attention_weights = F.softmax(scores, dim=-1)
+        output = torch.matmul(attention_weights, v)
+        return output, attention_weights</code></pre>
+            </div>
+
+            <p>Notice the use of <code>-1e9</code> when applying the mask. When we pass this tensor through the softmax activation, those values accurately converge to zero, ensuring the model cannot attend to padded or future tokens.</p>
+
+            <h2>Constructing the Encoder and Decoder Layers</h2>
+            <p>The Transformer architecture is symmetric, built of layered building blocks.</p>
+            <p>The <strong>Encoder Layer</strong> consists of:</p>
+            <ol>
+                <li>Multi-Head Self-Attention</li>
+                <li>Residual Connection & Layer Normalization</li>
+                <li>Position-wise Feed-Forward Network</li>
+                <li>Residual Connection & Layer Normalization</li>
+            </ol>
+            <p>The <strong>Decoder Layer</strong> is slightly more complex. It adds a <em>Cross-Attention</em> block in the middle, which acts as the bridge between the encoder and the decoder. In cross-attention, the Queries come from the previous Decoder layer, while the Keys and Values are provided by the Encoder's final output.</p>
+
+            <h2>The Future-Blind Mask</h2>
+            <p>One of the trickiest parts of the implementation is the Look-Ahead Mask (or causal mask) in the decoder. When generating text sequentially, the model must be blind to future tokens during training (teacher forcing). We achieve this by applying a lower-triangular boolean mask matrix to the self-attention scores in the decoder.</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>masking.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">tgt_lookahead_mask = torch.tril(torch.ones((tgt_len, tgt_len))).bool()</code></pre>
+            </div>
+
+            <h2>Up Next</h2>
+            <p>With the code complete, we now have a working Transformer. But how do we know it learns? In <strong>Part 3</strong>, we will set up a sequence-to-sequence training loop, visualize the loss curve, and extract the internal cross-attention tensors to visualize how the model routes information.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <!-- Prism.js for Syntax Highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,60 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{Transformers from Scratch: Part 1 - The Math of Self-Attention}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-1-Banner.png}
+\end{center}
+
+\section{Introduction}
+Before 2017, the NLP landscape was dominated by Recurrent Neural Networks (RNNs) and Long Short-Term Memory networks (LSTMs). While powerful, these architectures fundamentally processed data sequentially. This presented two massive bottlenecks: training could not be easily parallelized, and models struggled to retain information across long sequences due to vanishing gradients.
+
+Then, Vaswani et al. published ``Attention Is All You Need,'' introducing the Transformer architecture. It threw out recurrence entirely in favor of a mechanism called \textit{Self-Attention}. 
+
+In Part 1 of this mini-series, we will deconstruct the mathematical core of the Transformer: Multi-Head Self-Attention and Positional Encoding.
+
+\section{The Intuition Behind Attention}
+Imagine reading a sentence. When you look at the word ``bank,'' you subconsciously check the surrounding words (e.g., ``river'' vs. ``money'') to determine its context. Self-Attention allows a neural network to do exactly this mathematically. It computes a weighted representation of each word based on its relevance to every other word in the sequence.
+
+\section{Queries, Keys, and Values}
+For each word in the sequence, the model projects its embedding into three distinct vectors:
+\begin{itemize}
+    \item \textbf{Query ($Q$)}: What information is this word looking for?
+    \item \textbf{Key ($K$)}: What information does this word possess?
+    \item \textbf{Value ($V$)}: What is the actual content/meaning of this word?
+\end{itemize}
+
+The relevance between two words is computed via the dot product of their respective Query and Key vectors. 
+
+\section{Scaled Dot-Product Attention}
+The core mathematics of attention is surprisingly elegant. If we matrix-multiply the $Q$ and $K$ matrices, we obtain an attention score matrix. To prevent the gradients from vanishing due to large dot products, we scale the scores by the square root of the key dimension ($\sqrt{d_k}$), apply a softmax function to create probabilities, and finally multiply by the $V$ matrix.
+
+The formula is given by:
+\begin{equation}
+    \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+\end{equation}
+
+\section{Multi-Head Attention}
+Instead of computing attention once, the Transformer splits the vectors into multiple ``heads.'' This allows the model to jointly attend to information from different representation subspaces at different positions. 
+\begin{equation}
+    \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)W^O
+\end{equation}
+where $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$.
+
+\section{Injecting Order: Positional Encodings}
+Unlike RNNs, the attention mechanism has no inherent notion of order; processing ``A B C'' is treated the same as ``C B A''. To fix this, we inject positional encodings directly into the input embeddings. Using a combination of sine and cosine functions of different frequencies, the model learns absolute and relative positional relationships:
+\begin{align}
+    PE_{(pos, 2i)} &= \sin(pos / 10000^{2i/d_{model}}) \\
+    PE_{(pos, 2i+1)} &= \cos(pos / 10000^{2i/d_{model}})
+\end{align}
+
+\section{Up Next}
+With the math of self-attention defined, we have the engine of the Transformer. In Part 2, we will implement these equations in pure PyTorch and build the full Encoder-Decoder architecture!
+\end{document}

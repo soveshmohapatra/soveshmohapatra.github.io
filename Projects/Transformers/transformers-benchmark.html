@@ -1,0 +1,128 @@
+---
+layout: null
+title: "Transformers from Scratch: Part 3 — Training and Visualizing Attention"
+description: "Benchmarking the Transformer on a sequence reversal task and extracting cross-attention maps to visualize dynamic routing. By Sovesh Mohapatra."
+permalink: /projects/transformers-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformers from Scratch: Part 3 - Training and Visualizing | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .benchmark-figure { margin: 3rem 0; text-align: center; }
+        .benchmark-img { max-width: 100%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); }
+        .figure-caption { margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); font-style: italic; }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/transformers/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Transformers Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Transformers from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Training and Visualizing Attention</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Welcome to the grand finale of our 3-part series on building a Transformer from first principles!</p>
+                <p>In Part 1, we deconstructed the mathematics behind Multi-Head Self-Attention. In Part 2, we wrote a pure PyTorch implementation of the full Sequence-to-Sequence architecture, navigating the tricky landscape of causality masks and parallel batching.</p>
+                <p>However, a model implementation is only as good as its ability to learn. Today, we will define a training objective, execute the training loop, and extract the generated attention maps to prove our Transformer learns to route information dynamically.</p>
+            </div>
+
+            <h2>The Training Task: Sequence Reversal</h2>
+            <p>To benchmark our model, we selected a toy Sequence-to-Sequence task: integer sequence reversal.</p>
+            <p>The task is simple but incredibly effective at evaluating attention mechanisms: given a sequence of integers like <code>&lt;BOS&gt; 4 8 2 9 &lt;EOS&gt;</code>, the model must output <code>&lt;BOS&gt; 9 2 8 4 &lt;EOS&gt;</code>.</p>
+            <p>We generated an on-the-fly dataset of $10,000$ random short sequences. We then trained the full Transformer using an Adam optimizer and Cross-Entropy Loss to enforce accurate token prediction over an abstract vocabulary of size 13 (covering padding, start, end, and digits).</p>
+
+            <h2>The Loss Curve</h2>
+            <p>Running the custom <code>train.py</code> script yields an expected training trajectory:</p>
+            
+            <figure class="benchmark-figure">
+                <img src="{{ site.baseurl }}/assets/projects/transformers/training_loss.png" alt="Training Loss Curve" class="benchmark-img">
+                <figcaption class="figure-caption">Figure 1: Training Loss Curve showing rapid convergence for Sequence Reversal</figcaption>
+            </figure>
+
+            <p>The loss plummets extremely quickly. Transformers converge fast on perfectly deterministic symbolic tasks. The model first learns the positional token distribution and grammar, rapidly decreasing to near-zero as it masters the exact mapping.</p>
+
+            <h2>Staring into the Attention Matrix</h2>
+            <p>The true power of this project is our ability to peer inside the "black box." How is the decoder making its predictions?</p>
+            <p>During inference, we intercepted the cross-attention tensors inside the final <code>DecoderLayer</code>. We extracted an attention map of dimension <code>(Target_Length, Source_Length)</code>:</p>
+
+            <figure class="benchmark-figure">
+                <img src="{{ site.baseurl }}/assets/projects/transformers/attention_map.png" alt="Cross-Attention Map" class="benchmark-img">
+                <figcaption class="figure-caption">Figure 2: Learned Cross-Attention map displaying anti-diagonal probability distributions.</figcaption>
+            </figure>
+
+            <p>In the heatmap above, you observe a stark, crisp anti-diagonal line tracing from the top right to the bottom left.</p>
+            <p>What does this mean? It signifies that when the decoder generates the first vocabulary token, its query vector achieves maximum activation strictly with the key vector of the <em>last</em> sequence token from the encoder. The Transformer <em>learned</em> that to reverse a sequence, it must route information sequentially backward purely by altering attention weights across positions.</p>
+
+            <h2>Conclusion</h2>
+            <p>Through these 3 posts, we have demystified one of the most vital architectures in modern machine learning. By coding the math without abstraction layers, we understand exactly how LLMs read and write context.</p>
+            <p>Stay tuned for the next series!</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
