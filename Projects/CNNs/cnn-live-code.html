@@ -1,0 +1,411 @@
+---
+layout: null
+title: "Deconstructing CNNs: Part 2 — PyTorch Implementation"
+description: "Building Convolutional Neural Networks from scratch in PyTorch — Conv2D, pooling layers, LeNet-5, SimpleCNN, and DeepCNN architectures. By Sovesh Mohapatra."
+permalink: /projects/cnn-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing CNNs: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+
+        pre[class*="language-"] {
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/cnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to CNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing CNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: Pure PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we explored the mathematical foundations of convolutions — the sliding window operation,
+                    weight sharing, pooling, and hierarchical feature learning.</p>
+                <p>Today, we take that math and translate it into a pure PyTorch implementation. We will build every
+                    component from scratch: a custom Conv2D layer, pooling operations, activation functions, and three
+                    complete CNN architectures of increasing depth.</p>
+                <p style="margin-top: 1rem; font-weight: 500; color: var(--accent-light);">
+                    <i class="fab fa-github"></i>
+                    <a href="https://github.com/soveshmohapatra/CNN-Models-From-Scratch" target="_blank"
+                        style="color: inherit; text-decoration: underline;">View Full Setup on GitHub</a>
+                </p>
+            </div>
+
+            <h2>The Convolutional Layer</h2>
+            <p>Our custom Conv2D layer implements the sliding window operation with learnable kernels. We use
+                <strong>Xavier initialization</strong> to ensure stable gradient flow at the start of training.</p>
+
+            <pre><code class="language-python">class Conv2D(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size,
+                 stride=1, padding=0, bias=True):
+        super().__init__()
+        # Learnable convolution kernels
+        # Shape: (out_channels, in_channels, kernel_size, kernel_size)
+        self.weight = nn.Parameter(
+            torch.randn(out_channels, in_channels, kernel_size, kernel_size)
+        )
+        if bias:
+            self.bias = nn.Parameter(torch.zeros(out_channels))
+
+        # Initialize weights using Xavier initialization
+        nn.init.xavier_uniform_(self.weight)
+
+    def forward(self, x):
+        if self.padding > 0:
+            x = F.pad(x, (self.padding,) * 4)
+        return F.conv2d(x, self.weight, self.bias, stride=self.stride)</code></pre>
+
+            <h2>Pooling Layers</h2>
+            <p>We implement both <strong>MaxPool2D</strong> and <strong>AveragePool2D</strong> for spatial downsampling.
+                Max pooling preserves the strongest activations while average pooling smooths the representation.</p>
+
+            <pre><code class="language-python">class MaxPool2D(nn.Module):
+    """Reduces spatial dimensions by taking the maximum in each window."""
+    def __init__(self, kernel_size, stride=None, padding=0):
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride if stride is not None else kernel_size
+
+    def forward(self, x):
+        return F.max_pool2d(x, self.kernel_size, self.stride, self.padding)
+
+
+class AveragePool2D(nn.Module):
+    """Reduces spatial dimensions by taking the average in each window."""
+    def __init__(self, kernel_size, stride=None, padding=0):
+        super().__init__()
+        self.kernel_size = kernel_size
+        self.stride = stride if stride is not None else kernel_size
+
+    def forward(self, x):
+        return F.avg_pool2d(x, self.kernel_size, self.stride, self.padding)</code></pre>
+
+            <h2>Architecture 1: LeNet-5 (1998)</h2>
+            <p>One of the earliest successful CNNs, designed by Yann LeCun for handwritten digit recognition. LeNet-5
+                uses <strong>tanh activations</strong> and <strong>average pooling</strong> — reflecting the conventions
+                of the era before ReLU.</p>
+
+            <pre><code class="language-python">class LeNet5(nn.Module):
+    def __init__(self, num_classes=10, in_channels=1):
+        super().__init__()
+        # Feature extractor
+        self.conv1 = Conv2D(in_channels, 6, kernel_size=5, padding=2)
+        self.pool1 = AveragePool2D(kernel_size=2, stride=2)
+        self.conv2 = Conv2D(6, 16, kernel_size=5)
+        self.pool2 = AveragePool2D(kernel_size=2, stride=2)
+
+        # Classifier
+        self.fc1 = nn.Linear(16 * 6 * 6, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, num_classes)
+
+    def forward(self, x):
+        x = tanh(self.conv1(x))  # Conv -> Tanh
+        x = self.pool1(x)        # AvgPool
+        x = tanh(self.conv2(x))  # Conv -> Tanh
+        x = self.pool2(x)        # AvgPool
+        x = flatten(x)           # Flatten for FC layers
+        x = tanh(self.fc1(x))
+        x = tanh(self.fc2(x))
+        return self.fc3(x)</code></pre>
+
+            <h2>Architecture 2: SimpleCNN</h2>
+            <p>A modern architecture demonstrating the classic <strong>Conv &rarr; ReLU &rarr; Pool</strong> pattern
+                with dropout regularization:</p>
+
+            <pre><code class="language-python">class SimpleCNN(nn.Module):
+    def __init__(self, num_classes=10, in_channels=1):
+        super().__init__()
+        self.conv1 = Conv2D(in_channels, 32, kernel_size=3, padding=1)
+        self.conv2 = Conv2D(32, 64, kernel_size=3, padding=1)
+        self.pool = MaxPool2D(kernel_size=2, stride=2)
+        self.fc1 = nn.Linear(64 * 7 * 7, 128)  # 28x28 input
+        self.fc2 = nn.Linear(128, num_classes)
+        self.dropout = nn.Dropout(0.5)
+
+    def forward(self, x):
+        x = relu(self.conv1(x))   # 28x28 -> 28x28
+        x = self.pool(x)          # 28x28 -> 14x14
+        x = relu(self.conv2(x))   # 14x14 -> 14x14
+        x = self.pool(x)          # 14x14 -> 7x7
+        x = flatten(x)            # 64 * 7 * 7 = 3136
+        x = self.dropout(relu(self.fc1(x)))
+        return self.fc2(x)</code></pre>
+
+            <h2>Architecture 3: DeepCNN (VGG-Style)</h2>
+            <p>A deeper network using reusable <strong>CNN blocks</strong> with BatchNorm. Each block follows
+                the pattern Conv &rarr; BatchNorm &rarr; ReLU &rarr; Pool, doubling channels at each stage:</p>
+
+            <pre><code class="language-python">class CNNBlock(nn.Module):
+    """Reusable Conv -> BatchNorm -> ReLU -> Pool block."""
+    def __init__(self, in_channels, out_channels, kernel_size=3, pool=True):
+        super().__init__()
+        self.conv = Conv2D(in_channels, out_channels, kernel_size,
+                          padding=kernel_size // 2)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.pool = MaxPool2D(kernel_size=2, stride=2) if pool else nn.Identity()
+
+    def forward(self, x):
+        return self.pool(relu(self.bn(self.conv(x))))
+
+
+class DeepCNN(nn.Module):
+    """VGG-inspired architecture with stacked CNN blocks."""
+    def __init__(self, num_classes=10, in_channels=1,
+                 num_blocks=4, initial_channels=32):
+        super().__init__()
+        blocks = []
+        channels = initial_channels
+        for i in range(num_blocks):
+            blocks.append(CNNBlock(
+                in_channels if i == 0 else channels, channels,
+                pool=(i < num_blocks - 1)
+            ))
+            if i < num_blocks - 1:
+                channels *= 2  # Double channels: 32 -> 64 -> 128
+
+        self.features = nn.Sequential(*blocks)
+        self.classifier = nn.Sequential(
+            Flatten(),
+            nn.Dropout(0.5),
+            nn.Linear(channels * 3 * 3, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, num_classes)
+        )</code></pre>
+
+            <h2>Training Strategy</h2>
+            <p>We train our SimpleCNN on MNIST with:</p>
+            <ul>
+                <li><strong>Cross-entropy loss</strong> for multi-class classification</li>
+                <li><strong>Adam optimizer</strong> with learning rate $0.001$</li>
+                <li><strong>StepLR scheduler</strong> halving the learning rate every 5 epochs</li>
+                <li><strong>Dropout regularization</strong> ($p=0.5$) in fully connected layers</li>
+            </ul>
+
+            <pre><code class="language-python">model = SimpleCNN(num_classes=10, in_channels=1).to(device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
+
+for epoch in range(1, EPOCHS + 1):
+    train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
+    test_loss, test_acc = evaluate(model, test_loader, criterion, device)
+    scheduler.step()</code></pre>
+
+            <h2>Next Steps: Visualizing What CNNs Learn</h2>
+            <p>We now have a complete implementation — from custom convolutional layers to three full architectures.
+                In <strong>Part 3</strong>, we will train on MNIST, visualize the learned convolutional filters, and
+                analyze the feature map activations to understand what the network actually detects at each layer.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

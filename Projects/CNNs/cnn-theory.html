@@ -1,0 +1,331 @@
+---
+layout: null
+title: "Deconstructing CNNs: Part 1 — The Math of Convolutions"
+description: "The mathematical foundations of Convolutional Neural Networks — 2D convolution, weight sharing, pooling, and hierarchical feature learning. By Sovesh Mohapatra."
+permalink: /projects/cnn-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing CNNs: Part 1 - The Math of Convolutions | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/cnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to CNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing CNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Convolutions</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Before Convolutional Neural Networks, computer vision relied on hand-crafted features — SIFT, HOG,
+                    and edge detectors designed by human experts. These methods were brittle, domain-specific, and
+                    failed to generalize.</p>
+                <p>CNNs changed everything by <strong>learning features directly from data</strong>. Instead of manually
+                    designing filters, CNNs learn them automatically through backpropagation, discovering hierarchical
+                    representations from edges to textures to object parts.</p>
+                <p>In this new 3-part "Build in Public" series, we will deconstruct Convolutional Neural Networks from
+                    first principles. Today, we look at the mathematical foundation: the convolution operation, pooling,
+                    and the architectural principles that make CNNs powerful. In Part 2, we will build complete CNN
+                    architectures in pure PyTorch. In Part 3, we will train on MNIST and visualize the learned filters
+                    and feature maps.</p>
+            </div>
+
+            <h2>The Intuition Behind Convolution</h2>
+            <p>Imagine sliding a small window (called a <em>kernel</em> or <em>filter</em>) across an image. At each
+                position, you compute a weighted sum of pixel values. This operation detects specific patterns — vertical
+                edges, horizontal edges, or color contrasts — depending on the kernel's weights.</p>
+
+            <p>The magic of CNNs is that these kernel weights are <strong>learned</strong> during training, not
+                hand-designed.</p>
+
+            <h2>The Convolution Operation</h2>
+            <p>Mathematically, 2D convolution is defined as:</p>
+
+            <div class="math-block">
+                $$ (I * K)_{i,j} = \sum_m \sum_n I_{i-m, j-n} \cdot K_{m,n} $$
+            </div>
+
+            <p>where $I$ is the input image and $K$ is the kernel.</p>
+
+            <p>In practice, we use <em>cross-correlation</em> (no flipping), which is simpler and learns equivalently:</p>
+
+            <div class="math-block">
+                $$ (I \star K)_{i,j} = \sum_m \sum_n I_{i+m, j+n} \cdot K_{m,n} $$
+            </div>
+
+            <p>For an input of size $H \times W$ with a kernel of size $k$, the output spatial dimensions are:</p>
+
+            <div class="math-block">
+                $$ H_{out} = \left\lfloor\frac{H + 2 \cdot \text{padding} - \text{dilation} \cdot (k - 1) - 1}{\text{stride}} + 1\right\rfloor $$
+            </div>
+
+            <h2>Key Architectural Principles</h2>
+
+            <h3>Local Connectivity</h3>
+            <p>Unlike fully connected layers, convolutional neurons only connect to a <strong>local region</strong> of
+                the input. This captures the intuition that nearby pixels are more related than distant ones. A single
+                neuron in a convolutional layer sees only a small $k \times k$ patch, not the entire image.</p>
+
+            <h3>Weight Sharing</h3>
+            <p>The same kernel slides across the entire image. This dramatically reduces parameters and enables
+                <strong>translation invariance</strong> — a feature detected in one location can be detected anywhere.
+                A 3x3 convolution with 64 input and output channels has only:</p>
+
+            <div class="math-block">
+                $$ 64 \times 64 \times 3 \times 3 = 36{,}864 \text{ parameters} $$
+            </div>
+
+            <p>Compare this to a fully connected layer with the same dimensions, which would have millions.</p>
+
+            <h3>Pooling</h3>
+            <p>Pooling layers reduce spatial dimensions, providing:</p>
+            <ul>
+                <li>Computational efficiency</li>
+                <li>Translation invariance</li>
+                <li>Expanded receptive fields for deeper layers</li>
+            </ul>
+
+            <p>Max pooling, the most common variant, selects the maximum value in each window:</p>
+
+            <div class="math-block">
+                $$ \text{MaxPool}(x)_{i,j} = \max_{(m,n) \in \text{window}} x_{i+m, j+n} $$
+            </div>
+
+            <p>Average pooling instead computes the mean, smoothing the representation rather than preserving the
+                strongest activations.</p>
+
+            <h2>Hierarchical Feature Learning</h2>
+            <p>Deep CNNs learn a hierarchy of features through stacked convolutional layers:</p>
+            <ul>
+                <li><strong>Early layers</strong>: Detect edges, corners, and simple textures</li>
+                <li><strong>Middle layers</strong>: Combine edges into motifs and patterns</li>
+                <li><strong>Deep layers</strong>: Recognize object parts and semantic concepts</li>
+            </ul>
+
+            <p>This hierarchical representation is what makes CNNs so powerful for visual recognition. Each layer builds
+                on the abstractions of the previous one, composing simple features into increasingly complex detectors.</p>
+
+            <h2>Activation Functions</h2>
+            <p>After each convolution, a non-linear activation function is applied. The ReLU (Rectified Linear Unit) is
+                the default choice in modern CNNs:</p>
+
+            <div class="math-block">
+                $$ \text{ReLU}(x) = \max(0, x) $$
+            </div>
+
+            <p>ReLU introduces non-linearity while avoiding the vanishing gradient problem that plagued earlier
+                activations like sigmoid and tanh. It creates <strong>sparse activations</strong> — most neurons are
+                inactive for any given input — which is both computationally efficient and may aid generalization.</p>
+
+            <h2>Next Steps: From Math to Code</h2>
+            <p>The convolution operation, combined with weight sharing and hierarchical processing, provides CNNs with
+                an inductive bias perfectly suited for visual data. These three principles — <strong>locality</strong>,
+                <strong>translation equivariance</strong>, and <strong>compositionality</strong> — encode powerful
+                assumptions about the structure of images.</p>
+
+            <p>In <strong>Part 2</strong>, we will implement these concepts in pure PyTorch. We will build a custom
+                Conv2D layer, pooling operations, and complete CNN architectures including LeNet-5 and a VGG-style
+                deep network.</p>
+
+            <p><em>Stay tuned for the code drop as we build CNNs from scratch!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

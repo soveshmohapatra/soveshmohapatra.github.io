@@ -1,0 +1,349 @@
+---
+layout: null
+title: "Deconstructing CNNs: Part 3 — Training & Visualizing Features"
+description: "End-to-end CNN training on MNIST with filter visualization and feature map analysis — understanding what convolutional networks learn. By Sovesh Mohapatra."
+permalink: /projects/cnn-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing CNNs: Part 3 - Training & Visualizing Features | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Main Stylesheet (Re-using v2 styles for glassmorphism and theme) -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        .figure-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .figure-caption {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/cnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to CNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing CNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Training and Visualizing Features</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we explored the mathematical foundations of convolutions. In Part 2, we built custom
+                    Conv2D layers, pooling operations, and complete CNN architectures in pure PyTorch.</p>
+                <p>Now, we reap the rewards: training our CNN on MNIST and peering inside the black box. After training,
+                    we can visualize what features the learned filters actually detect and analyze how feature maps
+                    represent information at different depths of the network.</p>
+            </div>
+
+            <h2>Training Results</h2>
+            <p>Our SimpleCNN achieves strong performance on MNIST digit classification:</p>
+            <ul>
+                <li><strong>Training accuracy</strong>: ~99%</li>
+                <li><strong>Test accuracy</strong>: ~99%</li>
+                <li><strong>Convergence</strong>: Within 10 epochs</li>
+            </ul>
+
+            <p>The training curves show characteristic CNN behavior: rapid initial learning followed by gradual
+                refinement as the network fine-tunes its feature detectors.</p>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/cnns/training_curves.png"
+                    alt="Training and test loss/accuracy curves over 10 epochs of CNN training on MNIST.">
+                <p class="figure-caption">Training and test loss/accuracy curves over 10 epochs. The CNN converges
+                    quickly, with both train and test metrics closely tracking — indicating good generalization with no
+                    significant overfitting thanks to dropout regularization.</p>
+            </div>
+
+            <h2>Visualizing Learned Filters</h2>
+
+            <h3>First Layer Filters</h3>
+            <p>The first convolutional layer learns interpretable, low-level features:</p>
+            <ul>
+                <li><strong>Edge detectors</strong> (vertical, horizontal, diagonal orientations)</li>
+                <li><strong>Blob detectors</strong> responding to local intensity patterns</li>
+                <li><strong>Simple texture patterns</strong> capturing fine-grained structure</li>
+            </ul>
+
+            <p>These match findings from neuroscience: early visual cortex neurons also respond to oriented edges and
+                simple spatial frequency patterns.</p>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/cnns/filters.png"
+                    alt="Grid visualization of the 32 learned convolutional filters from the first layer.">
+                <p class="figure-caption">The 32 learned convolutional filters from the first layer of our SimpleCNN.
+                    Each 3x3 filter has learned to detect a specific low-level feature. We normalize each filter to
+                    $[0, 1]$ for visualization. Notice the variety of edge orientations and blob patterns the network
+                    has discovered autonomously through backpropagation.</p>
+            </div>
+
+            <h2>Feature Map Analysis</h2>
+
+            <h3>What Are Feature Maps?</h3>
+            <p>Feature maps are the activations produced when an input image passes through a convolutional layer.
+                Each map represents the <strong>spatial presence</strong> of a specific feature — bright regions
+                indicate where the corresponding filter responds strongly to the input.</p>
+
+            <h3>Progressive Abstraction</h3>
+            <p>As we move deeper through the network, the feature maps show progressive abstraction:</p>
+            <ul>
+                <li><strong>Layer 1</strong>: Responds to edges and simple patterns in the raw image</li>
+                <li><strong>Layer 2</strong>: Combines edges into shapes, contours, and motifs</li>
+                <li><strong>Deeper layers</strong>: Detect complex patterns and discriminative digit features</li>
+            </ul>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/cnns/feature_maps.png"
+                    alt="Feature map activations from the first convolutional layer for a sample MNIST digit.">
+                <p class="figure-caption">Feature map activations from the first convolutional layer for a sample
+                    MNIST digit. Each map highlights different structural aspects of the input — some respond to
+                    horizontal strokes, others to vertical edges or curves. The ReLU activation creates sparse maps
+                    where most neurons are inactive, focusing the representation on the most salient features.</p>
+            </div>
+
+            <h3>Sparse Activations</h3>
+            <p>ReLU creates sparse feature maps — most neurons are inactive (zero) for any given input. This
+                sparsity is computationally efficient and may aid generalization by encouraging the network to develop
+                more robust, non-redundant feature detectors.</p>
+
+            <h2>Why CNNs Work</h2>
+
+            <h3>Inductive Biases</h3>
+            <p>CNNs encode powerful assumptions about visual data that make them remarkably effective:</p>
+            <ul>
+                <li><strong>Locality</strong>: Nearby pixels are correlated — features are local</li>
+                <li><strong>Translation equivariance</strong>: Features are location-independent</li>
+                <li><strong>Compositionality</strong>: Complex patterns are built from simpler ones</li>
+            </ul>
+
+            <h3>Comparison to Fully Connected Networks</h3>
+            <p>For image tasks, CNNs vastly outperform fully connected networks because of:</p>
+            <ul>
+                <li><strong>Parameter efficiency</strong>: Weight sharing reduces parameters by orders of magnitude</li>
+                <li><strong>Spatial structure preservation</strong>: The 2D structure of images is maintained</li>
+                <li><strong>Hierarchical feature learning</strong>: Layer-by-layer composition of increasingly abstract
+                    representations</li>
+            </ul>
+
+            <h2>Conclusion</h2>
+            <p>CNNs remain foundational to computer vision. While Vision Transformers have gained popularity for
+                large-scale tasks, CNNs offer unmatched efficiency, interpretability, and strong inductive biases for
+                visual data. Understanding CNNs is essential for any deep learning practitioner.</p>
+
+            <p>We built this entirely from scratch in PyTorch — no pre-built convolutional layers, no pre-trained
+                weights. By seeing the raw filters learn edge detectors and watching feature maps light up with
+                hierarchical abstractions, we demystify the core architecture that launched the deep learning
+                revolution.</p>
+
+            <p><em>Thank you for following this 3-part "Build in Public" series on Convolutional Neural Networks. Stay
+                    connected on LinkedIn for future architectural tear-downs!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
