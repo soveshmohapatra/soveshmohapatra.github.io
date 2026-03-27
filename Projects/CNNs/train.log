@@ -1,0 +1,18 @@
+2026-03-24 14:19:19,709 - INFO - Using device: cpu
+2026-03-24 14:19:19,709 - INFO - Loading MNIST dataset...
+2026-03-24 14:19:23,932 - INFO - Model created with 421,642 parameters
+2026-03-24 14:19:23,933 - INFO - Starting training...
+2026-03-24 14:19:51,571 - INFO - Epoch 1/10 | Train Loss: 0.2532 | Train Acc: 92.11% | Test Loss: 0.0525 | Test Acc: 98.31%
+2026-03-24 14:20:19,767 - INFO - Epoch 2/10 | Train Loss: 0.1070 | Train Acc: 96.76% | Test Loss: 0.0415 | Test Acc: 98.67%
+2026-03-24 14:20:47,266 - INFO - Epoch 3/10 | Train Loss: 0.0844 | Train Acc: 97.55% | Test Loss: 0.0368 | Test Acc: 98.75%
+2026-03-24 14:21:15,138 - INFO - Epoch 4/10 | Train Loss: 0.0767 | Train Acc: 97.73% | Test Loss: 0.0282 | Test Acc: 98.99%
+2026-03-24 14:21:44,845 - INFO - Epoch 5/10 | Train Loss: 0.0667 | Train Acc: 97.98% | Test Loss: 0.0290 | Test Acc: 99.07%
+2026-03-24 14:22:15,306 - INFO - Epoch 6/10 | Train Loss: 0.0508 | Train Acc: 98.46% | Test Loss: 0.0250 | Test Acc: 99.09%
+2026-03-24 14:22:43,756 - INFO - Epoch 7/10 | Train Loss: 0.0496 | Train Acc: 98.45% | Test Loss: 0.0239 | Test Acc: 99.18%
+2026-03-24 14:23:12,254 - INFO - Epoch 8/10 | Train Loss: 0.0441 | Train Acc: 98.64% | Test Loss: 0.0202 | Test Acc: 99.34%
+2026-03-24 14:23:40,355 - INFO - Epoch 9/10 | Train Loss: 0.0407 | Train Acc: 98.75% | Test Loss: 0.0220 | Test Acc: 99.26%
+2026-03-24 14:24:08,381 - INFO - Epoch 10/10 | Train Loss: 0.0412 | Train Acc: 98.76% | Test Loss: 0.0212 | Test Acc: 99.27%
+2026-03-24 14:24:08,661 - INFO - Saved training curves to training_curves.png
+2026-03-24 14:24:09,003 - INFO - Saved filter visualization to filters.png
+2026-03-24 14:24:09,137 - INFO - Saved feature map visualization to feature_maps.png
+2026-03-24 14:24:09,137 - INFO - Training complete. Artifacts saved: train.log, training_curves.png, filters.png, feature_maps.png

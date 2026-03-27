@@ -1,0 +1,194 @@
+---
+layout: null
+title: "RNNs from Scratch: Part 3 — Training and Analyzing Dynamics"
+description: "Benchmarking the RNN on sequence classification tasks and analyzing hidden state trajectories and temporal integration. By Sovesh Mohapatra."
+permalink: /projects/rnns-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RNNs from Scratch: Part 3 - Training and Analyzing Dynamics | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .benchmark-figure { margin: 3rem 0; text-align: center; }
+        .benchmark-img { max-width: 100%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); }
+        .figure-caption { margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); font-style: italic; }
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/rnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to RNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">RNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Training and Analyzing Dynamics</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>After training our RNN on sequence classification, we can analyze its internal dynamics. How do hidden states evolve over time? What temporal patterns does the network capture?</p>
+            </div>
+
+            <h2>Training Results</h2>
+            <p>Our 2-layer RNN achieves:</p>
+            <ul>
+                <li>Training accuracy: ~95%</li>
+                <li>Test accuracy: ~93%</li>
+                <li>Convergence within 30-50 epochs</li>
+            </ul>
+
+            <p>The training curves show characteristic RNN behavior: initial rapid learning followed by gradual refinement.</p>
+
+            <figure class="benchmark-figure">
+                <img src="{{ site.baseurl }}/assets/projects/rnns/training_curves.png" alt="Training Loss and Accuracy Curves" class="benchmark-img">
+                <figcaption class="figure-caption">Figure 1: Training and validation metrics across epochs.</figcaption>
+            </figure>
+
+            <h2>Visualizing Hidden State Dynamics</h2>
+
+            <h3>Hidden State Trajectories</h3>
+            <p>Each hidden unit traces a trajectory over time:</p>
+            <ul>
+                <li>Some units respond to specific input patterns</li>
+                <li>Others integrate information across multiple time steps</li>
+                <li>The tanh non-linearity keeps activations bounded</li>
+            </ul>
+
+            <figure class="benchmark-figure">
+                <img src="{{ site.baseurl }}/assets/projects/rnns/hidden_states.png" alt="Hidden States Visualizations" class="benchmark-img">
+                <figcaption class="figure-caption">Figure 2: Trajectories of the hidden cell state activation values over time steps.</figcaption>
+            </figure>
+
+            <h3>Temporal Integration</h3>
+            <p>By examining hidden state plots, we observe:</p>
+            <ul>
+                <li><strong>Short-term memory</strong>: Some units respond transiently to inputs</li>
+                <li><strong>Long-term integration</strong>: Others accumulate evidence over time</li>
+                <li><strong>Oscillatory patterns</strong>: Some units show rhythmic activation</li>
+            </ul>
+
+            <h2>The Vanishing Gradient Problem in Practice</h2>
+
+            <h3>Gradient Flow Analysis</h3>
+            <p>During backpropagation, gradients must flow through all time steps:</p>
+
+            <div class="math-block">
+                $$ \frac{\partial L}{\partial W} = \sum_t \frac{\partial L}{\partial h_t} \cdot \frac{\partial h_t}{\partial W} $$
+            </div>
+
+            <p>For long sequences, early time steps receive vanishingly small gradients.</p>
+
+            <h3>Empirical Observation</h3>
+            <p>We observe that:</p>
+            <ul>
+                <li>Later time steps have stronger gradient magnitudes</li>
+                <li>Early time steps learn more slowly</li>
+                <li>This limits the effective context window</li>
+            </ul>
+
+            <h2>Why LSTMs and GRUs Were Invented</h2>
+            <p>The vanishing gradient problem motivated gated architectures:</p>
+            <ul>
+                <li><strong>LSTM</strong>: Introduces cell state with additive updates</li>
+                <li><strong>GRU</strong>: Simplifies with reset and update gates</li>
+                <li>Both create gradient "highways" for long-range flow</li>
+            </ul>
+
+            <h2>RNNs vs Transformers</h2>
+
+            <h3>Computational Complexity</h3>
+            <ul>
+                <li><strong>RNN</strong>: $O(T)$ sequential operations (cannot parallelize)</li>
+                <li><strong>Transformer</strong>: $O(1)$ parallel operations (full attention)</li>
+            </ul>
+
+            <h3>Memory Characteristics</h3>
+            <ul>
+                <li><strong>RNN</strong>: Fixed-size hidden state (information bottleneck)</li>
+                <li><strong>Transformer</strong>: Full sequence in memory (quadratic scaling)</li>
+            </ul>
+
+            <h3>Use Cases</h3>
+            <ul>
+                <li><strong>RNN</strong>: Streaming/online inference, resource-constrained settings</li>
+                <li><strong>Transformer</strong>: Batch processing, tasks requiring long-range context</li>
+            </ul>
+
+            <h2>Conclusion</h2>
+            <p>RNNs provide an elegant framework for sequence modeling through recurrence. While Transformers dominate many tasks, RNNs remain valuable for streaming applications and as building blocks for more complex architectures like LSTMs.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

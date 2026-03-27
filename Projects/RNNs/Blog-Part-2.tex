@@ -1,0 +1,106 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{RNNs from Scratch: Part 2 - Building the Architecture}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-2-Banner.png}
+\end{center}
+
+\section{Introduction}
+In Part 1, we explored the mathematics of recurrence. Now we implement RNNs in PyTorch, building from individual cells to complete sequence models.
+
+\section{The RNN Cell}
+Our RNNCell class implements the core recurrence:
+\begin{verbatim}
+h_new = tanh(W_xh @ x + W_hh @ h_prev + b)
+\end{verbatim}
+
+Key design choices:
+\begin{itemize}
+    \item Separate weight matrices for input and hidden projections
+    \item Xavier initialization to stabilize training
+    \item Optional bias terms
+\end{itemize}
+
+\section{Multi-Layer RNNs}
+Stacking RNN cells creates deeper representations:
+\begin{itemize}
+    \item Layer 1 processes the raw input sequence
+    \item Layer 2 processes the hidden states from Layer 1
+    \item Each additional layer learns higher-level temporal patterns
+\end{itemize}
+
+\section{Architecture Variants}
+
+\subsection{Sequence Classifier}
+Many-to-one architecture:
+\begin{verbatim}
+Input:  (batch, seq_len, input_size)
+Output: (batch, num_classes)
+\end{verbatim}
+Uses the final hidden state for classification.
+
+\subsection{Sequence Tagger}
+Many-to-many architecture:
+\begin{verbatim}
+Input:  (batch, seq_len, input_size)
+Output: (batch, seq_len, num_tags)
+\end{verbatim}
+Outputs a prediction at each time step.
+
+\subsection{CharRNN}
+Character-level language model:
+\begin{itemize}
+    \item Embedding layer for character tokens
+    \item Multi-layer RNN for sequence processing
+    \item Output projection to vocabulary logits
+    \item Autoregressive generation via sampling
+\end{itemize}
+
+\subsection{Bidirectional RNN}
+Processes sequences in both directions:
+\begin{itemize}
+    \item Forward RNN: Past to future
+    \item Backward RNN: Future to past
+    \item Concatenate both representations
+\end{itemize}
+
+This captures context from both directions, crucial for tasks like named entity recognition.
+
+\section{Implementation Details}
+
+\subsection{Batch-First vs Time-First}
+We use batch-first tensors $(B, T, D)$ for compatibility with PyTorch conventions, but internally process time step by time step.
+
+\subsection{Dropout Regularization}
+Applied between RNN layers (not across time) to prevent overfitting:
+\begin{verbatim}
+if dropout > 0:
+    self.dropout = nn.Dropout(dropout)
+\end{verbatim}
+
+\subsection{Hidden State Initialization}
+Hidden states are initialized to zero at the start of each sequence:
+\begin{equation}
+    h_0 = \mathbf{0}
+\end{equation}
+
+\section{Training Strategy}
+We train on synthetic sequence tasks:
+\begin{itemize}
+    \item Sequence classification: Predict label from entire sequence
+    \item Cross-entropy loss
+    \item Adam optimizer with learning rate scheduling
+\end{itemize}
+
+\section{Conclusion}
+With our RNN implemented, we can now train it and visualize how hidden states evolve. Part 3 explores hidden state dynamics and analyzes what the network learns.
+
+\end{document}

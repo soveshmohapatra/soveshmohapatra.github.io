@@ -1,0 +1,57 @@
+2026-03-24 14:31:38,646 - INFO - Using device: cpu
+2026-03-24 14:31:38,646 - INFO - Generating synthetic sequence data...
+2026-03-24 14:31:38,671 - INFO - Model created with 13,314 parameters
+2026-03-24 14:31:39,254 - INFO - Starting training...
+2026-03-24 14:31:39,343 - INFO - Epoch 1/50 | Train Loss: 0.7135 | Train Acc: 50.31% | Test Loss: 0.6670 | Test Acc: 61.60%
+2026-03-24 14:31:39,389 - INFO - Epoch 2/50 | Train Loss: 0.6697 | Train Acc: 58.12% | Test Loss: 0.6371 | Test Acc: 64.30%
+2026-03-24 14:31:39,436 - INFO - Epoch 3/50 | Train Loss: 0.6031 | Train Acc: 72.81% | Test Loss: 0.5426 | Test Acc: 75.60%
+2026-03-24 14:31:39,483 - INFO - Epoch 4/50 | Train Loss: 0.5087 | Train Acc: 75.94% | Test Loss: 0.3694 | Test Acc: 85.40%
+2026-03-24 14:31:39,529 - INFO - Epoch 5/50 | Train Loss: 0.3765 | Train Acc: 84.38% | Test Loss: 0.2959 | Test Acc: 87.00%
+2026-03-24 14:31:39,576 - INFO - Epoch 6/50 | Train Loss: 0.3323 | Train Acc: 85.62% | Test Loss: 0.2703 | Test Acc: 88.90%
+2026-03-24 14:31:39,623 - INFO - Epoch 7/50 | Train Loss: 0.2928 | Train Acc: 87.50% | Test Loss: 0.2729 | Test Acc: 88.30%
+2026-03-24 14:31:39,670 - INFO - Epoch 8/50 | Train Loss: 0.2946 | Train Acc: 88.44% | Test Loss: 0.2428 | Test Acc: 90.50%
+2026-03-24 14:31:39,718 - INFO - Epoch 9/50 | Train Loss: 0.2766 | Train Acc: 88.44% | Test Loss: 0.2218 | Test Acc: 90.50%
+2026-03-24 14:31:39,765 - INFO - Epoch 10/50 | Train Loss: 0.2387 | Train Acc: 87.81% | Test Loss: 0.2036 | Test Acc: 91.70%
+2026-03-24 14:31:39,813 - INFO - Epoch 11/50 | Train Loss: 0.2792 | Train Acc: 87.81% | Test Loss: 0.2081 | Test Acc: 91.30%
+2026-03-24 14:31:39,862 - INFO - Epoch 12/50 | Train Loss: 0.1921 | Train Acc: 92.50% | Test Loss: 0.2032 | Test Acc: 91.10%
+2026-03-24 14:31:39,909 - INFO - Epoch 13/50 | Train Loss: 0.2440 | Train Acc: 89.38% | Test Loss: 0.1978 | Test Acc: 93.10%
+2026-03-24 14:31:39,956 - INFO - Epoch 14/50 | Train Loss: 0.2287 | Train Acc: 90.00% | Test Loss: 0.1855 | Test Acc: 92.80%
+2026-03-24 14:31:40,002 - INFO - Epoch 15/50 | Train Loss: 0.1736 | Train Acc: 92.19% | Test Loss: 0.1974 | Test Acc: 91.50%
+2026-03-24 14:31:40,049 - INFO - Epoch 16/50 | Train Loss: 0.1834 | Train Acc: 94.06% | Test Loss: 0.1847 | Test Acc: 92.20%
+2026-03-24 14:31:40,095 - INFO - Epoch 17/50 | Train Loss: 0.1956 | Train Acc: 90.62% | Test Loss: 0.1869 | Test Acc: 92.50%
+2026-03-24 14:31:40,142 - INFO - Epoch 18/50 | Train Loss: 0.2390 | Train Acc: 88.12% | Test Loss: 0.1777 | Test Acc: 92.30%
+2026-03-24 14:31:40,188 - INFO - Epoch 19/50 | Train Loss: 0.1673 | Train Acc: 92.81% | Test Loss: 0.1927 | Test Acc: 91.50%
+2026-03-24 14:31:40,235 - INFO - Epoch 20/50 | Train Loss: 0.1892 | Train Acc: 91.88% | Test Loss: 0.1815 | Test Acc: 92.00%
+2026-03-24 14:31:40,284 - INFO - Epoch 21/50 | Train Loss: 0.1933 | Train Acc: 94.06% | Test Loss: 0.1747 | Test Acc: 93.20%
+2026-03-24 14:31:40,333 - INFO - Epoch 22/50 | Train Loss: 0.1617 | Train Acc: 94.38% | Test Loss: 0.1628 | Test Acc: 92.70%
+2026-03-24 14:31:40,405 - INFO - Epoch 23/50 | Train Loss: 0.1791 | Train Acc: 90.62% | Test Loss: 0.1610 | Test Acc: 93.20%
+2026-03-24 14:31:40,457 - INFO - Epoch 24/50 | Train Loss: 0.1809 | Train Acc: 92.81% | Test Loss: 0.1559 | Test Acc: 93.30%
+2026-03-24 14:31:40,506 - INFO - Epoch 25/50 | Train Loss: 0.1738 | Train Acc: 93.12% | Test Loss: 0.1644 | Test Acc: 93.30%
+2026-03-24 14:31:40,555 - INFO - Epoch 26/50 | Train Loss: 0.1606 | Train Acc: 94.06% | Test Loss: 0.1553 | Test Acc: 93.60%
+2026-03-24 14:31:40,603 - INFO - Epoch 27/50 | Train Loss: 0.1743 | Train Acc: 91.56% | Test Loss: 0.1682 | Test Acc: 92.90%
+2026-03-24 14:31:40,652 - INFO - Epoch 28/50 | Train Loss: 0.1560 | Train Acc: 92.50% | Test Loss: 0.1681 | Test Acc: 93.10%
+2026-03-24 14:31:40,700 - INFO - Epoch 29/50 | Train Loss: 0.1405 | Train Acc: 94.69% | Test Loss: 0.1652 | Test Acc: 93.00%
+2026-03-24 14:31:40,748 - INFO - Epoch 30/50 | Train Loss: 0.1561 | Train Acc: 92.81% | Test Loss: 0.1702 | Test Acc: 93.10%
+2026-03-24 14:31:40,797 - INFO - Epoch 31/50 | Train Loss: 0.1969 | Train Acc: 91.56% | Test Loss: 0.1560 | Test Acc: 92.90%
+2026-03-24 14:31:40,846 - INFO - Epoch 32/50 | Train Loss: 0.1533 | Train Acc: 94.06% | Test Loss: 0.1873 | Test Acc: 92.50%
+2026-03-24 14:31:40,894 - INFO - Epoch 33/50 | Train Loss: 0.1783 | Train Acc: 92.19% | Test Loss: 0.1607 | Test Acc: 93.40%
+2026-03-24 14:31:40,943 - INFO - Epoch 34/50 | Train Loss: 0.1353 | Train Acc: 95.00% | Test Loss: 0.1558 | Test Acc: 93.00%
+2026-03-24 14:31:40,991 - INFO - Epoch 35/50 | Train Loss: 0.1749 | Train Acc: 92.81% | Test Loss: 0.1729 | Test Acc: 92.90%
+2026-03-24 14:31:41,040 - INFO - Epoch 36/50 | Train Loss: 0.1745 | Train Acc: 91.56% | Test Loss: 0.1516 | Test Acc: 93.50%
+2026-03-24 14:31:41,088 - INFO - Epoch 37/50 | Train Loss: 0.1445 | Train Acc: 93.44% | Test Loss: 0.2111 | Test Acc: 91.70%
+2026-03-24 14:31:41,137 - INFO - Epoch 38/50 | Train Loss: 0.1515 | Train Acc: 93.44% | Test Loss: 0.1632 | Test Acc: 92.60%
+2026-03-24 14:31:41,186 - INFO - Epoch 39/50 | Train Loss: 0.1930 | Train Acc: 90.94% | Test Loss: 0.1673 | Test Acc: 93.00%
+2026-03-24 14:31:41,235 - INFO - Epoch 40/50 | Train Loss: 0.1363 | Train Acc: 93.44% | Test Loss: 0.1799 | Test Acc: 92.50%
+2026-03-24 14:31:41,283 - INFO - Epoch 41/50 | Train Loss: 0.1473 | Train Acc: 94.38% | Test Loss: 0.1551 | Test Acc: 93.50%
+2026-03-24 14:31:41,332 - INFO - Epoch 42/50 | Train Loss: 0.1403 | Train Acc: 93.75% | Test Loss: 0.1501 | Test Acc: 93.70%
+2026-03-24 14:31:41,381 - INFO - Epoch 43/50 | Train Loss: 0.1181 | Train Acc: 93.75% | Test Loss: 0.1709 | Test Acc: 93.30%
+2026-03-24 14:31:41,428 - INFO - Epoch 44/50 | Train Loss: 0.1049 | Train Acc: 95.31% | Test Loss: 0.1688 | Test Acc: 93.30%
+2026-03-24 14:31:41,478 - INFO - Epoch 45/50 | Train Loss: 0.1760 | Train Acc: 92.19% | Test Loss: 0.1518 | Test Acc: 93.30%
+2026-03-24 14:31:41,526 - INFO - Epoch 46/50 | Train Loss: 0.1324 | Train Acc: 95.00% | Test Loss: 0.1699 | Test Acc: 93.30%
+2026-03-24 14:31:41,574 - INFO - Epoch 47/50 | Train Loss: 0.1379 | Train Acc: 94.06% | Test Loss: 0.1582 | Test Acc: 93.30%
+2026-03-24 14:31:41,624 - INFO - Epoch 48/50 | Train Loss: 0.1060 | Train Acc: 96.88% | Test Loss: 0.1508 | Test Acc: 93.70%
+2026-03-24 14:31:41,672 - INFO - Epoch 49/50 | Train Loss: 0.1448 | Train Acc: 93.75% | Test Loss: 0.1624 | Test Acc: 93.30%
+2026-03-24 14:31:41,721 - INFO - Epoch 50/50 | Train Loss: 0.1258 | Train Acc: 95.31% | Test Loss: 0.1746 | Test Acc: 93.20%
+2026-03-24 14:31:42,011 - INFO - Saved training curves to training_curves.png
+2026-03-24 14:31:42,627 - INFO - Saved hidden state visualization to hidden_states.png
+2026-03-24 14:31:42,628 - INFO - Training complete. Artifacts saved: train.log, training_curves.png, hidden_states.png

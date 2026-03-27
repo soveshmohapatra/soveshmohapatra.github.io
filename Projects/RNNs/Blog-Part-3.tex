@@ -1,0 +1,96 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{RNNs from Scratch: Part 3 - Training and Analyzing Dynamics}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-3-Banner.png}
+\end{center}
+
+\section{Introduction}
+After training our RNN on sequence classification, we can analyze its internal dynamics. How do hidden states evolve over time? What temporal patterns does the network capture?
+
+\section{Training Results}
+Our 2-layer RNN achieves:
+\begin{itemize}
+    \item Training accuracy: ~95\%
+    \item Test accuracy: ~93\%
+    \item Convergence within 30-50 epochs
+\end{itemize}
+
+The training curves show characteristic RNN behavior: initial rapid learning followed by gradual refinement.
+
+\section{Visualizing Hidden State Dynamics}
+
+\subsection{Hidden State Trajectories}
+Each hidden unit traces a trajectory over time:
+\begin{itemize}
+    \item Some units respond to specific input patterns
+    \item Others integrate information across multiple time steps
+    \item The tanh non-linearity keeps activations bounded
+\end{itemize}
+
+\subsection{Temporal Integration}
+By examining hidden state plots, we observe:
+\begin{itemize}
+    \item \textbf{Short-term memory}: Some units respond transiently to inputs
+    \item \textbf{Long-term integration}: Others accumulate evidence over time
+    \item \textbf{Oscillatory patterns}: Some units show rhythmic activation
+\end{itemize}
+
+\section{The Vanishing Gradient Problem in Practice}
+
+\subsection{Gradient Flow Analysis}
+During backpropagation, gradients must flow through all time steps:
+\begin{equation}
+    \frac{\partial L}{\partial W} = \sum_t \frac{\partial L}{\partial h_t} \cdot \frac{\partial h_t}{\partial W}
+\end{equation}
+
+For long sequences, early time steps receive vanishingly small gradients.
+
+\subsection{Empirical Observation}
+We observe that:
+\begin{itemize}
+    \item Later time steps have stronger gradient magnitudes
+    \item Early time steps learn more slowly
+    \item This limits the effective context window
+\end{itemize}
+
+\section{Why LSTMs and GRUs Were Invented}
+The vanishing gradient problem motivated gated architectures:
+\begin{itemize}
+    \item \textbf{LSTM}: Introduces cell state with additive updates
+    \item \textbf{GRU}: Simplifies with reset and update gates
+    \item Both create gradient ``highways'' for long-range flow
+\end{itemize}
+
+\section{RNNs vs Transformers}
+
+\subsection{Computational Complexity}
+\begin{itemize}
+    \item RNN: $O(T)$ sequential operations (cannot parallelize)
+    \item Transformer: $O(1)$ parallel operations (full attention)
+\end{itemize}
+
+\subsection{Memory Characteristics}
+\begin{itemize}
+    \item RNN: Fixed-size hidden state (information bottleneck)
+    \item Transformer: Full sequence in memory (quadratic scaling)
+\end{itemize}
+
+\subsection{Use Cases}
+\begin{itemize}
+    \item RNN: Streaming/online inference, resource-constrained settings
+    \item Transformer: Batch processing, tasks requiring long-range context
+\end{itemize}
+
+\section{Conclusion}
+RNNs provide an elegant framework for sequence modeling through recurrence. While Transformers dominate many tasks, RNNs remain valuable for streaming applications and as building blocks for more complex architectures like LSTMs.
+
+\end{document}

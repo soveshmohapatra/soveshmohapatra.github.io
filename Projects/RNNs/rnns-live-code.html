@@ -1,0 +1,216 @@
+---
+layout: null
+title: "RNNs from Scratch: Part 2 — Building the Architecture"
+description: "Translating recurrence equations into pure PyTorch code — building single cell architecture and stacking multi-layer networks. By Sovesh Mohapatra."
+permalink: /projects/rnns-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RNNs from Scratch: Part 2 - Building the Architecture | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Prism Syntax Highlighting Theme (Dark) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .code-block-container { margin: 2rem 0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+        .code-header { background: #1d1e22; color: #a9b7c6; padding: 0.5rem 1rem; font-family: monospace; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        pre[class*="language-"] { margin: 0; border-radius: 0; }
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/rnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to RNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">RNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: Building the Architecture</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we explored the mathematics of recurrence. Now we implement RNNs in PyTorch, building from individual cells to complete sequence models.</p>
+            </div>
+
+            <h2>The RNN Cell</h2>
+            <p>Our RNNCell class implements the core recurrence:</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>rnn_cell.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">h_new = torch.tanh(W_xh @ x + W_hh @ h_prev + b)</code></pre>
+            </div>
+
+            <p>Key design choices:</p>
+            <ul>
+                <li>Separate weight matrices for input and hidden projections</li>
+                <li>Xavier initialization to stabilize training</li>
+                <li>Optional bias terms</li>
+            </ul>
+
+            <h2>Multi-Layer RNNs</h2>
+            <p>Stacking RNN cells creates deeper representations:</p>
+            <ul>
+                <li>Layer 1 processes the raw input sequence</li>
+                <li>Layer 2 processes the hidden states from Layer 1</li>
+                <li>Each additional layer learns higher-level temporal patterns</li>
+            </ul>
+
+            <h2>Architecture Variants</h2>
+
+            <h3>Sequence Classifier</h3>
+            <p>Many-to-one architecture:</p>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>Architecture</span>
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <pre><code class="language-plaintext">Input:  (batch, seq_len, input_size)
+Output: (batch, num_classes)</code></pre>
+            </div>
+            <p>Uses the final hidden state for classification.</p>
+
+            <h3>Sequence Tagger</h3>
+            <p>Many-to-many architecture:</p>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>Architecture</span>
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <pre><code class="language-plaintext">Input:  (batch, seq_len, input_size)
+Output: (batch, seq_len, num_tags)</code></pre>
+            </div>
+            <p>Outputs a prediction at each time step.</p>
+
+            <h3>CharRNN</h3>
+            <p>Character-level language model:</p>
+            <ul>
+                <li>Embedding layer for character tokens</li>
+                <li>Multi-layer RNN for sequence processing</li>
+                <li>Output projection to vocabulary logits</li>
+                <li>Autoregressive generation via sampling</li>
+            </ul>
+
+            <h3>Bidirectional RNN</h3>
+            <p>Processes sequences in both directions:</p>
+            <ul>
+                <li>Forward RNN: Past to future</li>
+                <li>Backward RNN: Future to past</li>
+                <li>Concatenate both representations</li>
+            </ul>
+            <p>This captures context from both directions, crucial for tasks like named entity recognition.</p>
+
+            <h2>Implementation Details</h2>
+
+            <h3>Batch-First vs Time-First</h3>
+            <p>We use batch-first tensors <code>(B, T, D)</code> for compatibility with PyTorch conventions, but internally process time step by time step.</p>
+
+            <h3>Dropout Regularization</h3>
+            <p>Applied between RNN layers (not across time) to prevent overfitting:</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>rnn.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">if dropout > 0:
+    self.dropout = nn.Dropout(dropout)</code></pre>
+            </div>
+
+            <h3>Hidden State Initialization</h3>
+            <p>Hidden states are initialized to zero at the start of each sequence:</p>
+            <div class="math-block">
+                $$ h_0 = \mathbf{0} $$
+            </div>
+
+            <h2>Training Strategy</h2>
+            <p>We train on synthetic sequence tasks:</p>
+            <ul>
+                <li>Sequence classification: Predict label from entire sequence</li>
+                <li>Cross-entropy loss</li>
+                <li>Adam optimizer with learning rate scheduling</li>
+            </ul>
+
+            <h2>Conclusion</h2>
+            <p>With our RNN implemented, we can now train it and visualize how hidden states evolve. <strong>Part 3</strong> explores hidden state dynamics and analyzes what the network learns.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <!-- Prism.js for Syntax Highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

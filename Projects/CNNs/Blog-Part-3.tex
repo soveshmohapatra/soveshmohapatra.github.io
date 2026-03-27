@@ -1,0 +1,83 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{CNNs from Scratch: Part 3 - Training and Visualizing Features}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-3-Banner.png}
+\end{center}
+
+\section{Introduction}
+After training our CNN on MNIST, we can peer inside the black box. What features do these learned filters actually detect? How does the network represent information at different depths?
+
+\section{Training Results}
+Our SimpleCNN achieves:
+\begin{itemize}
+    \item Training accuracy: ~99\%
+    \item Test accuracy: ~99\%
+    \item Convergence within 10 epochs
+\end{itemize}
+
+The training curves show characteristic CNN behavior: rapid initial learning followed by gradual refinement.
+
+\section{Visualizing Learned Filters}
+
+\subsection{First Layer Filters}
+The first convolutional layer learns interpretable features:
+\begin{itemize}
+    \item Edge detectors (vertical, horizontal, diagonal)
+    \item Color/blob detectors
+    \item Simple texture patterns
+\end{itemize}
+
+These match findings from neuroscience: early visual cortex neurons also respond to oriented edges.
+
+\subsection{Filter Visualization Technique}
+We normalize each filter to [0, 1] and display as a grid:
+\begin{verbatim}
+filters = (weights - min) / (max - min)
+\end{verbatim}
+
+\section{Feature Map Analysis}
+
+\subsection{What Are Feature Maps?}
+Feature maps are the activations produced when an input image passes through a convolutional layer. Each map represents the spatial presence of a specific feature.
+
+\subsection{Progressive Abstraction}
+\begin{itemize}
+    \item \textbf{Layer 1}: Responds to edges and simple patterns
+    \item \textbf{Layer 2}: Combines edges into shapes and motifs
+    \item \textbf{Layer 3+}: Detects complex patterns and object parts
+\end{itemize}
+
+\subsection{Sparse Activations}
+ReLU creates sparse feature maps---most neurons are inactive for any given input. This sparsity is computationally efficient and may aid generalization.
+
+\section{Why CNNs Work}
+
+\subsection{Inductive Biases}
+CNNs encode powerful assumptions about visual data:
+\begin{itemize}
+    \item \textbf{Locality}: Nearby pixels are correlated
+    \item \textbf{Translation equivariance}: Features are location-independent
+    \item \textbf{Compositionality}: Complex patterns are built from simpler ones
+\end{itemize}
+
+\subsection{Comparison to Fully Connected Networks}
+For image tasks, CNNs vastly outperform FC networks because:
+\begin{itemize}
+    \item Parameter efficiency (weight sharing)
+    \item Spatial structure preservation
+    \item Hierarchical feature learning
+\end{itemize}
+
+\section{Conclusion}
+CNNs remain foundational to computer vision. While Transformers have gained popularity, CNNs offer efficiency, interpretability, and strong inductive biases for visual data. Understanding CNNs is essential for any deep learning practitioner.
+
+\end{document}

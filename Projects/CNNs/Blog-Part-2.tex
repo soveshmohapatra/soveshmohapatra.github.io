@@ -1,0 +1,83 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{CNNs from Scratch: Part 2 - Building the Architecture}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-2-Banner.png}
+\end{center}
+
+\section{Introduction}
+In Part 1, we explored the mathematical foundations of convolutions. Now we translate theory into code, building a complete CNN architecture in pure PyTorch.
+
+\section{Building Blocks}
+
+\subsection{Convolutional Layer}
+Our custom Conv2D layer implements the sliding window operation:
+\begin{itemize}
+    \item Learnable kernels with Xavier initialization
+    \item Configurable stride, padding, and dilation
+    \item Efficient implementation via PyTorch's F.conv2d
+\end{itemize}
+
+\subsection{Pooling Layers}
+We implement both MaxPool2D and AveragePool2D for spatial downsampling. Max pooling preserves the strongest activations while average pooling smooths the representation.
+
+\subsection{Activation Functions}
+ReLU (Rectified Linear Unit) is the default choice:
+\begin{equation}
+    \text{ReLU}(x) = \max(0, x)
+\end{equation}
+It introduces non-linearity while avoiding vanishing gradients.
+
+\section{Architecture Design}
+
+\subsection{LeNet-5 (1998)}
+One of the earliest successful CNNs, designed for digit recognition:
+\begin{verbatim}
+Conv1 (6 filters, 5x5) -> AvgPool -> Conv2 (16 filters, 5x5) -> AvgPool
+-> FC1 (120) -> FC2 (84) -> Output (10)
+\end{verbatim}
+
+\subsection{SimpleCNN}
+A modern architecture demonstrating the classic pattern:
+\begin{verbatim}
+Conv -> ReLU -> Pool -> Conv -> ReLU -> Pool -> FC -> Output
+\end{verbatim}
+
+\subsection{DeepCNN}
+A VGG-inspired deeper network with reusable CNN blocks that double channels at each stage.
+
+\section{Implementation Details}
+
+\subsection{Parameter Count}
+CNNs are parameter-efficient due to weight sharing. A 3x3 convolution with 64 input and output channels has only:
+\begin{equation}
+    64 \times 64 \times 3 \times 3 = 36,864 \text{ parameters}
+\end{equation}
+Compare this to a fully connected layer with the same dimensions, which would have millions.
+
+\subsection{Output Size Calculation}
+For an input of size $H \times W$:
+\begin{equation}
+    H_{out} = \left\lfloor\frac{H + 2 \cdot \text{padding} - \text{dilation} \cdot (\text{kernel\_size} - 1) - 1}{\text{stride}} + 1\right\rfloor
+\end{equation}
+
+\section{Training Strategy}
+We train on MNIST with:
+\begin{itemize}
+    \item Cross-entropy loss for multi-class classification
+    \item Adam optimizer with learning rate scheduling
+    \item Dropout regularization in fully connected layers
+\end{itemize}
+
+\section{Conclusion}
+With our CNN implemented, we're ready to train and visualize what the network learns. Part 3 explores filter visualization and feature map analysis.
+
+\end{document}

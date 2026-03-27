@@ -1,0 +1,78 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{RNNs from Scratch: Part 1 - The Math of Recurrence}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-1-Banner.png}
+\end{center}
+
+\section{Introduction}
+Before Transformers dominated sequence modeling, Recurrent Neural Networks were the architecture of choice for temporal data. Unlike feedforward networks that process inputs independently, RNNs maintain an internal state that evolves over time, enabling them to capture dependencies across time steps.
+
+In Part 1 of this mini-series, we deconstruct the mathematical foundation of RNNs: the recurrence relation, backpropagation through time, and the infamous vanishing gradient problem.
+
+\section{The Intuition Behind Recurrence}
+Consider reading a sentence word by word. As you read, you build up context---each word modifies your understanding based on what came before. RNNs formalize this intuition mathematically through a \textit{hidden state} that accumulates information across time steps.
+
+\section{The Recurrence Relation}
+At each time step $t$, an RNN:
+\begin{itemize}
+    \item Receives input $x_t$
+    \item Combines it with the previous hidden state $h_{t-1}$
+    \item Produces a new hidden state $h_t$
+\end{itemize}
+
+The update equation is:
+\begin{equation}
+    h_t = \tanh(W_{xh} x_t + W_{hh} h_{t-1} + b_h)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $W_{xh}$: Input-to-hidden weights
+    \item $W_{hh}$: Hidden-to-hidden (recurrent) weights
+    \item $\tanh$: Non-linearity that squashes values to $[-1, 1]$
+\end{itemize}
+
+\section{Parameter Sharing Across Time}
+Critically, the \textit{same} weights $(W_{xh}, W_{hh}, b_h)$ are used at every time step. This is parameter sharing, and it provides two key benefits:
+\begin{enumerate}
+    \item The model can generalize to sequences of different lengths
+    \item The number of parameters is independent of sequence length
+\end{enumerate}
+
+\section{Backpropagation Through Time (BPTT)}
+Training RNNs requires computing gradients through the entire sequence. The chain rule applied across time steps gives:
+\begin{equation}
+    \frac{\partial L}{\partial W_{hh}} = \sum_t \frac{\partial L}{\partial h_t} \cdot \frac{\partial h_t}{\partial W_{hh}}
+\end{equation}
+
+Because $h_t$ depends on $h_{t-1}$, which depends on $h_{t-2}$, and so on, gradients must flow backward through the entire chain of dependencies.
+
+\section{The Vanishing Gradient Problem}
+When we unroll the recurrence, we see the issue:
+\begin{equation}
+    \frac{\partial h_t}{\partial h_0} = \prod_{k=1}^{t} \frac{\partial h_k}{\partial h_{k-1}} = \prod_{k=1}^{t} W_{hh}^T \cdot \text{diag}(1 - \tanh^2(\cdot))
+\end{equation}
+
+If the eigenvalues of $W_{hh}$ are less than 1, repeated multiplication causes gradients to vanish exponentially. This makes it impossible for standard RNNs to learn long-range dependencies.
+
+\section{Why RNNs Still Matter}
+Despite being overshadowed by Transformers, RNNs remain relevant:
+\begin{itemize}
+    \item \textbf{Efficiency}: Process sequences incrementally (online inference)
+    \item \textbf{Simplicity}: Fewer parameters than attention-based models
+    \item \textbf{Foundation}: Understanding RNNs is prerequisite to LSTMs and GRUs
+\end{itemize}
+
+\section{Conclusion}
+The RNN's elegant recurrence relation provides a natural framework for sequence modeling. However, the vanishing gradient problem limits its practical utility. In Part 2, we implement RNNs in PyTorch and explore architectural improvements.
+
+\end{document}

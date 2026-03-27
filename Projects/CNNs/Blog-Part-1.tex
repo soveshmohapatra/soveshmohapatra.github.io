@@ -1,0 +1,74 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{CNNs from Scratch: Part 1 - The Math of Convolutions}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-1-Banner.png}
+\end{center}
+
+\section{Introduction}
+Before Convolutional Neural Networks, computer vision relied on hand-crafted features---SIFT, HOG, and edge detectors designed by human experts. These methods were brittle, domain-specific, and failed to generalize.
+
+CNNs changed everything by learning features directly from data. Instead of manually designing filters, CNNs learn them automatically through backpropagation, discovering hierarchical representations from edges to textures to object parts.
+
+In Part 1 of this mini-series, we will deconstruct the mathematical foundation of CNNs: the convolution operation, pooling, and the architectural principles that make them powerful.
+
+\section{The Intuition Behind Convolution}
+Imagine sliding a small window (called a \textit{kernel} or \textit{filter}) across an image. At each position, you compute a weighted sum of pixel values. This operation detects specific patterns---vertical edges, horizontal edges, or color contrasts---depending on the kernel's weights.
+
+The magic of CNNs is that these kernel weights are \textit{learned} during training, not hand-designed.
+
+\section{The Convolution Operation}
+Mathematically, 2D convolution is defined as:
+\begin{equation}
+    (I * K)_{i,j} = \sum_m \sum_n I_{i-m, j-n} \cdot K_{m,n}
+\end{equation}
+where $I$ is the input image and $K$ is the kernel.
+
+In practice, we use \textit{cross-correlation} (no flipping), which is simpler and learns equivalently:
+\begin{equation}
+    (I \star K)_{i,j} = \sum_m \sum_n I_{i+m, j+n} \cdot K_{m,n}
+\end{equation}
+
+\section{Key Architectural Principles}
+
+\subsection{Local Connectivity}
+Unlike fully connected layers, convolutional neurons only connect to a local region of the input. This captures the intuition that nearby pixels are more related than distant ones.
+
+\subsection{Weight Sharing}
+The same kernel slides across the entire image. This dramatically reduces parameters and enables translation invariance---a feature detected in one location can be detected anywhere.
+
+\subsection{Pooling}
+Pooling layers (max or average) reduce spatial dimensions, providing:
+\begin{itemize}
+    \item Computational efficiency
+    \item Translation invariance
+    \item Expanded receptive fields for deeper layers
+\end{itemize}
+
+Max pooling, the most common variant, selects the maximum value in each window:
+\begin{equation}
+    \text{MaxPool}(x)_{i,j} = \max_{(m,n) \in \text{window}} x_{i+m, j+n}
+\end{equation}
+
+\section{Hierarchical Feature Learning}
+Deep CNNs learn a hierarchy of features:
+\begin{itemize}
+    \item \textbf{Early layers}: Detect edges, corners, and simple textures
+    \item \textbf{Middle layers}: Combine edges into motifs and patterns
+    \item \textbf{Deep layers}: Recognize object parts and semantic concepts
+\end{itemize}
+
+This hierarchical representation is what makes CNNs so powerful for visual recognition.
+
+\section{Conclusion}
+The convolution operation, combined with weight sharing and hierarchical processing, provides CNNs with an inductive bias perfectly suited for visual data. In Part 2, we'll implement these concepts in pure PyTorch.
+
+\end{document}
