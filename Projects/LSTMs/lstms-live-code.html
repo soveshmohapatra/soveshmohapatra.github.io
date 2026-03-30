@@ -1,0 +1,231 @@
+---
+layout: null
+title: "LSTMs from Scratch: Part 2 — Building the Architecture"
+description: "Translating gated recurrence equations into pure PyTorch code — building LSTMCell and multi-layer sequence architectures. By Sovesh Mohapatra."
+permalink: /projects/lstms-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSTMs from Scratch: Part 2 - Building the Architecture | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Prism Syntax Highlighting Theme (Dark) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .code-block-container { margin: 2rem 0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+        .code-header { background: #1d1e22; color: #a9b7c6; padding: 0.5rem 1rem; font-family: monospace; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        pre[class*="language-"] { margin: 0; border-radius: 0; }
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/lstms/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to LSTMs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">LSTMs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: Pure PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we explored the mathematics of gated recurrence—the forget gate, input gate, output gate, and the additive cell state update that creates a gradient highway through time. Today, we take that math and translate it into a pure PyTorch implementation. We will build from individual cells to complete sequence models.</p>
+            </div>
+
+            <h2>The LSTM Cell</h2>
+            <p>Our LSTMCell class implements the four key computations. Each gate is a linear projection of the concatenated input $x_t$ and previous hidden state $h_{t-1}$, followed by a nonlinearity:</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>lstm_cell.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python"># Compute gates
+i = torch.sigmoid(W_xi @ x + W_hi @ h_prev)  # Input gate
+f = torch.sigmoid(W_xf @ x + W_hf @ h_prev)  # Forget gate
+g = torch.tanh(W_xc @ x + W_hc @ h_prev)     # Cell candidate
+o = torch.sigmoid(W_xo @ x + W_ho @ h_prev)  # Output gate
+
+# Cell state update (the gradient highway)
+c_new = f * c_prev + i * g
+
+# Hidden state update
+h_new = o * torch.tanh(c_new)</code></pre>
+            </div>
+
+            <h3>Weight Initialization</h3>
+            <p>We use Xavier initialization for all weights, with a critical modification: <strong>forget gate biases are initialized to 1.0</strong>. This encourages the network to start with information preservation rather than information destruction, stabilizing early training. This trick, first noted by Jozefowicz et al. (2015), is essential for consistent convergence.</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>lstm_cell.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python"># Critical: Initialize forget gate bias to 1.0
+nn.init.ones_(self.Wxf.bias)
+nn.init.ones_(self.Whf.bias)</code></pre>
+            </div>
+
+            <h2>Multi-Layer LSTMs</h2>
+            <p>Stacking LSTM cells creates hierarchical temporal processing:</p>
+            <ul>
+                <li>Lower layers capture short-term patterns (local token interactions)</li>
+                <li>Higher layers learn long-term structure (global sentence-level meaning)</li>
+                <li>Dropout between layers prevents overfitting</li>
+            </ul>
+
+            <p>The output of each layer's hidden state $h_t^{(l)}$ becomes the input for the next layer. We apply dropout only between layers, never at the final output—matching the convention used in PyTorch's built-in LSTM.</p>
+
+            <h2>Architecture Variants</h2>
+
+            <h3>LSTM Classifier (Many-to-One)</h3>
+            <p>For sequence classification tasks:</p>
+            <ul>
+                <li>Processes the entire sequence through multi-layer LSTM</li>
+                <li>Concatenates final hidden states from <em>all layers</em></li>
+                <li>Projects to class logits via a fully-connected layer</li>
+                <li>Optional bidirectional support doubles the representation power</li>
+            </ul>
+
+            <h3>LSTM Tagger (Many-to-Many)</h3>
+            <p>For sequence labeling (POS tagging, NER):</p>
+            <ul>
+                <li>Outputs a prediction at <em>each</em> time step</li>
+                <li>Projects each hidden state $h_t$ to output vocabulary</li>
+            </ul>
+
+            <h3>CharLSTM</h3>
+            <p>Character-level language model:</p>
+            <ul>
+                <li>Embedding layer maps character indices to dense vectors</li>
+                <li>Multi-layer LSTM processes the embedded sequence</li>
+                <li>Autoregressive generation uses temperature-controlled sampling</li>
+            </ul>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>char_lstm.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">def generate(self, start_token, seq_len, temperature=1.0):
+    # Sample next character from the distribution
+    next_logits = logits[:, -1, :] / temperature
+    probs = torch.softmax(next_logits, dim=-1)
+    next_token = torch.multinomial(probs, 1)</code></pre>
+            </div>
+
+            <h3>Seq2SeqLSTM (Encoder-Decoder)</h3>
+            <p>The classic encoder-decoder architecture:</p>
+            <ul>
+                <li><strong>Encoder</strong> LSTM compresses the source sequence into a fixed-size context vector (its final hidden and cell states)</li>
+                <li><strong>Decoder</strong> LSTM is initialized with the encoder's final states and generates the target sequence autoregressively</li>
+            </ul>
+
+            <h2>Bidirectional Processing</h2>
+            <p>For tasks requiring full context (e.g., sentiment analysis, NER), we implement bidirectional LSTMs:</p>
+            <ul>
+                <li>Forward LSTM processes left-to-right: $h_t^{\rightarrow}$</li>
+                <li>Backward LSTM processes right-to-left: $h_t^{\leftarrow}$</li>
+                <li>Concatenate both: $h_t = [h_t^{\rightarrow}; h_t^{\leftarrow}]$</li>
+            </ul>
+
+            <h2>Training Strategy</h2>
+            <p>We train on a challenging long-range dependency task specifically designed to expose the vanishing gradient problem:</p>
+            <ul>
+                <li>Input: random sequence of length 30</li>
+                <li>Task: classify based on the <em>first + last</em> element only</li>
+                <li>The model must remember information across 30 time steps while ignoring irrelevant intermediate values</li>
+            </ul>
+
+            <p>Gradient clipping prevents the complementary exploding gradient problem:</p>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>train.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)</code></pre>
+            </div>
+
+            <h2>Next Steps: Visualizing Gate Dynamics</h2>
+            <p>With our LSTM implemented and architecture variants in place, we can now train and analyze <em>what the gates actually learn</em>. In <strong>Part 3</strong>, we will visualize forget gate, input gate, and output gate activations across time—watching the network learn to selectively remember and forget.</p>
+
+            <p style="margin-top: 2rem; font-style: italic;">Full code is on the GitHub repo. Stay tuned for the gate visualization drop!</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <!-- Prism.js for Syntax Highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

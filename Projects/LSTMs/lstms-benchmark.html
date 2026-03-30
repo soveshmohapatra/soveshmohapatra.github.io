@@ -1,0 +1,211 @@
+---
+layout: null
+title: "LSTMs from Scratch: Part 3 — Training and Analyzing Gates"
+description: "Benchmarking the LSTM on sequence classification tasks and analyzing gate activations to verify the constant error carousel. By Sovesh Mohapatra."
+permalink: /projects/lstms-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSTMs from Scratch: Part 3 - Training and Analyzing Gates | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .benchmark-figure { margin: 3rem 0; text-align: center; }
+        .benchmark-img { max-width: 100%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); }
+        .figure-caption { margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted); font-style: italic; }
+        /* Specific dark mode tweaks for mathjax if needed */
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <!-- Navigation Overlay -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/lstms/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to LSTMs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">LSTMs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Training and Analyzing Gates</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>March 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we established the mathematical foundation of gated recurrence. In Part 2, we built the complete LSTM architecture in pure PyTorch—from individual cells to multi-layer stacks, classifiers, taggers, and encoder-decoder models.</p>
+                <p>Now, we reap the rewards: training our LSTM on a long-range dependency task and dissecting what the gates actually learn. The results reveal the beautiful internal strategies that emerge when a neural network must learn to remember.</p>
+            </div>
+
+            <h2>The Training Process</h2>
+            <p>We trained a 2-layer LSTM (128 hidden units, 197,378 parameters) on a synthetic long-range dependency task: classify a sequence of length 30 based solely on the first and last elements. This task is deliberately designed to be impossible for standard RNNs—the model must preserve information across 30 time steps of irrelevant noise.</p>
+
+            <p>We used Adam optimizer with learning rate $10^{-3}$, a step learning rate scheduler (halving every 20 epochs), gradient clipping at $\|\nabla\| = 1.0$, and trained for 100 epochs on 5,000 training sequences.</p>
+
+            <figure class="benchmark-figure">
+                <img src="{{ site.baseurl }}/assets/projects/lstms/training_curves.png" alt="Training Loss and Accuracy Curves" class="benchmark-img">
+                <figcaption class="figure-caption">Figure 1: Training and test loss (left) and accuracy (right) over 100 epochs. The LSTM converges rapidly, reaching ~100% training accuracy by epoch 30 and peaking at ~95% test accuracy. The growing gap between train and test loss after epoch 30 shows classic overfitting—the model memorizes the training set while generalizing well to unseen sequences. Compare this to a standard RNN, which would plateau around 60-70% on the same task.</figcaption>
+            </figure>
+
+            <h2>Training Results</h2>
+            <p>Our 2-layer LSTM achieves:</p>
+            <ul>
+                <li>Training accuracy: ~100% (by epoch 30)</li>
+                <li>Peak test accuracy: ~95%</li>
+                <li>Successful learning of 30-step dependencies</li>
+                <li>Final training loss: 0.0003</li>
+            </ul>
+
+            <p>The model learns the long-range dependency task rapidly—reaching 94% test accuracy within just 10 epochs. This is remarkable given that a standard RNN would struggle to exceed 60-70% on the same task, even with extensive training, due to vanishing gradients.</p>
+
+            <h2>Visualizing Gate Dynamics</h2>
+
+            <p>To understand <em>how</em> the LSTM solves this task, we extract and visualize gate activations across all 30 time steps for 8 individual hidden units in the first layer. The patterns that emerge are remarkably interpretable.</p>
+
+            <figure class="benchmark-figure">
+                <img src="{{ site.baseurl }}/assets/projects/lstms/gate_activations.png" alt="Gate Activations Dynamics" class="benchmark-img">
+                <figcaption class="figure-caption">Figure 2: Gate activations across 30 time steps for 8 hidden units in the first LSTM layer. Top-left: Input gate—several units (e.g., Unit 1) learn to saturate near 1.0 over time, indicating persistent information storage. Top-right: Forget gate—most units maintain activations between 0.8-1.0, confirming the gradient highway stays open. Bottom-left: Output gate—diverse patterns with some units learning to selectively reveal information. Bottom-right: Cell candidate (tanh) values show the rich diversity of candidate information generated at each step.</figcaption>
+            </figure>
+
+            <h3>Forget Gate Patterns</h3>
+            <p>The forget gate plot reveals the most critical insight: nearly all 8 visualized units maintain activations between 0.8 and 1.0 throughout the 30-step sequence. This is exactly the "Constant Error Carousel" that Hochreiter and Schmidhuber described—the gradient highway stays open, allowing error signals to flow backward unattenuated.</p>
+            <ul>
+                <li><strong>High activation</strong> ($f_t \approx 0.8-1.0$): The dominant pattern—preserve cell state content</li>
+                <li><strong>Occasional dips</strong>: Some units briefly drop their forget gate to clear and refresh specific memory slots</li>
+            </ul>
+
+            <h3>Input Gate Behavior</h3>
+            <p>The input gate shows more varied patterns across units:</p>
+            <ul>
+                <li>Several units (e.g., Unit 1, Unit 4) show activations that <em>increase over time</em>, rising from ~0.5 to near 1.0—suggesting they accumulate context as the sequence progresses</li>
+                <li>Other units remain moderate (0.3-0.6), selectively gating new information</li>
+                <li>This diversity indicates different units specialize in different roles</li>
+            </ul>
+
+            <h3>Output Gate Modulation</h3>
+            <p>The output gate displays the richest diversity:</p>
+            <ul>
+                <li>Some units (e.g., Unit 1) learn to increase output gating over time, reaching near 1.0 by the sequence end—preparing to reveal stored information for the final classification</li>
+                <li>Other units oscillate, suggesting they contribute different features at different time steps</li>
+                <li>This selective readout mechanism is crucial for the many-to-one classification task</li>
+            </ul>
+
+            <h2>The Cell State as Memory</h2>
+
+            <h3>Constant Error Carousel</h3>
+            <p>The forget gate visualizations directly confirm Hochreiter and Schmidhuber's "Constant Error Carousel" hypothesis. With forget gates at 0.8-1.0, the cell state equation</p>
+            <div class="math-block">
+                $$ c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t $$
+            </div>
+            <p>preserves the previous cell state almost entirely while selectively adding new information. Over 30 time steps with $f_t \approx 0.9$, the retained signal is $0.9^{30} \approx 0.04$—still enough to maintain a gradient pathway, unlike an RNN where multiplicative decay drives this value to near zero.</p>
+
+            <h3>Overfitting Analysis</h3>
+            <p>The training curves reveal a classic deep learning phenomenon: the model reaches 100% training accuracy by epoch 30 but test accuracy plateaus at ~95%. The widening loss gap confirms overfitting. In a production setting, we would apply:</p>
+            <ul>
+                <li>Early stopping (best model at epoch ~30)</li>
+                <li>Increased dropout (currently 0.3)</li>
+                <li>Data augmentation or larger datasets</li>
+            </ul>
+
+            <h2>Gate Coordination Patterns</h2>
+
+            <h3>Copy Mechanism</h3>
+            <p>For the long-range dependency task, the gates learn a clean copy strategy:</p>
+            <ul>
+                <li>Input gate opens at the <em>first</em> time step to store relevant features in the cell state</li>
+                <li>Forget gate stays near 1.0 to preserve this information unchanged across 30 steps</li>
+                <li>Output gate increases at the <em>final</em> time step to reveal stored memory for classification</li>
+            </ul>
+            <p>This is exactly the strategy a human designer would implement—but the network discovers it entirely through gradient descent.</p>
+
+            <h2>LSTMs vs GRUs vs Transformers</h2>
+
+            <h3>GRU Simplification</h3>
+            <p>Gated Recurrent Units (Cho et al., 2014) simplify LSTMs:</p>
+            <ul>
+                <li>Merge cell and hidden states into a single state vector</li>
+                <li>Combine forget and input gates into an "update gate"</li>
+                <li>Fewer parameters, often comparable performance on shorter sequences</li>
+            </ul>
+
+            <h3>Transformer Comparison</h3>
+            <ul>
+                <li><strong>LSTM</strong>: Sequential processing, fixed-size memory, $O(1)$ per-step inference cost</li>
+                <li><strong>Transformer</strong>: Parallel processing, full attention over context, $O(n)$ inference cost per step</li>
+            </ul>
+
+            <p>LSTMs remain the architecture of choice for streaming and real-time applications where constant inference cost is critical.</p>
+
+            <h2>Conclusion</h2>
+            <p>We built LSTMs entirely from scratch in PyTorch—no external libraries, no pre-trained weights. Our 2-layer LSTM achieved ~100% training accuracy and ~95% test accuracy on a 30-step long-range dependency task, and the gate visualizations confirm the theoretical predictions: forget gates stay open to create gradient highways, input gates selectively store relevant information, and output gates modulate what gets revealed for classification.</p>
+
+            <p style="margin-top: 2rem; font-style: italic;">Thank you for following this 3-part "Build in Public" series on LSTMs. The full training logs, gate visualizations, and code are live on the GitHub repo. Stay connected on LinkedIn for future architectural tear-downs!</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
