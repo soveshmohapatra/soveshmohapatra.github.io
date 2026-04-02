@@ -1,0 +1,329 @@
+---
+layout: null
+title: "Deconstructing ResNets: Part 1 — The Math of Residual Learning"
+description: "The mathematical foundations of Residual Networks — the degradation problem, residual learning, gradient highways, and ensemble interpretations. By Sovesh Mohapatra."
+permalink: /projects/resnet-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing ResNets: Part 1 - The Math of Residual Learning | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/resnets/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to ResNets Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing ResNets from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Residual Learning</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In 2015, a curious observation challenged deep learning orthodoxy: deeper networks should perform
+                    better, but they didn't. As networks grew beyond 20 layers, accuracy saturated and then
+                    <em>degraded</em> rapidly. This wasn't overfitting — training error also increased.</p>
+                <p><strong>Residual Networks</strong>, introduced by He et al. from Microsoft Research, solved this
+                    problem with an elegantly simple idea: instead of learning direct mappings, learn <em>residual
+                    functions</em> with reference to the layer inputs, using identity skip connections. This single idea
+                    enabled training networks with hundreds — even thousands — of layers, and won ImageNet 2015 with a
+                    3.57% top-5 error rate.</p>
+                <p>In this new 3-part "Build in Public" series, we will deconstruct Residual Networks from first
+                    principles. Today, we look at the mathematical foundation: the degradation problem, the residual
+                    learning formulation, and why skip connections enable gradient flow through arbitrarily deep
+                    networks. In Part 2, we will build the complete architecture in PyTorch. In Part 3, we will train
+                    on CIFAR-10 and visualize activation patterns.</p>
+            </div>
+
+            <h2>The Degradation Problem</h2>
+            <p>Consider stacking more layers onto a network that already works. Intuitively:</p>
+            <ul>
+                <li>Deeper networks have more representational capacity</li>
+                <li>Additional layers could learn identity mappings if not needed</li>
+                <li>Performance should improve (or at least not degrade)</li>
+            </ul>
+
+            <p>But empirically, deep plain networks suffer from:</p>
+            <ul>
+                <li><strong>Degradation</strong>: Training accuracy <em>decreases</em> with depth beyond ~20 layers</li>
+                <li><strong>Vanishing gradients</strong>: Gradients diminish through many multiplicative layers</li>
+                <li><strong>Optimization difficulty</strong>: The loss landscape becomes harder to navigate</li>
+            </ul>
+
+            <p>The key insight is that this is <em>not</em> an overfitting problem — a 56-layer network has
+                <em>higher training error</em> than a 20-layer one. The optimizer simply cannot find the solution,
+                even though it provably exists.</p>
+
+            <h2>The Residual Learning Insight</h2>
+            <p>Instead of asking each block to learn a direct mapping $H(x)$, ResNets reframe the problem: learn a
+                <em>residual function</em>:</p>
+
+            <div class="math-block">
+                $$ F(x) = H(x) - x $$
+            </div>
+
+            <p>The layer output becomes:</p>
+
+            <div class="math-block">
+                $$ y = F(x) + x $$
+            </div>
+
+            <p>where $F(x)$ is the residual (what the layer needs to <em>add</em> to the input) and $x$ is the
+                identity (passed through unchanged via the skip connection).</p>
+
+            <h2>Why Residual Learning Works</h2>
+
+            <h3>Easier to Learn Identity</h3>
+            <p>If the optimal function is close to identity, residual learning makes this trivial:</p>
+            <ul>
+                <li><strong>Plain network</strong>: Must learn $H(x) \approx x$ through nonlinear layers (non-trivial)</li>
+                <li><strong>Residual network</strong>: Learn $F(x) \approx 0$ (easy — push weights toward zero)</li>
+            </ul>
+
+            <p>This reframing explains why deeper ResNets never perform <em>worse</em> than shallower ones: extra
+                layers can simply learn zero residuals.</p>
+
+            <h3>Gradient Highway</h3>
+            <p>During backpropagation, the gradient through a residual block is:</p>
+
+            <div class="math-block">
+                $$ \frac{\partial L}{\partial x} = \frac{\partial L}{\partial y} \cdot \left(\frac{\partial F}{\partial x} + 1\right) $$
+            </div>
+
+            <p>The $+1$ term from the skip connection ensures gradients can <strong>always flow backward</strong>,
+                even if $\frac{\partial F}{\partial x}$ vanishes. This is the same principle as the "Constant Error
+                Carousel" in LSTMs — identity paths create gradient highways.</p>
+
+            <h3>Ensemble Interpretation</h3>
+            <p>Veit et al. (2016) showed that ResNets can be viewed as an ensemble of many paths of different lengths.
+                Unraveling the skip connections reveals $2^n$ possible paths through $n$ blocks. Information can bypass
+                layers through shortcuts, effectively creating an <strong>ensemble of shallower networks</strong> within
+                a deep architecture.</p>
+
+            <h2>The Residual Block</h2>
+            <p>A basic residual block consists of:</p>
+            <ol>
+                <li>Two $3 \times 3$ convolutional layers</li>
+                <li>Batch normalization after each convolution</li>
+                <li>ReLU activation after the first convolution</li>
+                <li>Identity skip connection (element-wise addition)</li>
+                <li>Final ReLU after the addition</li>
+            </ol>
+
+            <p>When spatial dimensions or channel counts change between blocks, a $1 \times 1$ convolution with
+                appropriate stride is used in the skip connection to match dimensions.</p>
+
+            <h2>Comparison to Plain Networks</h2>
+            <ul>
+                <li><strong>Plain Network</strong>: $x \rightarrow \text{Conv} \rightarrow \text{BN} \rightarrow \text{ReLU} \rightarrow \text{Conv} \rightarrow \text{BN} \rightarrow \text{ReLU} \rightarrow y$</li>
+                <li><strong>Residual Network</strong>: $x \rightarrow \text{Conv} \rightarrow \text{BN} \rightarrow \text{ReLU} \rightarrow \text{Conv} \rightarrow \text{BN} \rightarrow (+x) \rightarrow \text{ReLU} \rightarrow y$</li>
+            </ul>
+
+            <p>The only structural difference is the addition of $x$ before the final activation. This minimal
+                change — literally one line of code — enables training networks $10\times$ deeper.</p>
+
+            <h2>Next Steps: From Math to Code</h2>
+            <p>We have established the mathematical foundation of residual learning: learning deviations from identity
+                rather than direct mappings, creating gradient highways through skip connections.</p>
+
+            <p>In <strong>Part 2</strong>, we implement this exact formulation in pure PyTorch. We will build from a
+                single ResidualBlock up through BottleneckBlocks, and construct the full ResNet-18/34/50/101/152 family
+                plus a SmallResNet variant optimized for CIFAR-10.</p>
+
+            <p><em>Stay tuned for the code drop as we build ResNets from scratch!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

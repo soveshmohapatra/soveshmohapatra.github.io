@@ -1,0 +1,331 @@
+---
+layout: null
+title: "Deconstructing ResNets: Part 3 — Training & Analyzing Deep Networks"
+description: "End-to-end ResNet training on CIFAR-10 with activation flow visualization and feature map analysis — verifying that skip connections preserve signal. By Sovesh Mohapatra."
+permalink: /projects/resnet-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing ResNets: Part 3 - Training & Analyzing Deep Networks | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        .figure-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .figure-caption {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/resnets/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to ResNets Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing ResNets from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Training and Analyzing Deep Networks</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we established the mathematical foundation of residual learning. In Part 2, we built
+                    the entire ResNet family from scratch in pure PyTorch — from ResidualBlock all the way to
+                    ResNet-152.</p>
+                <p>Today, we put our implementation to the test. Does learning deviations from identity actually solve
+                    the degradation problem? To find out, we train our SmallResNet-18 variant on CIFAR-10 and visualize
+                    both the activation statistics flowing through the layers and the feature maps learned by the
+                    network.</p>
+            </div>
+
+            <h2>The Fast Training Experiment</h2>
+            <p>To make this code reproducible on standard CPUs in minutes rather than hours, we configured the training
+                loop to use a 5,000-image subset of CIFAR-10 (instead of all 50,000) and ran for 30 epochs.</p>
+
+            <p>Our SmallResNet-18 (175,258 parameters) achieved:</p>
+            <ul>
+                <li><strong>Training accuracy</strong>: ~69%</li>
+                <li><strong>Test accuracy</strong>: ~63%</li>
+                <li><strong>Training time</strong>: ~4 minutes on a standard CPU</li>
+            </ul>
+
+            <p>While these absolute numbers reflect the restricted dataset size, the <em>training dynamics</em> reveal
+                exactly why ResNets revolutionized deep learning.</p>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/resnets/training_curves.png"
+                    alt="Training and test loss/accuracy curves over 30 epochs of ResNet training on CIFAR-10.">
+                <p class="figure-caption">Training and test curves for our 30-epoch fast run on a 5K CIFAR-10 subset.
+                    Notice the rapid initial learning and the distinct bumps at epochs 15 and 25 where the learning
+                    rate step scheduler activates. Despite the small data regime, the network learns stable
+                    representations without collapsing.</p>
+            </div>
+
+            <h2>Visualizing the Gradient Highway</h2>
+            <p>The core premise of a ResNet is the $y = F(x) + x$ skip connection. This creates a "gradient highway"
+                that prevents signal decay during both the forward pass and backpropagation. We can directly verify
+                this by tracking activation statistics through the network.</p>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/resnets/activations.png"
+                    alt="Mean activation magnitude through successive residual layers.">
+                <p class="figure-caption">Mean activation magnitude through successive residual layers. Notice how the
+                    signal remains remarkably stable throughout the depth of the network rather than vanishing to
+                    zero — the defining failure mode of deep plain convolutional networks.</p>
+            </div>
+
+            <h3>Activation Flow Analysis</h3>
+            <p>By registering forward hooks in PyTorch, we captured the outputs at each residual layer. The plot
+                confirms:</p>
+            <ul>
+                <li><strong>No Vanishing Activations</strong>: The mean activation magnitude remains stable across all
+                    layers. In a plain 18-layer network without skip connections, we would see extreme scaling issues
+                    (either blowing up or vanishing).</li>
+                <li><strong>Signal Preservation</strong>: The additive $+ x$ term successfully propagates the raw
+                    input/feature signal all the way to the classification head.</li>
+            </ul>
+
+            <h2>What Do Residual Blocks Learn?</h2>
+            <p>We also visualized the raw feature maps emitted by the first residual block (immediately after the
+                stem convolution).</p>
+
+            <div class="figure-container">
+                <img src="{{ site.baseurl }}/assets/projects/resnets/feature_maps.png"
+                    alt="Eight feature maps from the first residual layer showing edge detection and frequency filters.">
+                <p class="figure-caption">Eight feature maps from the first residual layer. Visually inspecting these
+                    reveals standard early-CNN behavior: edge detection, Gabor-like frequency filters, and color blob
+                    isolation. ResNets learn the same hierarchical features as standard CNNs, but they do so in a way
+                    that allows the network to be an order of magnitude deeper.</p>
+            </div>
+
+            <h2>Why This Matters Today</h2>
+            <p>You might ask: in the age of Transformers and Diffusion Models, do ResNets still matter?
+                Absolutely.</p>
+            <ol>
+                <li><strong>They are everywhere</strong>: ResNets remain the default visual backbone for object
+                    detection (Faster R-CNN), segmentation (Mask R-CNN), and pose estimation pipelines.</li>
+                <li><strong>The trick is universal</strong>: The core innovation — the identity residual connection
+                    $y = F(x) + x$ — is the exact same trick used in every Transformer block today to connect
+                    attention and feed-forward layers.</li>
+            </ol>
+
+            <h2>Conclusion</h2>
+            <p>We derived the math, built the PyTorch blocks, and validated the flow of activations. We successfully
+                replicated the core insight from He et al.: <strong>learning deviations is fundamentally easier than
+                learning absolute mappings</strong>.</p>
+
+            <p>The identity skip connection — a single line of code (<code>out += identity</code>) — solved a problem
+                that had blocked the entire field: the inability to train deep networks. From 20-layer plateaus to
+                1000+ layer architectures, this one idea changed everything.</p>
+
+            <p><em>Thank you for following this 3-part "Build in Public" series on Residual Networks. The full code,
+                    training logs, and visualization scripts are live on the GitHub repo. Run the 4-minute training
+                    script yourself to watch the residual connections in action!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
