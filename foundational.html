@@ -1,0 +1,516 @@
+---
+layout: null
+title: "Foundational Architectures"
+description: "The canonical building blocks of modern deep learning — Autoencoders, GANs, VAEs, CNNs, RNNs, LSTMs, ResNets, Transformers, GNNs, ViTs, and CapsNets."
+permalink: /projects/foundational/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foundational Architectures | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .page-header {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        .back-link:hover {
+            opacity: 0.8;
+        }
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .page-title i {
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+        }
+        .page-desc {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div class="page-header">
+        <a href="{{ site.baseurl }}/projects/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Projects
+        </a>
+        <h1 class="page-title"><i class="fas fa-cubes"></i> Foundational Architectures</h1>
+        <p class="page-desc">The canonical building blocks of modern deep learning — from basic representations and sequence models to advanced generative frameworks.</p>
+    </div>
+
+    <main class="container">
+        <section class="projects-grid">
+
+            <!-- Project Card 13: Autoencoders -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/autoencoders/"
+                            style="color: inherit; text-decoration: none;">Autoencoders from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Autoencoders from first principles. From the mathematics of information bottlenecks and the manifold hypothesis, to building four variants (Vanilla, Denoising, Sparse, Convolutional) from scratch in PyTorch, to visualizing what the bottleneck learns about data structure.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Autoencoders" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 14: GANs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/gans/"
+                            style="color: inherit; text-decoration: none;">GANs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Generative Adversarial Networks. From the minimax game, Jensen-Shannon divergence, and Nash equilibrium theory, to building both a Vanilla GAN and DCGAN from scratch in PyTorch, to watching two competing networks learn to generate convincing digits from pure noise.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/GANs" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 15: VAEs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/vaes/"
+                            style="color: inherit; text-decoration: none;">VAEs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Variational Autoencoders. From the ELBO derivation and KL divergence, to the reparameterization trick that enables backpropagation through stochastic sampling, to walking through learned latent spaces and interpolating between digits.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/VAEs" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 9: CNNs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/cnns/"
+                            style="color: inherit; text-decoration: none;">CNNs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Convolutional Neural Networks. From the mathematics
+                        of 2D convolutions and weight sharing, to building Conv2D layers, pooling operations, and
+                        complete architectures (LeNet-5, SimpleCNN, DeepCNN) from scratch in PyTorch, to visualizing
+                        learned filters and hierarchical feature maps on MNIST.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/CNN-Models-From-Scratch" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:share:7442286465474277376/"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 9: RNNs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/rnns/"
+                            style="color: inherit; text-decoration: none;">RNNs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Recurrent Neural Networks from first principles. Covering the mathematics of the recurrence relation, a pure PyTorch sequence architecture, and visualizing bounded hidden state integration over time.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/RNN-Models-From-Scratch" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:activity:7443311389189963776/?originTrackingId=G%2FJSZ6u4fsutLvZpmKoOlA%3D%3D"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 11: LSTMs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/lstms/"
+                            style="color: inherit; text-decoration: none;">LSTMs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Long Short-Term Memory networks. From the mathematics of gated recurrence and the Constant Error Carousel, to building a multi-layer pure PyTorch architecture, to analyzing gate dynamics on long-range dependencies.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/LSTMs" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:share:7444381382795128832/"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 12: ResNets -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/resnets/"
+                            style="color: inherit; text-decoration: none;">ResNets from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Residual Networks. From the mathematics of identity
+                        skip connections and gradient highways, to building ResidualBlocks, BottleneckBlocks, and the
+                        full ResNet-18/34/50/101/152 family from scratch in PyTorch, to visualizing activation flow
+                        and learned feature maps on CIFAR-10.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/ResNets" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:share:7445511812680364033/"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 10: Transformers -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/transformers/"
+                            style="color: inherit; text-decoration: none;">Transformers from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Transformers from first principles. From the mathematics of Multi-Head Self-Attention and Positional Encodings, to a pure PyTorch sequence-to-sequence implementation, to visualizing dynamic routing on a sequence reversal task.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Transformers-From-Scratch" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:share:7441216822823268352/"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 16: GNNs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/gnns/"
+                            style="color: inherit; text-decoration: none;">GNNs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Graph Neural Networks. From the mathematics of message passing and neighborhood aggregation, to building GCN and GAT layers from scratch in PyTorch, to classifying nodes in Zachary's Karate Club using only graph topology and 4 labeled examples.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/GNNs" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 22: ViTs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/vits/"
+                            style="color: inherit; text-decoration: none;">ViTs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Vision Transformers. From the mathematics of patch embeddings and positional encodings, to building a complete ViT with CLS token classification from scratch in PyTorch, to visualizing attention maps and confirming that ViTs need large data to outperform CNNs.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/ViTs" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 19: CapsNets -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/capsnets/"
+                            style="color: inherit; text-decoration: none;">CapsNets from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Capsule Networks. From the mathematics of equivariance and dynamic routing-by-agreement, to building PrimaryCapsules, DigitCapsules, and a reconstruction decoder from scratch in PyTorch, to demonstrating superior rotation robustness over standard CNNs.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/CapsNets" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+        </section>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

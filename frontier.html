@@ -1,0 +1,566 @@
+---
+layout: null
+title: "Frontier Architectures"
+description: "Novel paradigms and alternative approaches that challenge conventional neural network design — Mamba, KANs, LNNs, SNNs, Diffusion, PCNs, ESNs, RWKV, Hopfield, Neural ODEs, Flows, and MoE."
+permalink: /projects/frontier/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontier Architectures | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .page-header {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 2rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+        .back-link:hover {
+            opacity: 0.8;
+        }
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .page-title i {
+            margin-right: 0.75rem;
+            color: var(--primary-color);
+        }
+        .page-desc {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <div class="page-header">
+        <a href="{{ site.baseurl }}/projects/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Projects
+        </a>
+        <h1 class="page-title"><i class="fas fa-rocket"></i> Frontier Architectures</h1>
+        <p class="page-desc">Novel paradigms and alternative approaches that challenge conventional neural network design — from state space models to bio-inspired computing.</p>
+    </div>
+
+    <main class="container">
+        <section class="projects-grid">
+
+            <!-- Project Card 1: Mamba SSM -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Feb 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/mamba-ssm/"
+                            style="color: inherit; text-decoration: none;">State Space Models & Mamba <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing State Space Models (SSMs). Rooted in Control Theory,
+                        SSMs offer linear scaling and infinite context potential compared to traditional Transformers.
+                        This series covers the fundamental math, writing a 1D State Space layer in PyTorch, and scaling
+                        it against baseline Transformers.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Mamba-SSM" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:activity:7431122409711374336/"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 2: KANs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Feb 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/kans/"
+                            style="color: inherit; text-decoration: none;">Kolmogorov-Arnold Networks (KANs) <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">An exploration of Kolmogorov-Arnold Networks (KANs), replacing fixed node
+                        activations with learnable B-splines on the edges. This series covers the mathematics of the
+                        Kolmogorov-Arnold representation theorem, a pure PyTorch implementation, and benchmarks scaling
+                        KANs versus MLPs for symbolic regression.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/KANs" target="_blank" class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:activity:7433288258555559936/?originTrackingId=wbYeW09IWVWVb4umQt1%2FMA%3D%3D"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 3: LNNs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/lnns/"
+                            style="color: inherit; text-decoration: none;">Liquid Neural Networks (LNNs) <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Liquid Neural Networks (LNNs). Moving from discrete
+                        recurrent networks to continuous-time differential equations, building Liquid Time-Constant
+                        models in PyTorch, and benchmarking LNNs against traditional LSTMs for noisy time-series tasks.
+                    </p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Liquid-Neural-Networks" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:activity:7434721382917165056/?originTrackingId=rqtZAAiZNoxO6SDBqehf%2BQ%3D%3D"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 4: SNNs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/snns/"
+                            style="color: inherit; text-decoration: none;">Spiking Neural Networks (SNNs) <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Spiking Neural Networks (SNNs). From biological
+                        action potentials and the Leaky Integrate-and-Fire model, to surrogate-gradient training in
+                        pure PyTorch, to benchmarking against standard ANNs—achieving the same MNIST accuracy at
+                        51.7% lower energy cost.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Spiking-Neural-Networks" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:share:7435904937215127552/" target="_blank"
+                            class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 5: Diffusion -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/diffusion/"
+                            style="color: inherit; text-decoration: none;">Diffusion Models <i class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Diffusion Models. Building a custom U-Net to learn
+                        the forward noise corruption and reverse denoising process. We implement a Denoising Diffusion
+                        Probabilistic Model (DDPM) entirely from scratch in PyTorch, successfully generating convincing
+                        digits from isotropic Gaussian noise.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Diffusion-Models-From-Scratch" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:share:7436805662296330240/" target="_blank"
+                            class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 6: PCNs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/pcn/"
+                            style="color: inherit; text-decoration: none;">Predictive Coding Networks (PCNs) <i class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Predictive Coding Networks. Replacing global
+                        backpropagation with local energy minimization and Hebbian weight updates. We implement a
+                        biologically plausible PCN entirely from scratch in PyTorch, benchmarking it against standard
+                        MLPs on regression and MNIST classification.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Predictive-Coding-Networks" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:activity:7440021848005902336/" target="_blank"
+                            class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 7: ESNs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/esns/"
+                            style="color: inherit; text-decoration: none;">Echo State Networks (ESNs) <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">An exploration of Reservoir Computing through Echo State Networks (ESNs). We bypass Backpropagation Through Time (BPTT) completely by generating a massive, sparse, frozen recurrent structure and training only the final linear readout via closed-form Ridge Regression, achieving convergence in milliseconds.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Echo-State-Networks-From-Scratch" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:activity:7437889279810461696/?originTrackingId=zF%2FLi6%2FjeeUqb9e0vp5EiA%3D%3D" target="_blank"
+                            class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 7: RWKV -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Mar 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/rwkv/"
+                            style="color: inherit; text-decoration: none;">RWKV: Linear Attention RNN <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing RWKV (Receptance Weighted Key Value)—an
+                        architecture that trains in parallel like a Transformer but infers sequentially like an RNN.
+                        From linear attention theory and the WKV operator, to a pure PyTorch implementation, to
+                        benchmarks showing 3.2× faster inference and 5.3× less memory than Transformers.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/RWKV" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="https://www.linkedin.com/feed/update/urn:li:activity:7438983711016185856/"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 17: Hopfield Networks -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/hopfield/"
+                            style="color: inherit; text-decoration: none;">Hopfield Networks from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Hopfield Networks. From classical associative memory and Hebbian learning, to modern continuous Hopfield networks with exponential storage capacity, to proving that the modern update rule is mathematically identical to Transformer attention.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Hopfield" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 18: Neural ODEs -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/neural-odes/"
+                            style="color: inherit; text-decoration: none;">Neural ODEs from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Neural ODEs. From the mathematics of continuous-depth networks and ODE solvers, to building Euler and RK4 integrators from scratch in PyTorch, to classifying spirals with 19.3x fewer parameters than a discrete ResNet.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/NeuralODEs" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 20: Normalizing Flows -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/flows/"
+                            style="color: inherit; text-decoration: none;">Normalizing Flows from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Normalizing Flows. From the change of variables formula and Jacobian determinants, to building Planar Flows and RealNVP with affine coupling layers from scratch in PyTorch, to exact likelihood density estimation on 2D distributions.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Flows" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 21: MoE -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">Apr 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/moe/"
+                            style="color: inherit; text-decoration: none;">MoE from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">A deep dive deconstructing Mixture of Experts. From the mathematics of conditional computation and Top-K gating, to building expert networks with load-balancing loss from scratch in PyTorch, to showing that 8 experts with only 2 active per input match dense model accuracy at 54% sparsity.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/MoE" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <a href="#"
+                            target="_blank" class="social-btn linkedin-btn">
+                            <i class="fab fa-linkedin-in"></i> <span>Post</span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+
+        </section>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>
