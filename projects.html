@@ -25,64 +25,92 @@ permalink: /projects/
     <style>
         .category-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 2.5rem;
             margin-bottom: 5rem;
+            align-items: stretch;
         }
 
         .category-card {
             position: relative;
-            border-radius: 20px;
+            border-radius: 24px;
             overflow: hidden;
             text-decoration: none;
             color: var(--text-color);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            min-height: 380px;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+            display: flex;
         }
 
         .category-card:hover {
-            transform: translateY(-8px);
+            transform: translateY(-10px);
+            box-shadow: 0 20px 60px rgba(42, 122, 226, 0.15);
+        }
+
+        [data-theme="dark"] .category-card:hover {
+            box-shadow: 0 20px 60px rgba(100, 181, 246, 0.1);
         }
 
         .category-card:hover .category-arrow {
-            transform: translateX(5px);
+            transform: translateX(8px);
+            opacity: 1;
+        }
+
+        .category-card:hover .category-icon i {
+            transform: scale(1.1);
+        }
+
+        .category-card .card-glass-bg {
+            border-radius: 24px;
         }
 
         .category-card-content {
             padding: 2.5rem;
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto auto;
             height: 100%;
+            width: 100%;
             position: relative;
             z-index: 1;
         }
 
         .category-icon {
-            font-size: 3rem;
-            color: var(--primary-color);
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--tag-project), transparent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin-bottom: 1.5rem;
+        }
+
+        .category-icon i {
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            transition: transform 0.3s ease;
         }
 
         .category-card-title {
-            font-size: 1.8rem;
+            font-size: 1.75rem;
             font-weight: 700;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.3px;
         }
 
         .category-card-desc {
-            font-size: 1.05rem;
+            font-size: 1rem;
             color: var(--text-muted);
             line-height: 1.7;
             margin-bottom: 1.5rem;
-            flex-grow: 1;
         }
 
         .category-meta {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
+            padding: 1rem 0;
+            border-top: 1px solid var(--card-border);
             border-bottom: 1px solid var(--card-border);
         }
 
@@ -90,41 +118,40 @@ permalink: /projects/
             font-size: 0.95rem;
             font-weight: 600;
             color: var(--primary-color);
-        }
-
-        .category-count i {
-            margin-right: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .category-arrow {
             color: var(--primary-color);
-            font-size: 1.2rem;
-            transition: transform 0.3s ease;
+            font-size: 1.1rem;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            opacity: 0.6;
         }
 
         .category-tags {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
         .category-tags span {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
-            padding: 0.25rem 0.7rem;
-            border-radius: 20px;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
             background: var(--tag-project);
             color: var(--tag-project-text);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .category-grid {
                 grid-template-columns: 1fr;
-            }
-            .category-card {
-                min-height: auto;
+                max-width: 550px;
+                margin-left: auto;
+                margin-right: auto;
             }
         }
     </style>
