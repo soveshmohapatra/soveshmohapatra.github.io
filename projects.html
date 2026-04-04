@@ -25,7 +25,7 @@ permalink: /projects/
     <style>
         .category-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 2.5rem;
             margin-bottom: 5rem;
             align-items: stretch;
@@ -33,125 +33,107 @@ permalink: /projects/
 
         .category-card {
             position: relative;
-            border-radius: 24px;
+            border-radius: 20px;
             overflow: hidden;
             text-decoration: none;
             color: var(--text-color);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex;
         }
 
         .category-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 60px rgba(42, 122, 226, 0.15);
-        }
-
-        [data-theme="dark"] .category-card:hover {
-            box-shadow: 0 20px 60px rgba(100, 181, 246, 0.1);
+            transform: translateY(-8px);
         }
 
         .category-card:hover .category-arrow {
-            transform: translateX(8px);
-            opacity: 1;
-        }
-
-        .category-card:hover .category-icon i {
-            transform: scale(1.1);
-        }
-
-        .category-card .card-glass-bg {
-            border-radius: 24px;
+            transform: translateX(5px);
         }
 
         .category-card-content {
-            padding: 2.5rem;
-            display: grid;
-            grid-template-rows: auto auto 1fr auto auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
             height: 100%;
             width: 100%;
             position: relative;
             z-index: 1;
         }
 
-        .category-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, var(--tag-project), transparent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .category-icon i {
-            font-size: 1.8rem;
-            color: var(--primary-color);
-            transition: transform 0.3s ease;
-        }
-
-        .category-card-title {
-            font-size: 1.75rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.3px;
-        }
-
-        .category-card-desc {
-            font-size: 1rem;
-            color: var(--text-muted);
-            line-height: 1.7;
-            margin-bottom: 1.5rem;
-        }
-
-        .category-meta {
+        .category-card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.25rem;
-            padding: 1rem 0;
-            border-top: 1px solid var(--card-border);
-            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 1rem;
+        }
+
+        .category-tag {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--tag-project);
+            color: var(--tag-project-text);
         }
 
         .category-count {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--primary-color);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
         }
 
-        .category-arrow {
-            color: var(--primary-color);
-            font-size: 1.1rem;
-            transition: transform 0.3s ease, opacity 0.3s ease;
-            opacity: 0.6;
+        .category-card-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            line-height: 1.3;
+        }
+
+        .category-card-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
         }
 
         .category-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 0.4rem;
+            margin-bottom: 1.5rem;
         }
 
         .category-tags span {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 600;
-            padding: 0.2rem 0.6rem;
-            border-radius: 6px;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
             background: var(--tag-project);
             color: var(--tag-project-text);
             letter-spacing: 0.3px;
         }
 
-        @media (max-width: 900px) {
+        .category-footer {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-top: 1px solid var(--card-border);
+            padding-top: 1.5rem;
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .category-arrow {
+            transition: transform 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
             .category-grid {
                 grid-template-columns: 1fr;
-                max-width: 550px;
-                margin-left: auto;
-                margin-right: auto;
             }
         }
     </style>
@@ -186,17 +168,18 @@ permalink: /projects/
             <a href="{{ site.baseurl }}/projects/foundational/" class="category-card">
                 <div class="card-glass-bg"></div>
                 <div class="category-card-content">
-                    <div class="category-icon">
-                        <i class="fas fa-cubes"></i>
+                    <div class="category-card-header">
+                        <span class="category-tag"><i class="fas fa-cubes"></i> Collection</span>
+                        <span class="category-count">11 Projects</span>
                     </div>
                     <h2 class="category-card-title">Foundational Architectures</h2>
                     <p class="category-card-desc">The canonical building blocks of modern deep learning — from basic representations and sequence models to advanced generative frameworks.</p>
-                    <div class="category-meta">
-                        <span class="category-count"><i class="fas fa-folder-open"></i> 11 Projects</span>
-                        <span class="category-arrow"><i class="fas fa-arrow-right"></i></span>
-                    </div>
                     <div class="category-tags">
                         <span>Autoencoders</span><span>GANs</span><span>VAEs</span><span>CNNs</span><span>RNNs</span><span>LSTMs</span><span>ResNets</span><span>Transformers</span><span>GNNs</span><span>ViTs</span><span>CapsNets</span>
+                    </div>
+                    <div class="category-footer">
+                        <span>Explore Projects</span>
+                        <span class="category-arrow"><i class="fas fa-arrow-right"></i></span>
                     </div>
                 </div>
             </a>
@@ -205,17 +188,18 @@ permalink: /projects/
             <a href="{{ site.baseurl }}/projects/frontier/" class="category-card">
                 <div class="card-glass-bg"></div>
                 <div class="category-card-content">
-                    <div class="category-icon">
-                        <i class="fas fa-rocket"></i>
+                    <div class="category-card-header">
+                        <span class="category-tag"><i class="fas fa-rocket"></i> Collection</span>
+                        <span class="category-count">12 Projects</span>
                     </div>
                     <h2 class="category-card-title">Frontier Architectures</h2>
                     <p class="category-card-desc">Novel paradigms and alternative approaches that challenge conventional neural network design — from state space models to bio-inspired computing.</p>
-                    <div class="category-meta">
-                        <span class="category-count"><i class="fas fa-folder-open"></i> 12 Projects</span>
-                        <span class="category-arrow"><i class="fas fa-arrow-right"></i></span>
-                    </div>
                     <div class="category-tags">
                         <span>Mamba</span><span>KANs</span><span>LNNs</span><span>SNNs</span><span>Diffusion</span><span>PCNs</span><span>ESNs</span><span>RWKV</span><span>Hopfield</span><span>Neural ODEs</span><span>Flows</span><span>MoE</span>
+                    </div>
+                    <div class="category-footer">
+                        <span>Explore Projects</span>
+                        <span class="category-arrow"><i class="fas fa-arrow-right"></i></span>
                     </div>
                 </div>
             </a>
