@@ -1,0 +1,365 @@
+---
+layout: null
+title: "Deconstructing Neural ODEs: Part 2 — PyTorch Implementation"
+description: "Building Neural ODEs from scratch in PyTorch — ODE solvers, dynamics networks, the Neural ODE layer, and a spiral classifier. By Sovesh Mohapatra."
+permalink: /projects/neural-odes-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Neural ODEs: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+
+        pre[class*="language-"] {
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/neural-odes/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Neural ODEs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Neural ODEs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we developed the mathematical foundations of Neural ODEs: initial value problems, Euler and RK4 solvers, the ResNet-to-ODE connection, and the adjoint method. Now we translate every equation into working PyTorch code.</p>
+                <p>Our implementation consists of three files: <strong>ode_solver.py</strong> (Euler and RK4 fixed-step solvers), <strong>neural_ode.py</strong> (ODEFunc, NeuralODELayer, ODEClassifier), and <strong>train.py</strong> (spiral dataset, training loop, visualization). No external ODE libraries. No <code>torchdiffeq</code>. Every operation is explicit.</p>
+            </div>
+
+            <h2>ODE Solvers</h2>
+
+            <h3>Euler Step</h3>
+            <p>The forward Euler update is a single line:</p>
+
+            <pre><code class="language-python">def euler_step(f, t, y, dt):
+    return y + dt * f(t, y)</code></pre>
+
+            <p>Because <code>y</code> has shape <code>(batch, dim)</code> and <code>f</code> returns the same shape, this naturally handles batched inputs. The scalar <code>dt</code> broadcasts across all dimensions.</p>
+
+            <h3>RK4 Step</h3>
+
+            <pre><code class="language-python">def rk4_step(f, t, y, dt):
+    k1 = f(t, y)
+    k2 = f(t + dt/2, y + dt/2 * k1)
+    k3 = f(t + dt/2, y + dt/2 * k2)
+    k4 = f(t + dt, y + dt * k3)
+    return y + (dt/6) * (k1 + 2*k2 + 2*k3 + k4)</code></pre>
+
+            <p>Four evaluations of <code>f</code>, combined in a weighted average. The intermediate stages $\mathbf{k}_2$ and $\mathbf{k}_3$ evaluate at the midpoint $t + \Delta t/2$, which is where the fourth-order accuracy comes from.</p>
+
+            <h3>Integration Loop</h3>
+
+            <pre><code class="language-python">def ode_solve(f, y0, t_span, n_steps, method="euler"):
+    step_fn = {"euler": euler_step, "rk4": rk4_step}[method]
+    t0, t1 = t_span
+    dt = (t1 - t0) / n_steps
+    trajectory = [y0]
+    y, t = y0, t0
+    for _ in range(n_steps):
+        y = step_fn(f, t, y, dt)
+        t = t + dt
+        trajectory.append(y)
+    return torch.stack(trajectory, dim=0), ...</code></pre>
+
+            <p>The function returns the full trajectory tensor of shape <code>(n_steps+1, batch, dim)</code> -- useful for visualization -- plus the time grid.</p>
+
+            <h2>The Dynamics Network: ODEFunc</h2>
+            <p>The heart of a Neural ODE is the function $f(t, \mathbf{y}; \boldsymbol{\theta})$ that defines the dynamics.</p>
+
+            <h3>Architecture</h3>
+
+            <pre><code class="language-python">class ODEFunc(nn.Module):
+    def __init__(self, dim, hidden=128):
+        self.net = nn.Sequential(
+            nn.Linear(dim + 1, hidden),
+            nn.Tanh(),
+            nn.Linear(hidden, hidden),
+            nn.Tanh(),
+            nn.Linear(hidden, dim),
+        )</code></pre>
+
+            <p>Three key design decisions:</p>
+
+            <p><strong>Time concatenation.</strong> The input is $[\,t\;;\;\mathbf{y}\,] \in \mathbb{R}^{d+1}$, not just $\mathbf{y}$. This makes the dynamics <em>non-autonomous</em>: the vector field can change as we integrate. Without time, the flow is constrained to follow the same vector field everywhere, limiting expressivity.</p>
+
+            <p><strong>Tanh activation.</strong> We use $\tanh$ rather than ReLU for a specific reason: the dynamics $f$ should be Lipschitz continuous to guarantee well-posed ODEs. $\tanh$ is globally Lipschitz (bounded derivatives), while ReLU has discontinuous gradients at zero. This matters for solver stability.</p>
+
+            <p><strong>Zero initialization of the last layer.</strong> We initialize the final linear layer to zero weights and biases:</p>
+
+            <pre><code class="language-python">nn.init.zeros_(self.net[-1].weight)
+nn.init.zeros_(self.net[-1].bias)</code></pre>
+
+            <p>This means the initial dynamics are $d\mathbf{y}/dt \approx 0$, so $\mathbf{y}(1) \approx \mathbf{y}(0)$. The Neural ODE starts as an approximate identity map and gradually learns to deform the space. This dramatically improves optimization stability.</p>
+
+            <h2>The Neural ODE Layer</h2>
+
+            <pre><code class="language-python">class NeuralODELayer(nn.Module):
+    def forward(self, y0):
+        trajectory, _ = ode_solve(
+            self.func, y0, (0.0, 1.0), self.n_steps, self.method
+        )
+        return trajectory[-1]  # y(1)</code></pre>
+
+            <p>The layer takes in $\mathbf{y}_0$ and returns $\mathbf{y}(1)$ by calling the ODE solver. Standard PyTorch autograd handles the backward pass by backpropagating through all solver steps.</p>
+
+            <p>For the experimental adjoint path, we implement a custom <code>torch.autograd.Function</code> that only stores the final state and passes gradients through without storing the full trajectory.</p>
+
+            <h2>The Classifier: Dimensional Lifting</h2>
+
+            <h3>Why Lifting is Necessary</h3>
+            <p>A fundamental limitation of ODEs in $\mathbb{R}^d$: by the uniqueness theorem, solution trajectories cannot cross. In 2D, this means a continuous flow cannot separate two interleaving spirals -- the trajectories would have to pass through each other.</p>
+
+            <p>The solution: <strong>lift the data to a higher-dimensional space</strong> before the ODE.</p>
+
+            <pre><code class="language-python">class ODEClassifier(nn.Module):
+    def __init__(self, input_dim, n_classes, ode_dim=6, ...):
+        self.lift = nn.Linear(input_dim, ode_dim)  # 2D -> 6D
+        self.odefunc = ODEFunc(ode_dim, hidden=128)
+        self.ode_layer = NeuralODELayer(...)
+        self.classifier = nn.Sequential(
+            nn.Linear(ode_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, n_classes),
+        )</code></pre>
+
+            <p>The architecture is:</p>
+
+            <div class="math-block">
+                $$ \mathbf{x} \in \mathbb{R}^2 \;\xrightarrow{\text{lift}}\; \mathbf{y}_0 \in \mathbb{R}^6 \;\xrightarrow{\text{ODE}}\; \mathbf{y}(1) \in \mathbb{R}^6 \;\xrightarrow{\text{classify}}\; \hat{\mathbf{c}} \in \mathbb{R}^2 $$
+            </div>
+
+            <h3>The Augmented Neural ODE Perspective</h3>
+            <p>This lifting strategy is equivalent to the <strong>Augmented Neural ODE</strong> (Dupont et al., 2019). Instead of running the ODE in the original input space, we augment the state with extra dimensions initialized via a learned projection. The ODE operates in this higher-dimensional space where the uniqueness constraint no longer prevents separation.</p>
+
+            <p>In our case, lifting from 2D to 6D provides four extra dimensions for the flow to use in untangling the spirals.</p>
+
+            <h2>The Baseline: ResNet MLP</h2>
+            <p>For comparison, we implement a discrete residual MLP that mirrors the Neural ODE:</p>
+
+            <pre><code class="language-python">class ResNetMLP(nn.Module):
+    def forward(self, x):
+        h = self.lift(x)
+        dt = 1.0 / self.n_blocks
+        for block in self.blocks:
+            h = h + dt * block(h)  # Euler-like residual
+        return self.classifier(h)</code></pre>
+
+            <p>Each of the 20 blocks has its own set of weights (independent <code>nn.Linear</code> layers), while the Neural ODE reuses the same <code>ODEFunc</code> weights at every step. The <code>dt = 1/n_blocks</code> scaling mirrors the Euler method step size.</p>
+
+            <h2>Summary</h2>
+            <ul>
+                <li>ODE solvers are simple loops: Euler is one line, RK4 is six lines.</li>
+                <li>The dynamics network concatenates time to the state and uses Tanh activations for Lipschitz regularity.</li>
+                <li>Zero-initializing the output layer starts the ODE as an identity, aiding optimization.</li>
+                <li>Lifting to higher dimensions is essential -- 2D flows cannot separate spirals.</li>
+                <li>The ResNet baseline uses 20 independent weight sets; the Neural ODE shares one.</li>
+            </ul>
+
+            <p>In Part 3, we train everything on the spiral dataset and analyze the results: accuracy, speed, trajectories, and memory.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,382 @@
+---
+layout: null
+title: "Deconstructing Neural ODEs: Part 3 — Infinite Layers, Finite Memory"
+description: "Training Neural ODEs on the spiral benchmark — accuracy, speed, trajectory analysis, and memory comparison vs ResNet MLP. By Sovesh Mohapatra."
+permalink: /projects/neural-odes-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Neural ODEs: Part 3 - Infinite Layers, Finite Memory | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/neural-odes/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Neural ODEs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Neural ODEs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Infinite Layers, Finite Memory</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1 we built the math; in Part 2 we wrote the code. Now we train Neural ODEs on the classic spiral classification benchmark and dissect every result.</p>
+                <p>Our experiments compare three models: <strong>Neural ODE (Euler)</strong> with 20 Euler integration steps, <strong>Neural ODE (RK4)</strong> with 20 RK4 integration steps, and a <strong>ResNet MLP</strong> with 20 discrete residual blocks. All share the same architecture skeleton: lift 2D input to 6D, apply 20 "layers" of dynamics, then classify. The only difference is whether those layers share weights (ODE) or have independent weights (ResNet).</p>
+            </div>
+
+            <h2>The Spiral Dataset</h2>
+            <p>We generate 1,000 points from two interleaving Archimedean spirals:</p>
+
+            <div class="math-block">
+                $$ r = \frac{\theta}{3\pi}, \qquad x = r\cos\theta + \varepsilon, \qquad y = r\sin\theta + \varepsilon, $$
+            </div>
+
+            <p>where $\theta \in [0, 3\pi]$ (1.5 full turns) and $\varepsilon \sim \mathcal{N}(0, 0.1)$. The second spiral is rotated by $\pi$, creating two interleaving classes.</p>
+
+            <p>This is a canonical nonlinear classification benchmark. The decision boundary is not linearly separable, not even convex -- it is a continuous curve that spirals around the origin. Any model that solves this must learn a highly nonlinear transformation.</p>
+
+            <h2>Results</h2>
+            <p>Training configuration: 500 epochs, Adam optimizer with initial learning rate 0.01, cosine annealing schedule, batch size 128.</p>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Model</th>
+                        <th style="padding:0.75rem; text-align:center;">Accuracy</th>
+                        <th style="padding:0.75rem; text-align:center;">Parameters</th>
+                        <th style="padding:0.75rem; text-align:center;">Time</th>
+                        <th style="padding:0.75rem; text-align:right;">Total NFE</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td style="padding:0.75rem;">Neural ODE (Euler)</td>
+                        <td style="padding:0.75rem; text-align:center;">89.4%</td>
+                        <td style="padding:0.75rem; text-align:center;">18,906</td>
+                        <td style="padding:0.75rem; text-align:center;">23.6s</td>
+                        <td style="padding:0.75rem; text-align:right;">80,000</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td style="padding:0.75rem;">Neural ODE (RK4)</td>
+                        <td style="padding:0.75rem; text-align:center;">90.9%</td>
+                        <td style="padding:0.75rem; text-align:center;">18,906</td>
+                        <td style="padding:0.75rem; text-align:center;">91.5s</td>
+                        <td style="padding:0.75rem; text-align:right;">320,000</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.75rem;">ResNet MLP</td>
+                        <td style="padding:0.75rem; text-align:center;">92.9%</td>
+                        <td style="padding:0.75rem; text-align:center;">364,236</td>
+                        <td style="padding:0.75rem; text-align:center;">35.3s</td>
+                        <td style="padding:0.75rem; text-align:right;">--</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Key Takeaways</h3>
+
+            <p><strong>Parameter efficiency.</strong> The Neural ODE uses <strong>$19.3\times$ fewer parameters</strong> than the ResNet MLP (18,906 vs. 364,236) while achieving accuracy within 3 percentage points. This is the direct consequence of weight sharing: one function $f(\cdot;\boldsymbol{\theta})$ evaluated 20 times vs. 20 independent blocks.</p>
+
+            <p><strong>Euler vs. RK4.</strong> RK4 gains 1.5 percentage points over Euler (90.9% vs. 89.4%), but at a significant computational cost:</p>
+            <ul>
+                <li>RK4 requires $4\times$ the function evaluations (320,000 vs. 80,000)</li>
+                <li>Training takes $3.9\times$ longer (91.5s vs. 23.6s)</li>
+                <li>For this problem, Euler offers a better accuracy-per-FLOP tradeoff</li>
+            </ul>
+
+            <p>The advantage of RK4 is numerical precision: with the same number of steps, it solves the ODE more accurately. This matters more for stiff dynamics or when using fewer steps.</p>
+
+            <p><strong>ResNet advantage.</strong> The ResNet MLP reaches 92.9% -- 2 points above the best Neural ODE. This is expected: independent weights per block provide strictly more representational capacity. The Neural ODE's constraint (all "layers" share the same function) limits what dynamics it can express. The question is whether that 2% gap is worth $19\times$ more parameters.</p>
+
+            <h2>Trajectory Analysis</h2>
+            <p>The most illuminating visualization is the ODE trajectory plot. For each input point $\mathbf{x} \in \mathbb{R}^2$, we lift to $\mathbb{R}^6$ and plot the full ODE trajectory from $t=0$ to $t=1$, projected onto the first two principal components.</p>
+
+            <p><strong>What we observe:</strong></p>
+            <ul>
+                <li>At $t=0$, points from the two classes are interleaved (the spiral structure).</li>
+                <li>As $t$ increases, the continuous flow smoothly separates the classes.</li>
+                <li>By $t=1$, the two classes occupy distinct regions in the projected space.</li>
+                <li>The trajectories are smooth and continuous -- no discrete jumps.</li>
+            </ul>
+
+            <p>This is the geometric interpretation of a Neural ODE: it learns a <em>continuous deformation</em> of the feature space that untangles the data. Unlike a discrete ResNet, which applies a sequence of abrupt transformations, the Neural ODE flows the data smoothly from an entangled configuration to a linearly separable one.</p>
+
+            <p>The decision boundary plots confirm this: the Neural ODE produces smooth, continuous boundaries that follow the spiral structure, while the ResNet MLP (with more parameters) achieves a slightly tighter fit.</p>
+
+            <h2>Memory Comparison</h2>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Model</th>
+                        <th style="padding:0.75rem; text-align:right;">Parameters</th>
+                        <th style="padding:0.75rem; text-align:right;">Peak Memory</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td style="padding:0.75rem;">ODE (Euler)</td>
+                        <td style="padding:0.75rem; text-align:right;">18,906</td>
+                        <td style="padding:0.75rem; text-align:right;">11.5 KB</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td style="padding:0.75rem;">ODE (RK4)</td>
+                        <td style="padding:0.75rem; text-align:right;">18,906</td>
+                        <td style="padding:0.75rem; text-align:right;">30.2 KB</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.75rem;">ResNet MLP</td>
+                        <td style="padding:0.75rem; text-align:right;">364,236</td>
+                        <td style="padding:0.75rem; text-align:right;">6.1 KB</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>Two observations:</p>
+
+            <p><strong>RK4 uses $2.6\times$ more memory than Euler.</strong> Each RK4 step creates four intermediate tensors ($\mathbf{k}_1$ through $\mathbf{k}_4$) that must be retained for backpropagation. Euler creates only one.</p>
+
+            <p><strong>Parameter storage vs. activation memory.</strong> The ResNet MLP stores 364,236 parameters ($19.3\times$ more), but its forward pass peak memory is actually lower because each block is independent and gradients can be computed locally. The Neural ODE's unrolled solver creates a long computation graph that PyTorch must retain.</p>
+
+            <p>This is precisely the problem the <strong>adjoint method</strong> solves. By treating the backward pass as another ODE (solved in reverse time), the adjoint method reduces activation memory from $O(N)$ to $O(1)$ in the number of solver steps, at the cost of recomputing the forward trajectory.</p>
+
+            <h2>Connections to Other Architectures</h2>
+
+            <h3>ResNets as Euler Discretizations</h3>
+            <p>Our results make the connection concrete. The ResNet MLP with step scaling <code>h = h + (1/n_blocks) * block(h)</code> is literally a forward Euler solver with $\Delta t = 1/20$. The difference: each "step" has its own weights, whereas the Neural ODE reuses one set.</p>
+
+            <h3>Liquid Neural Networks</h3>
+            <p>Liquid Neural Networks (Hasani et al., 2021) extend the Neural ODE idea with state-dependent time constants:</p>
+
+            <div class="math-block">
+                $$ \frac{d\mathbf{h}}{dt} = -\frac{\mathbf{h}}{\tau(\mathbf{h})} + f(\mathbf{h}, \mathbf{x}; \boldsymbol{\theta}). $$
+            </div>
+
+            <p>This adds a natural damping/memory term that Neural ODEs lack. The ODE solvers we built here would work for Liquid Neural Networks with a modified dynamics function.</p>
+
+            <h3>Normalizing Flows</h3>
+            <p>Since ODE solutions are invertible (integrate forward to encode, backward to decode), Neural ODEs form the basis of <strong>continuous normalizing flows</strong> (CNFs). The change of variables formula for an ODE flow involves the trace of the Jacobian:</p>
+
+            <div class="math-block">
+                $$ \log p(\mathbf{x}) = \log p(\mathbf{z}) - \int_0^T \mathrm{tr}\!\left(\frac{\partial f}{\partial \mathbf{y}}\right) dt, $$
+            </div>
+
+            <p>where $\mathbf{z} = \mathbf{y}(T)$. This avoids the triangular Jacobian constraints of discrete normalizing flows.</p>
+
+            <h2>Lessons Learned</h2>
+            <ol>
+                <li><strong>Dimensional lifting is essential.</strong> A 2D ODE cannot separate spirals due to the non-crossing property. Lifting to 6D provides the extra degrees of freedom the flow needs.</li>
+                <li><strong>Zero initialization matters.</strong> Starting the dynamics at $d\mathbf{y}/dt \approx 0$ (identity transformation) dramatically helps optimization. Without it, the random initial dynamics can push states to extreme values, causing solver instability.</li>
+                <li><strong>Weight sharing is a double-edged sword.</strong> It gives $19\times$ parameter efficiency but limits expressivity. The Neural ODE cannot learn different transformations at different depths -- only one shared dynamics function evaluated at different times.</li>
+                <li><strong>Solver choice trades accuracy for compute.</strong> RK4 is more accurate per step but costs $4\times$ the computation. For many practical problems, Euler with more steps may be preferable to RK4 with fewer.</li>
+                <li><strong>The ResNet connection is not just an analogy.</strong> It is a precise mathematical relationship. Understanding it helps transfer intuitions between discrete and continuous architectures.</li>
+            </ol>
+
+            <h2>Conclusion</h2>
+            <p>We built Neural ODEs from scratch: Euler and RK4 solvers, a learnable dynamics network, dimensional lifting, and a classification pipeline. On the spiral benchmark:</p>
+            <ul>
+                <li>The Neural ODE (RK4) achieves <strong>90.9% accuracy</strong> with only <strong>18,906 parameters</strong>.</li>
+                <li>The equivalent ResNet MLP reaches 92.9% but needs <strong>364,236 parameters</strong> -- a $19.3\times$ overhead.</li>
+                <li>RK4 outperforms Euler by 1.5 percentage points at $4\times$ the computational cost.</li>
+                <li>Trajectory visualization reveals how the continuous flow smoothly untangles interleaving spirals.</li>
+            </ul>
+
+            <p>Neural ODEs are not just a theoretical curiosity. They offer a principled framework for parameter-efficient deep learning, invertible transformations, and adaptive-depth computation. The mathematics of differential equations -- developed over centuries -- provides tools, intuitions, and guarantees that discrete architectures lack.</p>
+
+            <p><em>Every line of code is available in the repository. No black boxes.</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

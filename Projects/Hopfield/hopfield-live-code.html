@@ -1,0 +1,267 @@
+---
+layout: null
+title: "Deconstructing Hopfield Networks: Part 2 — PyTorch Implementation"
+description: "Building classical and modern Hopfield networks from scratch in pure PyTorch — Hebbian learning, asynchronous updates, log-sum-exp energy, and softmax retrieval. By Sovesh Mohapatra."
+permalink: /projects/hopfield-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Hopfield Networks: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <!-- Prism.js for Code Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/hopfield/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Hopfield Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Hopfield Networks from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>In Part 1, we developed the mathematical foundations of Hopfield Networks. Now we translate every equation into working PyTorch code. We implement both the classical binary Hopfield network (1982) with Hebbian learning and asynchronous updates, and the modern continuous Hopfield network (2020) with log-sum-exp energy and softmax retrieval. Zero external frameworks beyond PyTorch---every operation is explicit.</p>
+            </div>
+
+            <h2>Implementation Overview</h2>
+            <p>Our implementation consists of two classes:</p>
+            <ol>
+                <li><code>ClassicalHopfield</code>: Binary $\{-1, +1\}$ patterns, Hebbian weight matrix, asynchronous sign update, quadratic energy.</li>
+                <li><code>ModernHopfield</code>: Continuous $\mathbb{R}^d$ patterns, direct pattern storage, softmax-weighted retrieval, log-sum-exp energy.</li>
+            </ol>
+
+            <p>Both classes expose three core operations: <code>store()</code>, <code>retrieve()</code>, and <code>energy()</code>.</p>
+
+            <h2>Classical Hopfield: Weight Matrix Construction</h2>
+            <p>The Hebbian learning rule from Part 1 translates directly:</p>
+
+<pre><code class="language-python">def store(self, patterns: torch.Tensor) -> None:
+    self.patterns = patterns.clone()
+    num_patterns = patterns.shape[0]
+
+    self.W = torch.zeros(self.size, self.size)
+    for i in range(num_patterns):
+        xi = patterns[i].unsqueeze(1)   # (size, 1)
+        self.W += xi @ xi.T             # outer product
+
+    self.W /= self.size                 # normalize by N
+    self.W.fill_diagonal_(0.0)          # zero diagonal</code></pre>
+
+            <p>This implements $W = \frac{1}{N} \sum_{\mu=1}^P \boldsymbol{\xi}^\mu (\boldsymbol{\xi}^\mu)^\top$ with $W_{ii} = 0$.</p>
+
+            <h3>Key Design Decisions</h3>
+            <ul>
+                <li><strong>Outer product loop</strong>: We iterate over patterns rather than using a batched <code>einsum</code> for clarity. The loop makes the Hebbian "accumulation" explicit.</li>
+                <li><strong>Normalization by $N$</strong>: Dividing by the number of neurons (not patterns) keeps the local field $h_i$ on the order of $\pm 1$, matching the binary state range.</li>
+                <li><strong>Zero diagonal</strong>: Prevents a neuron from reinforcing its own state, which would create trivial all-$+1$ or all-$-1$ attractors.</li>
+            </ul>
+
+            <h2>Classical Hopfield: Asynchronous Update</h2>
+            <p>Retrieval uses random asynchronous updates---one neuron at a time:</p>
+
+<pre><code class="language-python">def retrieve(self, query, max_steps=20):
+    state = query.clone().float()
+    energy_history = [self.energy(state).item()]
+
+    for _ in range(max_steps):
+        old_state = state.clone()
+        order = torch.randperm(self.size)
+        for i in order:
+            h = self.W[i] @ state
+            state[i] = 1.0 if h >= 0 else -1.0
+
+        energy_history.append(self.energy(state).item())
+        if torch.equal(state, old_state):
+            break
+
+    return state, energy_history</code></pre>
+
+            <h3>Why Asynchronous?</h3>
+            <p>Synchronous updates (updating all neurons simultaneously) can lead to oscillations between two states. Asynchronous updates guarantee monotonic energy decrease, because each individual neuron flip is guaranteed to lower (or maintain) the energy:</p>
+
+            <div class="math-block">
+                $$ \Delta E_i = -(x_i^{\text{new}} - x_i) h_i \leq 0 $$
+            </div>
+
+            <p>In our implementation, one "step" is a complete sweep through all $N$ neurons in random order. Convergence typically occurs in 2--3 sweeps for well-separated patterns.</p>
+
+            <h2>Classical Hopfield: Energy Computation</h2>
+
+<pre><code class="language-python">def energy(self, state: torch.Tensor) -> float:
+    return -0.5 * state @ self.W @ state</code></pre>
+
+            <p>This is a single line because PyTorch handles the matrix-vector products. The energy $E = -\frac{1}{2} \mathbf{x}^\top W \mathbf{x}$ is a scalar quadratic form. During retrieval, we observe energy dropping from approximately $-11$ to $-48$, confirming that the dynamics are descending the energy landscape toward a stored pattern.</p>
+
+            <h2>Modern Hopfield: Energy Function</h2>
+            <p>The modern energy function uses log-sum-exp:</p>
+
+<pre><code class="language-python">def energy(self, state, beta=1.0):
+    similarities = self.patterns @ state   # (num_patterns,)
+    lse = torch.logsumexp(beta * similarities, dim=0)
+    return (-lse / beta + 0.5 * torch.sum(state ** 2)).item()</code></pre>
+
+            <p>This implements:</p>
+
+            <div class="math-block">
+                $$ E(\mathbf{x}) = -\frac{1}{\beta} \ln\!\left(\sum_{\mu=1}^P \exp(\beta \, \boldsymbol{\xi}^\mu \cdot \mathbf{x})\right) + \frac{1}{2}\|\mathbf{x}\|^2 $$
+            </div>
+
+            <p>PyTorch's <code>logsumexp</code> is numerically stable (it subtracts the max before exponentiating), which is critical when $\beta$ is large.</p>
+
+            <h2>Modern Hopfield: Softmax Retrieval</h2>
+            <p>The iterative update rule:</p>
+
+<pre><code class="language-python">def retrieve(self, query, beta=1.0, steps=5):
+    state = query.clone().float()
+    energy_history = [self.energy(state, beta)]
+
+    for _ in range(steps):
+        similarities = self.patterns @ state
+        weights = F.softmax(beta * similarities, dim=0)
+        state = self.patterns.T @ weights
+        energy_history.append(self.energy(state, beta))
+
+    return state, energy_history</code></pre>
+
+            <p>Each step computes:</p>
+
+            <div class="math-block">
+                $$ \mathbf{x}^{\text{new}} = \Xi^\top \, \text{softmax}(\beta \, \Xi \, \mathbf{x}) $$
+            </div>
+
+            <p>where $\Xi \in \mathbb{R}^{P \times d}$ is the pattern matrix. This is a weighted average of stored patterns, where the weights are softmax over similarity scores.</p>
+
+            <h2>The Attention Connection: Implementation</h2>
+            <p>The <code>attention_retrieve</code> method makes the connection explicit:</p>
+
+<pre><code class="language-python">def attention_retrieve(self, query, beta=1.0):
+    if query.dim() == 1:
+        query = query.unsqueeze(0)       # (1, dim)
+
+    K = self.patterns                     # (P, dim)
+    V = self.patterns                     # (P, dim)
+
+    scores = beta * (query @ K.T)         # (1, P)
+    attn_weights = F.softmax(scores, dim=-1)
+    output = attn_weights @ V             # (1, dim)
+
+    return output.squeeze(0)</code></pre>
+
+            <p>Compare with standard Transformer attention:</p>
+
+            <div class="math-block">
+                $$ \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V $$
+            </div>
+
+            <p>Setting $\beta = 1/\sqrt{d_k}$ and $K = V = \Xi$, these are identical. The Hopfield network <em>is</em> an attention layer where keys equal values (the stored patterns) and the query is the state to be retrieved.</p>
+
+            <h2>Utility Functions</h2>
+            <p>We also implement helper functions for benchmarking:</p>
+
+<pre><code class="language-python">def generate_binary_patterns(num_patterns, size):
+    return 2 * torch.randint(0, 2, (num_patterns, size)).float() - 1
+
+def corrupt_pattern(pattern, corruption_rate):
+    corrupted = pattern.clone()
+    num_flip = int(corruption_rate * pattern.numel())
+    flip_idx = torch.randperm(pattern.numel())[:num_flip]
+    corrupted[flip_idx] *= -1
+    return corrupted
+
+def hamming_accuracy(original, recovered):
+    return (original == recovered).float().mean().item()</code></pre>
+
+            <p><code>generate_binary_patterns</code> samples from $\{-1, +1\}^N$ uniformly. <code>corrupt_pattern</code> flips a specified fraction of bits. <code>hamming_accuracy</code> measures the fraction of matching bits between the original and recovered patterns.</p>
+
+            <h2>Summary</h2>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Method</th>
+                        <th style="text-align:center; padding: 0.75rem;">Classical</th>
+                        <th style="text-align:center; padding: 0.75rem;">Modern</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;"><code>store()</code></td><td style="text-align:center; padding: 0.75rem;">Hebbian outer products</td><td style="text-align:center; padding: 0.75rem;">Direct pattern matrix</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;"><code>retrieve()</code></td><td style="text-align:center; padding: 0.75rem;">Asynchronous sign update</td><td style="text-align:center; padding: 0.75rem;">Iterative softmax</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;"><code>energy()</code></td><td style="text-align:center; padding: 0.75rem;">$-\frac{1}{2}\mathbf{x}^\top W \mathbf{x}$</td><td style="text-align:center; padding: 0.75rem;">$-\frac{1}{\beta}\text{lse}(\cdot) + \frac{1}{2}\|\mathbf{x}\|^2$</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;"><code>attention_retrieve()</code></td><td style="text-align:center; padding: 0.75rem;">---</td><td style="text-align:center; padding: 0.75rem;">Single-step attention</td></tr>
+                </tbody>
+            </table>
+
+            <p>The entire implementation fits in under 120 lines of Python. Every operation uses standard PyTorch tensor ops---no custom CUDA kernels, no external libraries. In <strong>Part 3</strong>, we benchmark both networks, measure storage capacity, and formally demonstrate the attention equivalence with numerical experiments.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

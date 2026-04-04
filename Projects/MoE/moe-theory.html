@@ -1,0 +1,205 @@
+---
+layout: null
+title: "Deconstructing MoE: Part 1 — The Math of Conditional Computation"
+description: "The mathematical foundations of Mixture of Experts — gating functions, top-k routing, noisy exploration, and load balancing loss. By Sovesh Mohapatra."
+permalink: /projects/moe-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing MoE: Part 1 - The Math of Conditional Computation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/moe/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to MoE Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing MoE from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Conditional Computation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p><strong>Mixture of Experts</strong> (MoE) is the architectural principle behind the scaling of modern large language models including GPT-4, Mixtral, and Switch Transformer. Rather than activating every parameter for every input, MoE routes each token to a small subset of specialized sub-networks (experts), achieving massive model capacity at a fraction of the computational cost.</p>
+                <p>This first installment derives the mathematical foundations: gating functions, top-$k$ routing, and the load balancing loss that prevents expert collapse.</p>
+            </div>
+
+            <h2>The Scaling Problem</h2>
+            <p>Dense neural networks have a fundamental coupling between <em>model capacity</em> and <em>computational cost</em>. If a model has $P$ parameters, then processing a single input requires $\mathcal{O}(P)$ floating-point operations. Doubling the model's knowledge requires doubling the compute.</p>
+
+            <p>This coupling becomes untenable at the frontier. A dense transformer with 1.8 trillion parameters would require proportionally enormous compute for every single token -- whether that token is a trivial article like "the" or a complex reasoning step.</p>
+
+            <p><strong>Conditional computation</strong> breaks this coupling. The idea is simple: maintain a large number of parameters for capacity, but only <em>activate</em> a small subset of them for each input.</p>
+
+            <div class="math-block">
+                $$ \text{Compute per input} \ll \text{Total model capacity} $$
+            </div>
+
+            <p>Mixture of Experts implements conditional computation through two components:</p>
+            <ol>
+                <li><strong>Expert networks</strong>: $N$ independent sub-networks, each capable of processing the input.</li>
+                <li><strong>Gating network</strong>: A lightweight router that decides which experts process each input.</li>
+            </ol>
+
+            <h2>Gating Functions</h2>
+            <p>Let $\mathbf{x} \in \mathbb{R}^d$ be an input vector. The gating network $G$ produces a probability distribution over $N$ experts:</p>
+
+            <div class="math-block">
+                $$ G(\mathbf{x}) = \text{softmax}(\mathbf{W}_g \mathbf{x}) \in \mathbb{R}^N $$
+            </div>
+
+            <p>where $\mathbf{W}_g \in \mathbb{R}^{N \times d}$ is the gating weight matrix. Each component $G(\mathbf{x})_i$ represents the probability (or weight) assigned to expert $i$.</p>
+
+            <p>The output of the MoE layer is a weighted combination of expert outputs:</p>
+
+            <div class="math-block">
+                $$ \mathbf{y} = \sum_{i=1}^{N} G(\mathbf{x})_i \cdot E_i(\mathbf{x}) $$
+            </div>
+
+            <p>where $E_i(\mathbf{x})$ is the output of the $i$-th expert.</p>
+
+            <h3>The Problem with Dense Gating</h3>
+            <p>If we compute the full weighted sum above, we have gained nothing -- every expert runs on every input, and the compute cost is $N$ times that of a single expert. The entire point of MoE is to make this sum <em>sparse</em>.</p>
+
+            <h2>Top-$k$ Routing</h2>
+            <p>The key to computational efficiency is <strong>top-$k$ routing</strong>. Instead of consulting all $N$ experts, we select only the $k$ experts with the highest gate values:</p>
+
+            <div class="math-block">
+                $$ \mathbf{y} = \sum_{i \in \text{TopK}(G(\mathbf{x}),\, k)} \tilde{G}(\mathbf{x})_i \cdot E_i(\mathbf{x}) $$
+            </div>
+
+            <p>where $\text{TopK}(G(\mathbf{x}), k)$ returns the indices of the $k$ largest components of $G(\mathbf{x})$, and $\tilde{G}$ denotes the <em>renormalized</em> gate values:</p>
+
+            <div class="math-block">
+                $$ \tilde{G}(\mathbf{x})_i = \frac{G(\mathbf{x})_i}{\sum_{j \in \text{TopK}} G(\mathbf{x})_j} $$
+            </div>
+
+            <h3>Computational Savings</h3>
+            <p>With top-$k$ routing, the compute cost per input scales as $\mathcal{O}(k \cdot P_{\text{expert}})$ rather than $\mathcal{O}(N \cdot P_{\text{expert}})$. For a typical configuration of $N=8$ experts and $k=2$:</p>
+
+            <div class="math-block">
+                $$ \text{Compute ratio} = \frac{k}{N} = \frac{2}{8} = 25\% $$
+            </div>
+
+            <p>The model has $8\times$ the capacity of a single expert but only $2\times$ the compute cost.</p>
+
+            <h3>Noisy Gating for Exploration</h3>
+            <p>A critical training trick from Shazeer et al. (2017) is to add tunable noise to the gating logits during training:</p>
+
+            <div class="math-block">
+                $$ G(\mathbf{x}) = \text{softmax}\!\left(\mathbf{W}_g \mathbf{x} + \epsilon \cdot \text{softplus}(\mathbf{w}_{\text{noise}})\right) $$
+            </div>
+
+            <p>where $\epsilon \sim \mathcal{N}(0, \mathbf{I})$ and $\mathbf{w}_{\text{noise}} \in \mathbb{R}^N$ are learnable noise scale parameters. Without this noise, the gating network quickly converges to always selecting the same experts, causing the remaining experts to receive no gradient signal and effectively die.</p>
+
+            <h2>Load Balancing Loss</h2>
+            <p>Even with noisy gating, there is a strong tendency for the model to develop <strong>expert collapse</strong>: a few experts become preferred, receive more training signal, become even better, and attract even more tokens -- a positive feedback loop.</p>
+
+            <p>The load balancing auxiliary loss explicitly counteracts this:</p>
+
+            <div class="math-block">
+                $$ \mathcal{L}_{\text{balance}} = N \cdot \sum_{i=1}^{N} f_i \cdot p_i $$
+            </div>
+
+            <p>where:</p>
+            <ul>
+                <li>$f_i = \frac{1}{B} \sum_{j=1}^{B} \mathbb{1}[i \in \text{TopK}(G(\mathbf{x}_j), k)]$ is the <strong>fraction of tokens</strong> in the batch routed to expert $i$.</li>
+                <li>$p_i = \frac{1}{B} \sum_{j=1}^{B} G(\mathbf{x}_j)_i$ is the <strong>average gate probability</strong> for expert $i$ across the batch.</li>
+            </ul>
+
+            <h3>Why This Loss Works</h3>
+            <p>Consider the ideal case where routing is perfectly uniform. Each expert receives a fraction $f_i = k/N$ of tokens, and the average gate probability is $p_i = 1/N$. Then:</p>
+
+            <div class="math-block">
+                $$ \mathcal{L}_{\text{balance}}^{\text{uniform}} = N \cdot \sum_{i=1}^{N} \frac{k}{N} \cdot \frac{1}{N} = N \cdot N \cdot \frac{k}{N^2} = k $$
+            </div>
+
+            <p>Any deviation from uniform routing increases the loss (by the Cauchy-Schwarz inequality). Multiplying by $N$ ensures the loss scale does not diminish as the number of experts grows.</p>
+
+            <h3>Total Training Objective</h3>
+            <p>The total loss combines the task-specific loss with the auxiliary load balancing loss:</p>
+
+            <div class="math-block">
+                $$ \mathcal{L} = \mathcal{L}_{\text{task}} + \alpha \cdot \mathcal{L}_{\text{balance}} $$
+            </div>
+
+            <p>where $\alpha$ is a hyperparameter (typically $0.01$--$0.1$) controlling the strength of the balancing penalty. Too small and experts collapse; too large and the model sacrifices task performance for routing uniformity.</p>
+
+            <h2>Summary and Next Steps</h2>
+            <p>The mathematical framework for MoE rests on three pillars:</p>
+            <ol>
+                <li><strong>Sparse gating</strong> via top-$k$ selection reduces compute from $\mathcal{O}(N)$ to $\mathcal{O}(k)$ expert evaluations.</li>
+                <li><strong>Noisy exploration</strong> via learnable Gaussian noise prevents premature convergence to a fixed routing pattern.</li>
+                <li><strong>Load balancing loss</strong> via $\mathcal{L}_{\text{balance}} = N \sum f_i p_i$ prevents expert collapse by penalizing non-uniform routing.</li>
+            </ol>
+
+            <p>In Part 2, we implement these ideas in pure PyTorch: the Expert MLP, TopKGating with noisy exploration, MoELayer with load balancing, and a full MoE classifier ready for MNIST.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

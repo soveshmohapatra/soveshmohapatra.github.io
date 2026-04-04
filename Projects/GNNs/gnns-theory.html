@@ -1,0 +1,369 @@
+---
+layout: null
+title: "Deconstructing GNNs: Part 1 — The Math of Message Passing"
+description: "The mathematical foundations of Graph Neural Networks — graph representations, spectral convolution, the GCN layer, and graph attention. By Sovesh Mohapatra."
+permalink: /projects/gnns-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing GNNs: Part 1 - The Math of Message Passing | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/gnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to GNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing GNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Message Passing</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>Graph Neural Networks extend deep learning beyond grids and sequences to arbitrary relational structures. This first installment develops the mathematical foundations: how graphs are represented for computation, why spectral convolutions motivate the GCN layer, and how attention mechanisms generalize fixed aggregation. Every equation maps directly to the pure-PyTorch implementation in Part 2.</p>
+            </div>
+
+            <h2>Why Graphs?</h2>
+            <p>Convolutional Neural Networks assume data lives on a regular grid (images). Recurrent networks assume a sequential ordering (text, audio). But many of the most interesting datasets are <em>graphs</em>:</p>
+            <ul>
+                <li>Social networks -- nodes are people, edges are friendships</li>
+                <li>Molecules -- nodes are atoms, edges are chemical bonds</li>
+                <li>Citation networks -- nodes are papers, edges are references</li>
+                <li>Knowledge graphs -- nodes are entities, edges are relations</li>
+            </ul>
+
+            <p>A graph $G = (V, E)$ with $|V| = N$ nodes is compactly described by:</p>
+            <ul>
+                <li>An <strong>adjacency matrix</strong> $\mathbf{A} \in \{0,1\}^{N \times N}$ where $A_{ij} = 1$ if edge $(i,j) \in E$.</li>
+                <li>A <strong>feature matrix</strong> $\mathbf{X} \in \mathbb{R}^{N \times F}$ where row $i$ holds the $F$-dimensional feature vector of node $i$.</li>
+            </ul>
+
+            <p>The goal of a GNN is to learn a function $f: (\mathbf{X}, \mathbf{A}) \mapsto \mathbf{Z} \in \mathbb{R}^{N \times C}$ that produces useful node representations (e.g., for classification into $C$ classes) by exploiting both features <em>and</em> graph structure.</p>
+
+            <h2>Graph Representation for Computation</h2>
+
+            <h3>Adjacency Matrix and Self-Loops</h3>
+            <p>The raw adjacency matrix $\mathbf{A}$ encodes which nodes are connected but does <em>not</em> include a node's own features. A standard trick is to add self-loops:</p>
+
+            <div class="math-block">
+                $$ \hat{\mathbf{A}} = \mathbf{A} + \mathbf{I}_N $$
+            </div>
+
+            <p>so that every node aggregates its own representation alongside its neighbors'.</p>
+
+            <h3>Degree Matrix and Normalization</h3>
+            <p>The degree matrix of $\hat{\mathbf{A}}$ is:</p>
+
+            <div class="math-block">
+                $$ \hat{\mathbf{D}}_{ii} = \sum_j \hat{A}_{ij} $$
+            </div>
+
+            <p>Naively multiplying $\hat{\mathbf{A}}\mathbf{X}$ sums neighbor features, but high-degree nodes accumulate disproportionately large values. Two normalizations are common:</p>
+            <ol>
+                <li><strong>Row normalization</strong>: $\hat{\mathbf{D}}^{-1}\hat{\mathbf{A}}$ -- each row sums to 1 (mean aggregation).</li>
+                <li><strong>Symmetric normalization</strong>: $\hat{\mathbf{D}}^{-1/2}\hat{\mathbf{A}}\hat{\mathbf{D}}^{-1/2}$ -- the normalization used by Kipf &amp; Welling, which has a spectral justification.</li>
+            </ol>
+
+            <h2>Spectral Graph Convolution</h2>
+            <p>On regular grids, convolution is multiplication in the Fourier domain. The graph analog uses the <strong>graph Laplacian</strong>:</p>
+
+            <div class="math-block">
+                $$ \mathbf{L} = \mathbf{D} - \mathbf{A} \qquad\text{(unnormalized)}, \qquad \tilde{\mathbf{L}} = \mathbf{I} - \mathbf{D}^{-1/2}\mathbf{A}\mathbf{D}^{-1/2} \qquad\text{(normalized)} $$
+            </div>
+
+            <p>The eigendecomposition $\tilde{\mathbf{L}} = \mathbf{U}\boldsymbol{\Lambda}\mathbf{U}^T$ defines the graph Fourier transform. A spectral convolution with filter $g_\theta$ is:</p>
+
+            <div class="math-block">
+                $$ g_\theta \star \mathbf{x} = \mathbf{U}\, g_\theta(\boldsymbol{\Lambda})\, \mathbf{U}^T \mathbf{x} $$
+            </div>
+
+            <p>Computing the full eigendecomposition is $O(N^3)$. Chebyshev polynomials approximate $g_\theta(\boldsymbol{\Lambda})$ without explicit eigenvectors. Kipf &amp; Welling's key simplification: truncate the Chebyshev expansion to first order, yielding the now-famous GCN propagation rule.</p>
+
+            <h2>The GCN Layer (Kipf &amp; Welling, 2017)</h2>
+            <p>Starting from the first-order Chebyshev approximation and applying a renormalization trick, the Graph Convolutional layer computes:</p>
+
+            <div class="math-block">
+                $$ \mathbf{H}^{(\ell+1)} = \sigma\!\left( \hat{\mathbf{D}}^{-1/2}\,\hat{\mathbf{A}}\,\hat{\mathbf{D}}^{-1/2}\; \mathbf{H}^{(\ell)}\,\mathbf{W}^{(\ell)} \right) $$
+            </div>
+
+            <p>where:</p>
+            <ul>
+                <li>$\mathbf{H}^{(0)} = \mathbf{X}$ (input features)</li>
+                <li>$\mathbf{W}^{(\ell)} \in \mathbb{R}^{F_\ell \times F_{\ell+1}}$ is a learnable weight matrix</li>
+                <li>$\sigma$ is a nonlinearity (typically ReLU)</li>
+            </ul>
+
+            <p>This equation can be read as three steps:</p>
+            <ol>
+                <li><strong>Transform</strong>: Project features via $\mathbf{W}$</li>
+                <li><strong>Aggregate</strong>: Each node averages its neighbors' (transformed) features, weighted by degree normalization</li>
+                <li><strong>Activate</strong>: Apply nonlinearity</li>
+            </ol>
+
+            <p>Stacking $L$ layers gives each node a receptive field of $L$-hop neighbors. A 2-layer GCN can capture interactions between nodes up to 2 hops apart -- sufficient for many community detection tasks.</p>
+
+            <h2>Attention on Graphs: The GAT Layer</h2>
+
+            <h3>Motivation</h3>
+            <p>GCN assigns fixed weights to neighbors based on degree. But not all neighbors are equally informative. Graph Attention Networks (Velickovic et al., 2018) learn <em>adaptive</em> weights.</p>
+
+            <h3>Attention Mechanism</h3>
+            <p>For each edge $(i, j)$:</p>
+
+            <div class="math-block">
+                $$ e_{ij} = \text{LeakyReLU}\!\left( \mathbf{a}^T \left[\mathbf{W}\mathbf{h}_i \,\|\, \mathbf{W}\mathbf{h}_j\right] \right) $$
+            </div>
+
+            <div class="math-block">
+                $$ \alpha_{ij} = \text{softmax}_j(e_{ij}) = \frac{\exp(e_{ij})}{\sum_{k \in \mathcal{N}(i)} \exp(e_{ik})} $$
+            </div>
+
+            <div class="math-block">
+                $$ \mathbf{h}_i' = \sigma\!\left( \sum_{j \in \mathcal{N}(i)} \alpha_{ij}\,\mathbf{W}\mathbf{h}_j \right) $$
+            </div>
+
+            <p>where $\mathbf{W} \in \mathbb{R}^{F \times F'}$ is a shared linear projection and $\mathbf{a} \in \mathbb{R}^{2F'}$ is the attention vector.</p>
+
+            <h3>Multi-Head Attention</h3>
+            <p>To stabilize training, GAT uses $K$ independent attention heads:</p>
+
+            <div class="math-block">
+                $$ \mathbf{h}_i' = \Big\|_{k=1}^{K}\; \sigma\!\left( \sum_{j \in \mathcal{N}(i)} \alpha_{ij}^{(k)}\,\mathbf{W}^{(k)}\mathbf{h}_j \right) $$
+            </div>
+
+            <p>where $\|$ denotes concatenation. For the output layer, heads are <em>averaged</em> instead of concatenated to produce $C$-dimensional logits.</p>
+
+            <h2>GCN vs. GAT: When to Use Which</h2>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Property</th>
+                        <th style="text-align:center; padding: 0.75rem;">GCN</th>
+                        <th style="text-align:center; padding: 0.75rem;">GAT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Neighbor weighting</td>
+                        <td style="text-align:center; padding: 0.75rem;">Fixed (degree-based)</td>
+                        <td style="text-align:center; padding: 0.75rem;">Learned (attention)</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Parameters per layer</td>
+                        <td style="text-align:center; padding: 0.75rem;">$O(F \cdot F')$</td>
+                        <td style="text-align:center; padding: 0.75rem;">$O(K(F \cdot F' + 2F'))$</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Computational cost</td>
+                        <td style="text-align:center; padding: 0.75rem;">Lower</td>
+                        <td style="text-align:center; padding: 0.75rem;">Higher (attention scores)</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Best for</td>
+                        <td style="text-align:center; padding: 0.75rem;">Homogeneous graphs</td>
+                        <td style="text-align:center; padding: 0.75rem;">Heterogeneous importance</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Looking Ahead</h2>
+            <p>In <strong>Part 2</strong>, we implement both layers in pure PyTorch -- no graph libraries. We will see how the normalized adjacency matrix and attention scores translate to ~150 lines of actual code.</p>
+
+            <p>In <strong>Part 3</strong>, we train both models on Zachary's Karate Club (34 nodes, 78 edges) with only 4 labeled nodes and compare convergence, accuracy, and the learned representations.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

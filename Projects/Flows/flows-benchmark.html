@@ -1,0 +1,181 @@
+---
+layout: null
+title: "Deconstructing Normalizing Flows: Part 3 — Exact Likelihood Generation"
+description: "Training Normalizing Flows on 2D density estimation — RealNVP vs Planar Flow on Two Moons and Two Circles, density heatmaps, and transformation visualization. By Sovesh Mohapatra."
+permalink: /projects/flows-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Normalizing Flows: Part 3 - Exact Likelihood Generation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/flows/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Normalizing Flows Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Normalizing Flows from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Exact Likelihood Generation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we derived the change of variables formula and the Jacobian determinant tricks that make normalizing flows computationally tractable. In Part 2, we implemented PlanarFlow, AffineCouplingLayer, BatchNormFlow, and RealNVP from scratch in pure PyTorch.</p>
+                <p>Now, we train both architectures on 2D density estimation benchmarks and analyze the results. We evaluate on two classic datasets -- Two Moons and Two Circles -- that are simple enough to visualize but complex enough to test a flow's ability to model multi-modal and non-convex distributions.</p>
+            </div>
+
+            <h2>Experimental Setup</h2>
+
+            <h3>Datasets</h3>
+            <p>Both datasets contain 4,000 points in $\mathbb{R}^2$, generated with Gaussian noise ($\sigma = 0.06$) and normalized to zero mean and unit variance:</p>
+            <ul>
+                <li><strong>Two Moons</strong>: Two interleaving half-circles, creating a non-convex, multi-modal density with a narrow gap between the crescents.</li>
+                <li><strong>Two Circles</strong>: Two concentric circles with radius ratio 0.4, testing the flow's ability to model rotationally symmetric but disconnected distributions.</li>
+            </ul>
+
+            <h3>Models</h3>
+            <ul>
+                <li><strong>RealNVP</strong>: 8 affine coupling layers with alternating even/odd masks, batch normalization between layers, hidden dimension 64. Total: 71,744 parameters.</li>
+                <li><strong>Planar Flow</strong>: 32 stacked planar transformations with softplus invertibility constraints. Total: 160 parameters.</li>
+            </ul>
+
+            <h3>Training</h3>
+            <p>Both models are trained for 1,000 epochs with Adam (initial lr = $10^{-3}$), cosine annealing to $10^{-5}$, batch size 256, and gradient clipping at norm 5.0.</p>
+
+            <h2>Results</h2>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Model</th>
+                        <th style="padding:0.75rem; text-align:center;">Dataset</th>
+                        <th style="padding:0.75rem; text-align:center;">Best NLL</th>
+                        <th style="padding:0.75rem; text-align:right;">Parameters</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">RealNVP</td><td style="padding:0.75rem; text-align:center;">Two Moons</td><td style="padding:0.75rem; text-align:center;"><strong>1.3375</strong></td><td style="padding:0.75rem; text-align:right;">71,744</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">RealNVP</td><td style="padding:0.75rem; text-align:center;">Two Circles</td><td style="padding:0.75rem; text-align:center;"><strong>2.0891</strong></td><td style="padding:0.75rem; text-align:right;">71,744</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Planar Flow ($K$=32)</td><td style="padding:0.75rem; text-align:center;">Two Moons</td><td style="padding:0.75rem; text-align:center;">2.9236</td><td style="padding:0.75rem; text-align:right;">160</td></tr>
+                    <tr><td style="padding:0.75rem;">Planar Flow ($K$=32)</td><td style="padding:0.75rem; text-align:center;">Two Circles</td><td style="padding:0.75rem; text-align:center;">2.8546</td><td style="padding:0.75rem; text-align:right;">160</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Quantitative Analysis</h3>
+            <p>RealNVP achieves dramatically better likelihoods across both datasets:</p>
+            <ul>
+                <li>On Two Moons, RealNVP's NLL of 1.34 is <strong>54% lower</strong> than the planar flow's 2.92.</li>
+                <li>On Two Circles, RealNVP scores 2.09 versus the planar flow's 2.85 -- a <strong>27% improvement</strong>.</li>
+                <li>The Two Circles task is harder for RealNVP (NLL 2.09 vs 1.34 for Moons), likely because the concentric ring structure requires more precise rotational modeling.</li>
+                <li>Interestingly, the planar flow performs similarly on both tasks (2.92 vs 2.85), suggesting it has already hit its expressiveness ceiling.</li>
+            </ul>
+
+            <h3>Qualitative Analysis: Density Heatmaps</h3>
+            <p>The log-likelihood heatmaps reveal the starkest differences. RealNVP's learned density concentrates sharply on the two crescent ridges of the Two Moons dataset, with near-zero probability mass in the gap between them. The planar flow produces a smoother, more diffuse density that fails to fully separate the two modes.</p>
+
+            <p>On Two Circles, RealNVP traces the two ring structures but with some smearing between the inner and outer circles. The planar flow blurs the rings into a single broad mode centered at the origin.</p>
+
+            <h3>Qualitative Analysis: Transformation Visualization</h3>
+            <p>The transformation plots track 1,000 points from the base Gaussian through the inverse mapping into data space, color-coded by their angle in base space.</p>
+
+            <p>For RealNVP on Two Moons, the transformation reveals how the coupling layers progressively:</p>
+            <ol>
+                <li>Stretch the Gaussian cloud along one axis (early layers).</li>
+                <li>Bend and fold the distribution into a crescent shape (middle layers).</li>
+                <li>Fine-tune the density ridges and sharpen the gap between moons (final layers).</li>
+            </ol>
+
+            <p>This progressive refinement is the hallmark of deep normalizing flows: each layer makes a small, invertible adjustment, and the composition builds up a complex overall transformation.</p>
+
+            <h2>Connections to Other Generative Models</h2>
+
+            <h3>Flows vs. VAEs</h3>
+            <p>VAEs optimize the Evidence Lower Bound (ELBO), which is only a lower bound on the true log-likelihood. Normalizing flows <em>can be used within VAEs</em> to make the approximate posterior more flexible (as proposed by Rezende and Mohamed 2015), or they can replace VAEs entirely as standalone density estimators with exact likelihood.</p>
+
+            <h3>Flows vs. GANs</h3>
+            <p>GANs define an implicit generative model with no tractable density. You can sample, but you cannot evaluate probabilities. This makes GANs powerful for sample quality but useless for anomaly detection, compression, or any task requiring density evaluation. Flows provide both sampling and density evaluation.</p>
+
+            <h3>Flows vs. Diffusion Models</h3>
+            <p>Diffusion models (DDPMs) optimize a variational bound similar to VAEs and require iterative denoising over hundreds or thousands of steps to generate a single sample. Normalizing flows generate samples in a single pass through the inverse mapping. However, diffusion models are generally more expressive for high-dimensional data (images) because they are not constrained to invertible architectures.</p>
+
+            <h3>The Invertibility Trade-Off</h3>
+            <p>The fundamental constraint of normalizing flows is architectural: every layer must be invertible with a tractable Jacobian determinant. This limits the design space compared to unconstrained neural networks. Affine coupling layers achieve this elegantly by making half the dimensions a deterministic function of the other half, but this still restricts the class of learnable transformations.</p>
+
+            <h2>Summary</h2>
+            <p>In this three-part series, we built normalizing flows from first principles:</p>
+            <ol>
+                <li><strong>Part 1</strong>: Derived the change of variables formula, the rank-1 determinant trick for planar flows, and the triangular Jacobian for coupling layers.</li>
+                <li><strong>Part 2</strong>: Implemented PlanarFlow (with invertibility constraint), AffineCouplingLayer (with scale clamping), BatchNormFlow, and RealNVP (8 layers, alternating masks) in pure PyTorch.</li>
+                <li><strong>Part 3</strong>: Trained both architectures on 2D density estimation, achieving NLL of 1.34 (RealNVP) vs 2.92 (Planar) on Two Moons. Visualized density heatmaps and the progressive Gaussian-to-data transformation.</li>
+            </ol>
+
+            <p>Normalizing flows demonstrate that exact likelihood computation is achievable in deep generative models. While modern practice has shifted toward diffusion models for image generation, the mathematical principles of normalizing flows -- invertibility, Jacobian computation, and the change of variables formula -- remain foundational to understanding the full landscape of generative AI.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

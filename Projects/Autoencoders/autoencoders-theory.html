@@ -1,0 +1,319 @@
+---
+layout: null
+title: "Deconstructing Autoencoders: Part 1 — The Math of Compression"
+description: "The mathematical foundations of Autoencoders — the information bottleneck, reconstruction loss, the manifold hypothesis, and variants beyond vanilla compression. By Sovesh Mohapatra."
+permalink: /projects/autoencoders-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Autoencoders: Part 1 - The Math of Compression | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/autoencoders/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Autoencoders Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Autoencoders from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Compression</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>What happens when you force 784-dimensional data through a bottleneck of just 2 dimensions? Remarkably, the data doesn't collapse into noise---it organizes itself. Similar inputs cluster together, and the bottleneck learns a compact coordinate system that captures the essential structure of the data.</p>
+                <p>This is the core idea behind <strong>autoencoders</strong>: learn to compress data into a low-dimensional representation and then reconstruct it, using reconstruction error as the sole training signal. No labels, no supervision---just the pressure of compression.</p>
+                <p>Autoencoders are among the oldest ideas in deep learning, dating back to the 1980s, yet they remain foundational. The latent spaces inside modern diffusion models, the embeddings in retrieval systems, and the bottleneck layers in Transformers all trace their lineage back to the same principle: forcing data through a narrow channel reveals its structure.</p>
+                <p>In Part 1 of this "Build in Public" mini-series, we deconstruct the mathematical foundation of autoencoders: the information bottleneck, reconstruction loss, and the manifold hypothesis. In Part 2, we implement four variants in pure PyTorch. In Part 3, we train on MNIST and visualize what the bottleneck learns.</p>
+            </div>
+
+            <h2>The Information Bottleneck</h2>
+            <p>An autoencoder consists of two functions:</p>
+            <ul>
+                <li><strong>Encoder</strong> $f_\theta: \mathbb{R}^n \to \mathbb{R}^d$ maps high-dimensional input $\mathbf{x}$ to a low-dimensional latent code $\mathbf{z}$</li>
+                <li><strong>Decoder</strong> $g_\phi: \mathbb{R}^d \to \mathbb{R}^n$ maps the latent code back to a reconstruction $\hat{\mathbf{x}}$</li>
+            </ul>
+
+            <p>The bottleneck is the constraint $d \ll n$. For MNIST images, $n = 784$ (28$\times$28 pixels). If we set $d = 32$, the encoder must compress each image by a factor of 24.5$\times$. If we set $d = 2$, the compression ratio is 392$\times$.</p>
+
+            <p>This compression is lossy by construction. The network cannot preserve every pixel value---it must learn which information <em>matters</em> for reconstruction and which can be discarded. This is what makes the bottleneck useful: it forces the network to discover compact, meaningful representations.</p>
+
+            <p>The full autoencoder pipeline is:</p>
+
+            <div class="math-block">
+                $$ \hat{\mathbf{x}} = g_\phi(f_\theta(\mathbf{x})) $$
+            </div>
+
+            <p>The latent code $\mathbf{z} = f_\theta(\mathbf{x})$ is the compressed representation. If $d$ is small enough, $\mathbf{z}$ must capture the essential "factors of variation" in the data---for handwritten digits, this means stroke angle, thickness, curvature, and digit identity.</p>
+
+            <h2>Reconstruction Loss</h2>
+            <p>The training objective is to minimize the difference between input $\mathbf{x}$ and reconstruction $\hat{\mathbf{x}}$. The most common choice is the Mean Squared Error (MSE):</p>
+
+            <div class="math-block">
+                $$ \mathcal{L}_{\text{MSE}} = \frac{1}{N} \sum_{i=1}^{N} \| \mathbf{x}_i - \hat{\mathbf{x}}_i \|^2 = \frac{1}{N} \sum_{i=1}^{N} \sum_{j=1}^{n} (x_{ij} - \hat{x}_{ij})^2 $$
+            </div>
+
+            <p>where $N$ is the number of training samples and $n$ is the input dimensionality.</p>
+
+            <h3>Why MSE?</h3>
+            <p>MSE can be derived from a probabilistic perspective. If we assume the decoder output parameterizes a Gaussian distribution:</p>
+
+            <div class="math-block">
+                $$ p(\mathbf{x} \mid \mathbf{z}) = \mathcal{N}(\mathbf{x}; g_\phi(\mathbf{z}), \sigma^2 \mathbf{I}) $$
+            </div>
+
+            <p>then maximizing the log-likelihood is equivalent to minimizing the squared error:</p>
+
+            <div class="math-block">
+                $$ \log p(\mathbf{x} \mid \mathbf{z}) = -\frac{n}{2}\log(2\pi\sigma^2) - \frac{1}{2\sigma^2} \| \mathbf{x} - g_\phi(\mathbf{z}) \|^2 $$
+            </div>
+
+            <p>The first term is a constant with respect to the parameters, so maximizing this expression reduces to minimizing $\| \mathbf{x} - \hat{\mathbf{x}} \|^2$. MSE is the maximum likelihood estimator under a Gaussian noise model.</p>
+
+            <h3>Gradient Flow</h3>
+            <p>Taking the gradient of the MSE loss with respect to the reconstruction:</p>
+
+            <div class="math-block">
+                $$ \frac{\partial \mathcal{L}}{\partial \hat{x}_{ij}} = -\frac{2}{N}(x_{ij} - \hat{x}_{ij}) $$
+            </div>
+
+            <p>The gradient is proportional to the reconstruction error at each pixel. Pixels with large errors receive stronger gradients, driving the network to fix its worst mistakes first.</p>
+
+            <h2>The Manifold Hypothesis</h2>
+            <p>Why does compression work at all? The manifold hypothesis provides the answer: high-dimensional data typically lies on or near a much lower-dimensional manifold embedded in the ambient space.</p>
+
+            <p>Consider the space of all possible 28$\times$28 grayscale images: $\mathbb{R}^{784}$. The vast majority of points in this space look like random static. The set of images that look like handwritten digits occupies a vanishingly thin subspace---a manifold with far fewer intrinsic dimensions than 784.</p>
+
+            <p>Formally, if the data manifold $\mathcal{M}$ has intrinsic dimensionality $d^*$, then an autoencoder with bottleneck dimension $d \geq d^*$ can in principle achieve zero reconstruction error. When $d < d^*$, some information is necessarily lost, and the autoencoder learns to preserve the most important factors of variation.</p>
+
+            <p>This explains a key empirical observation: increasing the bottleneck dimension improves reconstruction up to a point, after which further increases yield diminishing returns. That inflection point approximates the intrinsic dimensionality of the data manifold.</p>
+
+            <h2>Variants: Beyond Vanilla Compression</h2>
+            <p>The basic autoencoder can be extended in several directions, each addressing a different limitation:</p>
+
+            <h3>Denoising Autoencoders</h3>
+            <p>Instead of reconstructing clean inputs, corrupt the input with noise and train the network to recover the original:</p>
+
+            <div class="math-block">
+                $$ \tilde{\mathbf{x}} = \mathbf{x} + \epsilon, \quad \epsilon \sim \mathcal{N}(0, \sigma^2\mathbf{I}) $$
+            </div>
+
+            <div class="math-block">
+                $$ \mathcal{L}_{\text{DAE}} = \| \mathbf{x} - g_\phi(f_\theta(\tilde{\mathbf{x}})) \|^2 $$
+            </div>
+
+            <p>The network must learn to separate signal from noise, which forces it to capture the underlying data distribution rather than memorizing individual samples. Vincent et al. (2008) showed this is equivalent to learning a score function of the data distribution---a connection that resurfaced in modern diffusion models.</p>
+
+            <h3>Sparse Autoencoders</h3>
+            <p>Add an L1 penalty on the latent activations to encourage sparsity:</p>
+
+            <div class="math-block">
+                $$ \mathcal{L}_{\text{SAE}} = \| \mathbf{x} - \hat{\mathbf{x}} \|^2 + \lambda \| \mathbf{z} \|_1 = \| \mathbf{x} - \hat{\mathbf{x}} \|^2 + \lambda \sum_{k=1}^{d} |z_k| $$
+            </div>
+
+            <p>The L1 penalty drives most latent units toward zero, so only a few are active for any given input. This produces disentangled representations where each latent unit corresponds to a specific feature, and it allows using overcomplete representations ($d > n$) without the autoencoder learning the identity function.</p>
+
+            <h3>Convolutional Autoencoders</h3>
+            <p>Replace fully-connected layers with Conv2d (encoder) and ConvTranspose2d (decoder) to preserve spatial structure. Fully-connected autoencoders flatten images into vectors, destroying the 2D spatial relationships between pixels. Convolutional autoencoders process images as 2D feature maps, enabling the network to learn spatially local features like edges and textures.</p>
+
+            <h2>Next Steps: From Math to Code</h2>
+            <p>We have established the mathematical foundation: the information bottleneck forces compression, MSE reconstruction loss drives learning, and the manifold hypothesis explains why compression produces useful representations.</p>
+
+            <p>In <strong>Part 2</strong>, we implement all four variants---Vanilla, Denoising, Sparse, and Convolutional---in pure PyTorch. We will walk through the architecture choices, the noise injection mechanism, the L1 penalty, and the Conv2d/ConvTranspose2d encoder-decoder design.</p>
+
+            <p><em>Stay tuned for the code drop as we build Autoencoders from scratch!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

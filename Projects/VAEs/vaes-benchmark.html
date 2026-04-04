@@ -1,0 +1,347 @@
+---
+layout: null
+title: "Deconstructing VAEs: Part 3 — Walking Through Latent Space"
+description: "Training VAEs on MNIST, visualizing latent spaces, interpolating between digits, and exploring the reconstruction-KL trade-off. By Sovesh Mohapatra."
+permalink: /projects/vaes-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing VAEs: Part 3 - Walking Through Latent Space | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/vaes/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to VAEs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing VAEs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Walking Through Latent Space</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>We derived the math in Part 1 and built the code in Part 2. Now we train two VAE models on MNIST and explore the structure of their latent spaces. The results reveal how VAEs organize knowledge, interpolate between concepts, and generate novel data.</p>
+            </div>
+
+            <h2>Training Results</h2>
+
+            <h3>Latent Dimension 2</h3>
+            <p>The 2D VAE (1,068,820 parameters) trained on a 5,000-image MNIST subset for 30 epochs with Adam ($lr = 10^{-3}$):</p>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;"></th>
+                        <th style="text-align:center; padding: 0.75rem;">Total Loss</th>
+                        <th style="text-align:center; padding: 0.75rem;">Recon Loss</th>
+                        <th style="text-align:center; padding: 0.75rem;">KL Loss</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Train (Epoch 1)</td>
+                        <td style="text-align:center; padding: 0.75rem;">236.16</td>
+                        <td style="text-align:center; padding: 0.75rem;">235.39</td>
+                        <td style="text-align:center; padding: 0.75rem;">0.77</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Train (Epoch 30)</td>
+                        <td style="text-align:center; padding: 0.75rem;">147.14</td>
+                        <td style="text-align:center; padding: 0.75rem;">140.92</td>
+                        <td style="text-align:center; padding: 0.75rem;">6.21</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Test (Epoch 30)</td>
+                        <td style="text-align:center; padding: 0.75rem;">153.77</td>
+                        <td style="text-align:center; padding: 0.75rem;">147.70</td>
+                        <td style="text-align:center; padding: 0.75rem;">6.08</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>The total loss dropped 37.7% from epoch 1 to epoch 30. The KL divergence grew from 0.77 to 6.21 as the encoder learned to use the latent space more expressively, while reconstruction error dominated the loss throughout.</p>
+
+            <h3>Latent Dimension 20</h3>
+            <p>The 20D VAE (1,082,680 parameters) with identical training:</p>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;"></th>
+                        <th style="text-align:center; padding: 0.75rem;">Total Loss</th>
+                        <th style="text-align:center; padding: 0.75rem;">Recon Loss</th>
+                        <th style="text-align:center; padding: 0.75rem;">KL Loss</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Train (Epoch 1)</td>
+                        <td style="text-align:center; padding: 0.75rem;">236.63</td>
+                        <td style="text-align:center; padding: 0.75rem;">235.20</td>
+                        <td style="text-align:center; padding: 0.75rem;">1.44</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Train (Epoch 30)</td>
+                        <td style="text-align:center; padding: 0.75rem;">110.93</td>
+                        <td style="text-align:center; padding: 0.75rem;">94.06</td>
+                        <td style="text-align:center; padding: 0.75rem;">16.87</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Test (Epoch 30)</td>
+                        <td style="text-align:center; padding: 0.75rem;">114.97</td>
+                        <td style="text-align:center; padding: 0.75rem;">98.29</td>
+                        <td style="text-align:center; padding: 0.75rem;">16.68</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>The 20D model achieves <strong>25.2% lower test loss</strong> than the 2D model (114.97 vs 153.77). The reconstruction loss drops dramatically (98.29 vs 147.70), at the cost of higher KL divergence (16.68 vs 6.08).</p>
+
+            <h2>The Reconstruction--KL Trade-off</h2>
+            <p>The comparison between latent dimensions reveals a fundamental trade-off:</p>
+            <ul>
+                <li><strong>latent_dim=2</strong>: Low KL (6.08), high reconstruction error (147.70). The model is forced to compress 10 digit classes into just 2 dimensions, so it cannot represent fine details.</li>
+                <li><strong>latent_dim=20</strong>: Higher KL (16.68), much lower reconstruction error (98.29). With 20 dimensions, the encoder can spread information across latent axes, preserving more detail.</li>
+            </ul>
+
+            <p>The KL term acts as an "information bottleneck." In 2D, the bottleneck is severe---the model can only transmit roughly 6 nats of information per sample. In 20D, it transmits roughly 17 nats, enabling sharper reconstructions.</p>
+
+            <p>This is not a flaw; it is a design choice. Lower-dimensional latent spaces produce smoother, more interpretable representations at the cost of reconstruction fidelity. Higher-dimensional spaces preserve more detail but are harder to visualize and may exhibit "posterior collapse" on unused dimensions.</p>
+
+            <h2>Latent Space Visualization</h2>
+            <p>With <code>latent_dim=2</code>, we can directly scatter-plot the encoded test set, coloring each point by its digit class. The result shows:</p>
+            <ul>
+                <li><strong>Distinct clusters</strong>: Each digit occupies a recognizable region of the latent plane.</li>
+                <li><strong>Meaningful proximity</strong>: Visually similar digits (3, 5, 8) cluster near each other; dissimilar digits (0, 1) are far apart.</li>
+                <li><strong>Smooth transitions</strong>: Cluster boundaries are soft, not sharp---the KL regularization prevents gaps in the latent space.</li>
+            </ul>
+
+            <p>This structure emerges purely from the ELBO objective. We never told the model which digits are similar; it discovered this from pixel-level reconstruction pressure combined with the smoothness constraint of the KL term.</p>
+
+            <h2>Latent Space Interpolation</h2>
+            <p>We select one example of digit 1 and one of digit 7, encode each to its mean latent vector, and linearly interpolate between them in 10 steps. Decoding each interpolated point produces a smooth morphing sequence.</p>
+
+            <p>The transition is gradual---intermediate frames resemble plausible handwritten characters that blend features of both digits. There are no abrupt jumps or nonsensical artifacts. This smoothness is direct evidence that the latent space is well-organized: nearby points decode to nearby images.</p>
+
+            <p>Linear interpolation works because the KL term pushes the latent distribution toward a Gaussian prior, which is symmetric and unimodal. The "shortest path" between two encoded points passes through regions of reasonable probability density.</p>
+
+            <h2>Random Sampling</h2>
+            <p>Sampling $\mathbf{z} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$ and decoding produces novel digit images. For the 2D model, the samples are blurry but recognizable---the severe bottleneck limits detail. For the 20D model, generated digits are sharper and more varied, reflecting the richer latent representation.</p>
+
+            <p>The quality of random samples is a direct test of prior-posterior alignment. If the KL term is doing its job, the region where $q_\phi(\mathbf{z}|\mathbf{x})$ places mass should overlap significantly with the standard normal prior. Poor alignment would produce nonsensical samples from the prior.</p>
+
+            <h2>Reconstruction Quality</h2>
+            <p>Side-by-side comparison of original test images and their reconstructions:</p>
+            <ul>
+                <li><strong>2D model</strong>: Captures overall digit shape and pose but loses fine details (stroke thickness, serifs, curves). Reconstructions appear "averaged" across similar examples.</li>
+                <li><strong>20D model</strong>: Preserves significantly more detail---individual stroke characteristics, thickness variations, and digit-specific features are retained.</li>
+            </ul>
+
+            <h2>Training Dynamics</h2>
+            <p>The training curves reveal characteristic VAE behavior:</p>
+            <ol>
+                <li><strong>Early training</strong> (epochs 1--5): Reconstruction loss drops rapidly as the decoder learns basic digit structure. KL starts near zero (the encoder has not yet learned to use the latent space meaningfully).</li>
+                <li><strong>Mid training</strong> (epochs 5--15): KL grows steadily as the encoder begins encoding class-discriminative information. Reconstruction loss continues to decrease but more slowly.</li>
+                <li><strong>Late training</strong> (epochs 15--30): Both losses plateau. The model has found its equilibrium between reconstruction fidelity and latent space regularity.</li>
+            </ol>
+
+            <h2>Conclusion</h2>
+            <p>VAEs learn structured, smooth latent representations that support interpolation, random generation, and meaningful organization of data. The ELBO objective creates a natural tension between reconstruction fidelity and latent space regularity, and the balance point determines the character of the learned representation.</p>
+
+            <p>The results from our from-scratch implementation confirm the theoretical predictions: the reparameterization trick enables stable training, the KL term produces smooth latent geometry, and the reconstruction term drives the model to capture meaningful visual features.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

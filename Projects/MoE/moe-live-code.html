@@ -1,0 +1,241 @@
+---
+layout: null
+title: "Deconstructing MoE: Part 2 — PyTorch Implementation"
+description: "Building Mixture of Experts from scratch in PyTorch — Expert MLPs, TopKGating, MoELayer, and MoEClassifier. By Sovesh Mohapatra."
+permalink: /projects/moe-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing MoE: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/moe/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to MoE Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing MoE from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1 we derived the mathematical foundations of Mixture of Experts: top-$k$ gating, noisy exploration, and load balancing loss. This installment translates every equation into working PyTorch code. We build four modules from scratch -- <code>Expert</code>, <code>TopKGating</code>, <code>MoELayer</code>, and <code>MoEClassifier</code> -- with no external MoE libraries.</p>
+            </div>
+
+            <h2>Architecture Overview</h2>
+            <p>The full classifier architecture:</p>
+
+            <div class="math-block">
+                $$ \text{Linear}(784 \to 256) \to \text{ReLU} \to \text{MoE}(256 \to 256) \to \text{ReLU} \to \text{Linear}(256 \to 10) $$
+            </div>
+
+            <h2>Expert Design</h2>
+            <p>Each expert is deliberately simple -- a two-layer MLP with ReLU activation:</p>
+
+            <pre><code class="language-python">class Expert(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim),
+        )
+
+    def forward(self, x):
+        return self.net(x)</code></pre>
+
+            <p>Each expert maps $\mathbb{R}^{256} \to \mathbb{R}^{128} \to \mathbb{R}^{256}$ with a bottleneck hidden dimension. With 8 experts, the total expert parameters are $8 \times 65{,}920 = 527{,}360$. The philosophy of MoE is that <em>many small specialists outperform one large generalist</em> when combined with intelligent routing.</p>
+
+            <h2>Gate Computation</h2>
+
+            <pre><code class="language-python">class TopKGating(nn.Module):
+    def __init__(self, input_dim, num_experts, top_k=2):
+        super().__init__()
+        self.gate = nn.Linear(input_dim, num_experts, bias=False)
+        self.noise_weights = nn.Parameter(torch.zeros(num_experts))</code></pre>
+
+            <p><strong>No bias.</strong> The gate uses <code>bias=False</code>. A bias term would create a default preference for certain experts independent of the input, which would fight against the load balancing objective.</p>
+
+            <p><strong>Learnable noise.</strong> The <code>noise_weights</code> parameter controls how much exploration noise is added to each expert's logit. These are initialized to zero and learned during training.</p>
+
+            <h3>Noisy Softmax Gating</h3>
+
+            <pre><code class="language-python">def forward(self, x):
+    logits = self.gate(x)  # (batch, num_experts)
+
+    if self.training:
+        noise = torch.randn_like(logits)
+        noise_scale = F.softplus(self.noise_weights)
+        logits = logits + noise * noise_scale.unsqueeze(0)
+
+    gate_probs = F.softmax(logits, dim=-1)
+    top_k_values, top_k_indices = torch.topk(gate_probs, self.top_k, dim=-1)
+    top_k_values = top_k_values / (top_k_values.sum(dim=-1, keepdim=True) + 1e-8)
+
+    return top_k_values, top_k_indices, gate_probs</code></pre>
+
+            <p>The <code>softplus</code> function ($\log(1 + e^x)$) ensures the noise scale is always positive. Note that noise is only added during training (<code>self.training</code> check). At inference time, routing is deterministic.</p>
+
+            <h2>Top-$k$ Selection and Sparse Routing</h2>
+            <p>The <code>torch.topk</code> operation is the core sparsification step. The selected gate values are then renormalized:</p>
+
+            <div class="math-block">
+                $$ \tilde{g}_i = \frac{g_i}{\sum_{j \in \text{TopK}} g_j} $$
+            </div>
+
+            <h3>Computing the Sparse Output</h3>
+
+            <pre><code class="language-python"># Compute all expert outputs
+expert_outputs = torch.stack(
+    [expert(x) for expert in self.experts], dim=1
+)  # (batch, num_experts, output_dim)
+
+# Gather selected expert outputs
+indices_expanded = top_k_indices.unsqueeze(-1).expand(
+    -1, -1, expert_outputs.size(-1)
+)
+selected_outputs = torch.gather(expert_outputs, 1, indices_expanded)
+
+# Weighted sum
+weights = top_k_values.unsqueeze(-1)  # (batch, top_k, 1)
+output = (selected_outputs * weights).sum(dim=1)</code></pre>
+
+            <p><strong>Implementation note:</strong> In this educational implementation, we compute <em>all</em> expert outputs and then select. In production systems (e.g., Megablocks, Tutel), only the selected experts are actually computed using custom CUDA kernels.</p>
+
+            <h2>Auxiliary Load Balancing Loss</h2>
+
+            <pre><code class="language-python"># f_i: fraction of tokens routed to expert i
+expert_mask = torch.zeros(batch_size, self.num_experts, device=x.device)
+expert_mask.scatter_add_(1, top_k_indices,
+    torch.ones_like(top_k_indices, dtype=torch.float))
+f = expert_mask.sum(dim=0) / batch_size
+
+# p_i: average gate probability for expert i
+p = gate_probs.mean(dim=0)
+
+# Load balancing loss
+auxiliary_loss = self.num_experts * (f * p).sum()</code></pre>
+
+            <p>The <code>scatter_add_</code> operation efficiently builds a one-hot-like matrix indicating which experts were selected for each token in the batch.</p>
+
+            <h2>The Complete MoE Classifier</h2>
+
+            <pre><code class="language-python">class MoEClassifier(nn.Module):
+    def __init__(self, input_dim=784, hidden_dim=256,
+                 num_classes=10, num_experts=8, top_k=2):
+        super().__init__()
+        self.input_proj = nn.Linear(input_dim, hidden_dim)
+        self.moe = MoELayer(hidden_dim, hidden_dim,
+                            num_experts=num_experts, top_k=top_k,
+                            expert_hidden_dim=128)
+        self.output_proj = nn.Linear(hidden_dim, num_classes)
+
+    def forward(self, x):
+        x = F.relu(self.input_proj(x))
+        x, aux_loss, expert_counts = self.moe(x)
+        x = F.relu(x)
+        logits = self.output_proj(x)
+        return logits, aux_loss, expert_counts</code></pre>
+
+            <h3>Parameter Accounting</h3>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Component</th>
+                        <th style="padding:0.75rem; text-align:right;">Parameters</th>
+                        <th style="padding:0.75rem; text-align:right;">Active per Input</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Input projection ($784 \to 256$)</td><td style="padding:0.75rem; text-align:right;">200,960</td><td style="padding:0.75rem; text-align:right;">200,960</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Gating network ($256 \to 8$)</td><td style="padding:0.75rem; text-align:right;">2,056</td><td style="padding:0.75rem; text-align:right;">2,056</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">8 Experts ($256 \to 128 \to 256$ each)</td><td style="padding:0.75rem; text-align:right;">527,360</td><td style="padding:0.75rem; text-align:right;">131,840 (2 of 8)</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Output projection ($256 \to 10$)</td><td style="padding:0.75rem; text-align:right;">2,570</td><td style="padding:0.75rem; text-align:right;">2,570</td></tr>
+                    <tr><td style="padding:0.75rem;"><strong>Total</strong></td><td style="padding:0.75rem; text-align:right;"><strong>732,946</strong></td><td style="padding:0.75rem; text-align:right;"><strong>337,426</strong></td></tr>
+                </tbody>
+            </table>
+
+            <h2>Summary and Next Steps</h2>
+            <ul>
+                <li><strong>Expert</strong>: 2-layer MLP with bottleneck ($256 \to 128 \to 256$).</li>
+                <li><strong>TopKGating</strong>: Linear projection + noisy softmax + top-$k$ selection.</li>
+                <li><strong>MoELayer</strong>: Sparse routing, weighted expert combination, load balancing loss.</li>
+                <li><strong>MoEClassifier</strong>: Complete MNIST classifier with 732,946 total params and 337,426 active.</li>
+            </ul>
+
+            <p>In Part 3, we train this model on MNIST and analyze the results: accuracy compared to a dense baseline, expert specialization patterns, and parameter efficiency.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

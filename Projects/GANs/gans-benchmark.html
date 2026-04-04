@@ -1,0 +1,300 @@
+---
+layout: null
+title: "Deconstructing GANs: Part 3 — Watching Noise Become Digits"
+description: "Training Vanilla GAN and DCGAN on MNIST, analyzing loss dynamics, comparing sample quality, and discussing mode collapse. By Sovesh Mohapatra."
+permalink: /projects/gans-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing GANs: Part 3 - Watching Noise Become Digits | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/gans/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to GANs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing GANs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Watching Noise Become Digits</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Welcome to the grand finale of our 3-part series on building GANs from first principles!</p>
+                <p>In Part 1, we derived the minimax objective and proved that GAN training minimizes the Jensen-Shannon divergence between the real and generated distributions. In Part 2, we implemented both a Vanilla GAN and a DCGAN in pure PyTorch, navigating critical architectural choices like LeakyReLU, BatchNorm placement, and weight initialization.</p>
+                <p>Now it is time to train these models and watch noise become handwriting.</p>
+            </div>
+
+            <h2>Experimental Setup</h2>
+            <p>We trained both architectures on a 5,000-image subset of MNIST for 50 epochs with the following configuration:</p>
+            <ul>
+                <li>Batch size: 64 (78 batches per epoch)</li>
+                <li>Optimizer: Adam with $\text{lr} = 0.0002$, $\beta_1 = 0.5$, $\beta_2 = 0.999$</li>
+                <li>Loss: Binary Cross-Entropy (BCELoss)</li>
+                <li>Noise dimension: $z \in \mathbb{R}^{100}$, sampled from $\mathcal{N}(0, 1)$</li>
+                <li>Data normalization: $[-1, 1]$ to match Tanh output</li>
+            </ul>
+
+            <p>The Vanilla GAN has 1,489,936 Generator parameters and 533,505 Discriminator parameters. The DCGAN has 1,948,545 Generator parameters but only 138,817 Discriminator parameters --- nearly 4$\times$ fewer than the Vanilla GAN's Discriminator.</p>
+
+            <h2>Training Dynamics: Vanilla GAN</h2>
+            <p>The Vanilla GAN's training curves tell the story of an adversarial tug-of-war. In the first epoch, the Generator loss starts at 0.7260 while the Discriminator loss is 1.3190 --- the Discriminator is uncertain, and the Generator's random outputs happen to produce moderately low loss due to the initial weight distribution.</p>
+
+            <p>Between epochs 1--10, the losses oscillate dramatically. The Generator loss swings from 0.73 to 1.30, and the Discriminator loss ranges from 1.14 to 1.37. This is the hallmark of early adversarial training: the two networks are each adapting to the other's latest strategy, creating oscillatory dynamics.</p>
+
+            <p>By epoch 20, the system begins to stabilize. The Generator loss settles around 1.1--1.3, and the Discriminator loss converges near 1.16--1.23. Interestingly, the Generator loss <em>decreases</em> through epochs 25--50 (from ~1.15 to 1.01), suggesting the Generator continues improving even as the Discriminator's loss slowly drifts upward to 1.28. This indicates the Generator is gradually winning the adversarial game.</p>
+
+            <p>Final values: $D_{\text{loss}} = 1.2590$, $G_{\text{loss}} = 1.0170$.</p>
+
+            <h2>Training Dynamics: DCGAN</h2>
+            <p>The DCGAN exhibits a strikingly different training trajectory. At epoch 1, the Discriminator dominates entirely: $D_{\text{loss}} = 0.4209$ (nearly perfect classification) while $G_{\text{loss}} = 2.8038$ (the Generator's random convolutional outputs are trivially detected).</p>
+
+            <p>But the convolutional architecture recovers remarkably fast. By epoch 4, the Generator loss has plummeted to 0.9791, and by epoch 10 both losses have converged to the ~1.05--1.10 range. From epoch 15 onward, the training curves are nearly flat and remarkably stable: $D_{\text{loss}}$ hovers around 1.12--1.14, and $G_{\text{loss}}$ stays near 1.05--1.09.</p>
+
+            <p>Final values: $D_{\text{loss}} = 1.1260$, $G_{\text{loss}} = 1.0936$.</p>
+
+            <p>This smoother convergence is a direct consequence of the convolutional architecture. The spatial inductive bias means the Generator and Discriminator are working in a more constrained, better-structured parameter space, which reduces the oscillatory dynamics that plague fully-connected GANs.</p>
+
+            <h2>Generated Sample Quality</h2>
+
+            <h3>Vanilla GAN</h3>
+            <p>The Vanilla GAN produces recognizable handwritten digits after 50 epochs. You can clearly identify 0s, 1s, 3s, 5s, 7s, and other digit classes across the 8$\times$8 grid. However, the samples exhibit characteristic artifacts of fully-connected generation:</p>
+            <ul>
+                <li><strong>Speckling noise</strong>: Random bright pixels scattered across the dark background, because the fully-connected layers have no concept of spatial locality.</li>
+                <li><strong>Fuzzy edges</strong>: Digit strokes lack crisp boundaries, appearing blurred and diffuse.</li>
+                <li><strong>Inconsistent thickness</strong>: Stroke widths vary erratically within single digits.</li>
+            </ul>
+
+            <p>These artifacts arise because the Generator must independently predict each of the 784 pixels. Without convolutional structure, there is no mechanism enforcing that neighboring pixels should have similar values.</p>
+
+            <h3>DCGAN</h3>
+            <p>The DCGAN samples are dramatically better. The generated digits feature:</p>
+            <ul>
+                <li><strong>Clean strokes</strong>: Well-defined edges with consistent thickness, closely resembling real handwriting.</li>
+                <li><strong>Diverse classes</strong>: All 10 digit classes (0--9) are represented, with natural variation in style.</li>
+                <li><strong>Dark backgrounds</strong>: Minimal noise or artifacts in the non-digit regions.</li>
+                <li><strong>Spatial coherence</strong>: Digits are centered and properly proportioned, thanks to the transposed convolution's spatial awareness.</li>
+            </ul>
+
+            <p>The DCGAN achieves this superior quality with a Discriminator that is nearly 4$\times$ smaller than the Vanilla GAN's (138K vs. 533K parameters). The convolutional structure provides such a strong inductive bias that fewer parameters are needed to learn the real-vs-fake classification.</p>
+
+            <h2>Mode Collapse Analysis</h2>
+            <p>One of the most feared failure modes of GANs is <em>mode collapse</em>: the Generator learns to produce only a small subset of the data distribution, ignoring entire classes or styles.</p>
+
+            <p>In our experiments, neither model exhibits severe mode collapse. Both grids show diversity across digit classes. However, the Vanilla GAN shows mild mode preference --- certain digits (like 7 and 1) appear more frequently than others (like 2 and 6). The DCGAN's distribution is more uniform.</p>
+
+            <p>This can be understood through the lens of the minimax objective. Mode collapse occurs when the Generator finds a small set of outputs that reliably fool the Discriminator, and the Discriminator is too slow to adapt. The DCGAN's faster convergence and more stable dynamics reduce the window for this failure mode.</p>
+
+            <h2>Connections to Other Generative Models</h2>
+            <p>GANs occupy a unique position in the landscape of generative models:</p>
+            <ul>
+                <li><strong>VAEs</strong> (Variational Autoencoders) optimize a tractable lower bound on the log-likelihood and produce blurry samples, but have stable training and a meaningful latent space.</li>
+                <li><strong>GANs</strong> produce sharper samples by optimizing an adversarial objective, but suffer from training instability and lack a density estimate.</li>
+                <li><strong>Diffusion Models</strong> iteratively denoise Gaussian noise and achieve state-of-the-art quality, but require hundreds of forward passes at inference time.</li>
+                <li><strong>Normalizing Flows</strong> provide exact likelihood computation via invertible transformations, but are constrained by the requirement of bijectivity.</li>
+            </ul>
+
+            <p>The adversarial training principle from GANs has influenced all of these --- adversarial losses are now commonly combined with reconstruction losses in hybrid architectures, and the Discriminator idea has evolved into critic networks (WGAN) and classifier-free guidance (in Diffusion models).</p>
+
+            <h2>Conclusion</h2>
+            <p>Through these 3 posts, we have demystified Generative Adversarial Networks from the ground up. We derived the math showing that GAN training minimizes the Jensen-Shannon divergence. We implemented two architectures in pure PyTorch, revealing how seemingly small design choices (LeakyReLU, BatchNorm, weight init) determine whether training converges or collapses. And we trained both models on real data, watching a 100-dimensional noise vector learn to draw recognizable handwritten digits without ever seeing a single real image.</p>
+
+            <p>The adversarial principle --- learning through competition rather than supervision --- remains one of the most elegant ideas in deep learning.</p>
+
+            <p><em>Stay tuned for the next series!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

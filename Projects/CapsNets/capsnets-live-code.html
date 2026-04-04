@@ -1,0 +1,294 @@
+---
+layout: null
+title: "Deconstructing CapsNets: Part 2 — PyTorch Implementation"
+description: "Building Capsule Networks from scratch in PyTorch — squashing, PrimaryCapsule, DigitCapsule with dynamic routing, margin loss, and reconstruction decoder. By Sovesh Mohapatra."
+permalink: /projects/capsnets-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing CapsNets: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/capsnets/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to CapsNets Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing CapsNets from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>This second installment translates the mathematics of Capsule Networks into working PyTorch code. We implement every component from scratch: the squashing non-linearity, PrimaryCapsule layer, DigitCapsule layer with dynamic routing, margin loss, and reconstruction decoder.</p>
+                <p>Along the way, we address the implementation details that the original paper leaves implicit -- tensor shapes in the routing algorithm, gradient detachment for stability, and the careful balance between classification and reconstruction losses.</p>
+            </div>
+
+            <h2>Architecture Overview</h2>
+            <p>The full CapsNet architecture for MNIST consists of four stages:</p>
+            <ol>
+                <li><strong>Conv1</strong>: <code>Conv2d(1, 256, kernel_size=9, stride=1)</code> + ReLU. Input: $(B, 1, 28, 28)$ to Output: $(B, 256, 20, 20)$</li>
+                <li><strong>PrimaryCapsule</strong>: <code>Conv2d(256, 256, kernel_size=9, stride=2)</code> + Reshape + Squash. Output: $(B, 1152, 8)$ -- 1,152 capsules of dimension 8</li>
+                <li><strong>DigitCapsule</strong>: Dynamic routing with learned weight matrices. Output: $(B, 10, 16)$ -- 10 class capsules of dimension 16</li>
+                <li><strong>Decoder</strong>: <code>Linear(16 -> 512 -> 1024 -> 784)</code> with masking. Reconstructs the input image from the winning capsule</li>
+            </ol>
+            <p>Total parameters: <strong>8,141,840</strong>.</p>
+
+            <h2>The Squashing Function</h2>
+
+            <pre><code class="language-python">def squash(s, dim=-1):
+    squared_norm = (s ** 2).sum(dim=dim, keepdim=True)
+    safe_norm = torch.sqrt(squared_norm + 1e-8)
+    scale = squared_norm / (1.0 + squared_norm)
+    return scale * s / safe_norm</code></pre>
+
+            <p>Key implementation detail: the <code>1e-8</code> inside the square root prevents division by zero when a capsule has near-zero activation. Without this, gradients become <code>NaN</code> during backpropagation.</p>
+
+            <p>The function computes:</p>
+
+            <div class="math-block">
+                $$ \mathbf{v} = \underbrace{\frac{\|\mathbf{s}\|^2}{1 + \|\mathbf{s}\|^2}}_{\text{scale factor}} \cdot \underbrace{\frac{\mathbf{s}}{\|\mathbf{s}\|}}_{\text{unit vector}} $$
+            </div>
+
+            <p>The <code>keepdim=True</code> argument is essential -- it ensures the scaling factor broadcasts correctly against the input tensor.</p>
+
+            <h2>PrimaryCapsule Layer</h2>
+            <p>The PrimaryCapsule layer converts standard convolutional features into capsule vectors.</p>
+
+            <pre><code class="language-python">class PrimaryCapsule(nn.Module):
+    def __init__(self, in_channels=256, num_types=32,
+                 caps_dim=8, kernel_size=9, stride=2):
+        super().__init__()
+        self.caps_dim = caps_dim
+        self.conv = nn.Conv2d(in_channels,
+                              num_types * caps_dim,
+                              kernel_size, stride)
+
+    def forward(self, x):
+        out = self.conv(x)       # (B, 256, 6, 6)
+        B = out.size(0)
+        out = out.view(B, 32, 8, -1)  # (B, 32, 8, 36)
+        out = out.permute(0,1,3,2)     # (B, 32, 36, 8)
+        out = out.reshape(B, -1, 8)    # (B, 1152, 8)
+        return squash(out)</code></pre>
+
+            <h3>Shape Walkthrough</h3>
+            <ul>
+                <li>Input: $(B, 256, 20, 20)$ from Conv1.</li>
+                <li>After <code>Conv2d(256, 256, 9, stride=2)</code>: spatial size $(20-9)/2+1 = 6$, giving $(B, 256, 6, 6)$.</li>
+                <li>The 256 channels encode 32 capsule types $\times$ 8 dimensions each.</li>
+                <li>Reshape and permute to get $(B, 1152, 8)$: 1,152 capsules ($32 \times 6 \times 6$) of dimension 8.</li>
+                <li>Squash: ensure each capsule has length $\in [0, 1)$.</li>
+            </ul>
+
+            <h2>DigitCapsule Layer and Dynamic Routing</h2>
+            <p>This is the core innovation. Each of the 1,152 primary capsules must route to one of 10 digit capsules.</p>
+
+            <h3>Weight Matrix</h3>
+
+            <pre><code class="language-python"># W: (1, 1152, 10, 16, 8)
+self.W = nn.Parameter(
+    torch.randn(1, 1152, 10, 16, 8) * 0.01
+)</code></pre>
+
+            <p>This 5D tensor contains $1{,}152 \times 10$ transformation matrices, each of size $16 \times 8$. For each primary capsule $i$ and digit capsule $j$, $\mathbf{W}_{ij}$ transforms the 8D primary vector to a 16D prediction vector:</p>
+
+            <div class="math-block">
+                $$ \hat{\mathbf{u}}_{j|i} = \mathbf{W}_{ij} \, \mathbf{u}_i $$
+            </div>
+
+            <h3>Computing Prediction Vectors</h3>
+
+            <pre><code class="language-python"># u: (B, 1152, 8) -> (B, 1152, 1, 8, 1)
+u = u.unsqueeze(2).unsqueeze(4)
+
+# W: (1, 1152, 10, 16, 8) @ u: (B, 1152, 1, 8, 1)
+# -> u_hat: (B, 1152, 10, 16, 1) -> squeeze -> (B, 1152, 10, 16)
+u_hat = torch.matmul(self.W, u).squeeze(-1)</code></pre>
+
+            <p>Broadcasting handles the batch dimension and the 10-class dimension simultaneously. The result is 1,152 prediction vectors of dimension 16 for each of 10 classes.</p>
+
+            <h3>Dynamic Routing Implementation</h3>
+
+            <pre><code class="language-python">def dynamic_routing(self, u_hat, u_hat_detached, B):
+    b = torch.zeros(B, 1152, 10, device=u_hat.device)
+
+    for r in range(self.num_routing):
+        c = F.softmax(b, dim=2)      # coupling coefficients
+
+        if r < self.num_routing - 1:
+            s = (c.unsqueeze(-1) * u_hat_detached).sum(dim=1)
+            v = squash(s)
+            agreement = (u_hat_detached * v.unsqueeze(1)).sum(-1)
+            b = b + agreement
+        else:
+            # Last iteration: allow gradients through
+            s = (c.unsqueeze(-1) * u_hat).sum(dim=1)
+            v = squash(s)
+
+    return v  # (B, 10, 16)</code></pre>
+
+            <h3>Critical Detail: Gradient Detachment</h3>
+            <p>For routing iterations 1 and 2, we use <code>u_hat_detached</code> -- the prediction vectors with gradients detached. Only on the <strong>final iteration</strong> do we use <code>u_hat</code> with gradients intact.</p>
+
+            <p>Why? Backpropagating through all routing iterations creates deep computation graphs that:</p>
+            <ul>
+                <li>Cause vanishing/exploding gradients through the iterative process.</li>
+                <li>Dramatically increase memory usage.</li>
+                <li>Yield unstable training without improving convergence.</li>
+            </ul>
+
+            <p>The final iteration alone provides sufficient gradient signal to learn the weight matrices.</p>
+
+            <h2>Margin Loss</h2>
+            <p>Classification uses a per-class margin loss:</p>
+
+            <div class="math-block">
+                $$ L_c = T_c \max(0,\; m^+ - \|\mathbf{v}_c\|)^2 + \lambda_{\text{neg}} (1 - T_c) \max(0,\; \|\mathbf{v}_c\| - m^-)^2 $$
+            </div>
+
+            <p>where $T_c = 1$ if class $c$ is present, $m^+ = 0.9$, $m^- = 0.1$, and $\lambda_{\text{neg}} = 0.5$.</p>
+
+            <pre><code class="language-python">v_length = torch.sqrt((v**2).sum(dim=-1) + 1e-8)
+T = torch.zeros(B, 10, device=v.device)
+T.scatter_(1, labels.unsqueeze(1), 1.0)
+
+present = T * F.relu(0.9 - v_length)**2
+absent  = 0.5 * (1-T) * F.relu(v_length - 0.1)**2
+margin_loss = (present + absent).sum(dim=1).mean()</code></pre>
+
+            <p><strong>Interpretation:</strong></p>
+            <ul>
+                <li>For the correct class: penalize if $\|\mathbf{v}_c\| < 0.9$ (push length up).</li>
+                <li>For incorrect classes: penalize if $\|\mathbf{v}_c\| > 0.1$ (push length down).</li>
+                <li>The $0.5$ factor down-weights the absent-class loss to prevent the network from killing all capsules early in training.</li>
+            </ul>
+
+            <h2>Reconstruction Decoder</h2>
+            <p>The decoder serves as a regularizer, forcing the 16D capsule vectors to encode enough information to reconstruct the input image.</p>
+
+            <pre><code class="language-python">self.decoder = nn.Sequential(
+    nn.Linear(16, 512),
+    nn.ReLU(inplace=True),
+    nn.Linear(512, 1024),
+    nn.ReLU(inplace=True),
+    nn.Linear(1024, 784),
+    nn.Sigmoid()
+)</code></pre>
+
+            <p>During training, only the correct class capsule is fed to the decoder (all others are masked to zero). During inference, the capsule with the largest length is used.</p>
+
+            <p>The reconstruction loss is MSE, weighted by $\lambda_{\text{recon}} = 0.0005$:</p>
+
+            <div class="math-block">
+                $$ L = L_{\text{margin}} + 0.0005 \times L_{\text{recon}} $$
+            </div>
+
+            <p>The small weight ensures reconstruction serves as regularization without overwhelming the margin loss.</p>
+
+            <h2>Putting It All Together</h2>
+
+            <pre><code class="language-python">def forward(self, x, y=None):
+    out = F.relu(self.conv1(x))        # (B, 256, 20, 20)
+    primary = self.primary_caps(out)    # (B, 1152, 8)
+    v = self.digit_caps(primary)        # (B, 10, 16)
+
+    probs = torch.sqrt((v**2).sum(dim=-1) + 1e-8)
+
+    # Mask: keep only correct/predicted capsule
+    if y is not None:
+        mask = torch.zeros_like(probs)
+        mask.scatter_(1, y.unsqueeze(1), 1.0)
+    else:
+        _, idx = probs.max(dim=1)
+        mask = torch.zeros_like(probs)
+        mask.scatter_(1, idx.unsqueeze(1), 1.0)
+
+    masked_v = (v * mask.unsqueeze(-1)).sum(dim=1)
+    recon = self.decoder(masked_v)
+    return v, recon</code></pre>
+
+            <h3>Training Configuration</h3>
+            <ul>
+                <li><strong>Dataset</strong>: MNIST, 5,000-image training subset.</li>
+                <li><strong>Optimizer</strong>: Adam with learning rate 0.001.</li>
+                <li><strong>Batch size</strong>: 64.</li>
+                <li><strong>Epochs</strong>: 20.</li>
+                <li><strong>Routing iterations</strong>: 3.</li>
+            </ul>
+
+            <h2>Looking Ahead</h2>
+            <p>With the implementation complete, Part 3 presents the experimental results: MNIST classification accuracy on standard and rotated digits, reconstruction quality from 16D capsule representations, and a direct comparison with a simple CNN baseline quantifying the rotation robustness advantage.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

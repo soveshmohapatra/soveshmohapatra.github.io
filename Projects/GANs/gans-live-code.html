@@ -1,0 +1,332 @@
+---
+layout: null
+title: "Deconstructing GANs: Part 2 — PyTorch Implementation"
+description: "Building a Vanilla GAN and DCGAN from scratch in pure PyTorch — Generator, Discriminator, weight initialization, and adversarial training loop. By Sovesh Mohapatra."
+permalink: /projects/gans-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing GANs: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <!-- Prism.js for Code Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/gans/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to GANs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing GANs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Welcome to Part 2 of our series on Generative Adversarial Networks. In Part 1, we derived the minimax objective, proved the form of the optimal discriminator, and showed that GAN training implicitly minimizes the Jensen-Shannon divergence between real and generated distributions.</p>
+                <p>Now, it is time to turn those equations into code. We implement two complete architectures in pure PyTorch: a Vanilla GAN with fully-connected layers and a Deep Convolutional GAN (DCGAN) that leverages the spatial inductive bias of convolutions.</p>
+            </div>
+
+            <h2>The Vanilla Generator</h2>
+            <p>The Generator maps a 100-dimensional noise vector $z$ to a $28 \times 28$ image through a sequence of fully-connected layers with BatchNorm and ReLU activations:</p>
+
+<pre><code class="language-python">class Generator(nn.Module):
+    def __init__(self, z_dim=100):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(z_dim, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(True),
+            nn.Linear(256, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(True),
+            nn.Linear(512, 1024),
+            nn.BatchNorm1d(1024),
+            nn.ReLU(True),
+            nn.Linear(1024, 784),
+            nn.Tanh(),
+        )
+
+    def forward(self, z):
+        out = self.net(z)
+        return out.view(-1, 1, 28, 28)</code></pre>
+
+            <p>The final <code>Tanh</code> activation ensures the output lies in $[-1, 1]$, matching our data normalization. This seemingly small detail is critical: a mismatch between the generator's output range and the data range prevents convergence entirely.</p>
+
+            <h2>The Vanilla Discriminator</h2>
+            <p>The Discriminator takes a $28 \times 28$ image, flattens it, and classifies it as real or fake through descending linear layers:</p>
+
+<pre><code class="language-python">class Discriminator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(784, 512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(256, 1),
+            nn.Sigmoid(),
+        )</code></pre>
+
+            <p>Notice the use of <code>LeakyReLU(0.2)</code> instead of standard ReLU. In the Discriminator, dead neurons from ReLU can kill the gradient signal entirely, preventing the Generator from learning. LeakyReLU's small negative slope (0.2) ensures that gradients always flow, even for negative activations.</p>
+
+            <h2>The DCGAN Architecture</h2>
+            <p>Radford et al. (2015) identified a set of architectural guidelines that dramatically stabilize GAN training:</p>
+            <ol>
+                <li>Replace pooling layers with strided convolutions (Discriminator) and transposed convolutions (Generator)</li>
+                <li>Use BatchNorm in both networks (except the Discriminator's input layer and the Generator's output layer)</li>
+                <li>Use ReLU in the Generator, LeakyReLU in the Discriminator</li>
+                <li>Remove fully-connected hidden layers in favor of convolutional structure</li>
+            </ol>
+
+            <h3>DCGAN Generator</h3>
+            <p>The DCGAN Generator projects the noise vector into a spatial feature map, then progressively upsamples using <code>ConvTranspose2d</code>:</p>
+
+<pre><code class="language-python">class DCGenerator(nn.Module):
+    def __init__(self, z_dim=100):
+        super().__init__()
+        self.project = nn.Sequential(
+            nn.Linear(z_dim, 256 * 7 * 7),
+            nn.BatchNorm1d(256 * 7 * 7),
+            nn.ReLU(True),
+        )
+        self.conv_blocks = nn.Sequential(
+            nn.ConvTranspose2d(256, 128, 4, 2, 1),  # -> (128, 14, 14)
+            nn.BatchNorm2d(128),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(128, 64, 4, 2, 1),   # -> (64, 28, 28)
+            nn.BatchNorm2d(64),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, 1, 3, 1, 1),     # -> (1, 28, 28)
+            nn.Tanh(),
+        )</code></pre>
+
+            <p>The transposed convolutions learn spatial upsampling filters rather than relying on the fully-connected network to independently generate each pixel. This gives the generator an inductive bias for local spatial structure --- exactly what's needed for image generation.</p>
+
+            <h3>DCGAN Discriminator</h3>
+            <p>The Discriminator mirrors the Generator with standard strided convolutions:</p>
+
+<pre><code class="language-python">class DCDiscriminator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv_blocks = nn.Sequential(
+            nn.Conv2d(1, 64, 4, 2, 1),         # -> (64, 14, 14)
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(64, 128, 4, 2, 1),       # -> (128, 7, 7)
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(128 * 7 * 7, 1),
+            nn.Sigmoid(),
+        )</code></pre>
+
+            <p>Note that the first convolutional layer has no BatchNorm, following the DCGAN paper's recommendation. Normalizing the raw input can destabilize early training.</p>
+
+            <h2>Weight Initialization</h2>
+            <p>Both architectures use custom weight initialization drawn from $\mathcal{N}(0, 0.02)$. The DCGAN paper found this essential for stable convergence. Without it, the networks can fall into degenerate modes within the first few epochs.</p>
+
+<pre><code class="language-python">def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1 or classname.find("Linear") != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)</code></pre>
+
+            <h2>The Training Loop</h2>
+            <p>The adversarial training loop alternates between two optimization steps per batch:</p>
+
+            <p><strong>Step 1 --- Train Discriminator</strong>: Feed real images (label = 1) and fake images from the Generator (label = 0). Compute BCELoss for both, backpropagate, and update $D$.</p>
+
+            <p><strong>Step 2 --- Train Generator</strong>: Generate fake images and pass them through $D$. The Generator's loss uses label = 1 (it wants $D$ to classify its fakes as real). Backpropagate through $D$ (frozen) into $G$ and update $G$.</p>
+
+            <p>The critical detail: we use <code>.detach()</code> on the fake images when training $D$ to prevent gradients from flowing back into $G$ during the Discriminator's update step.</p>
+
+            <h2>Optimizer Configuration</h2>
+            <p>Following the DCGAN paper, we use Adam with a learning rate of $0.0002$ and $(\beta_1, \beta_2) = (0.5, 0.999)$. The reduced $\beta_1$ (compared to the default 0.9) dampens the momentum, which helps stabilize the adversarial oscillations.</p>
+
+            <h2>Up Next</h2>
+            <p>With both architectures implemented, we have everything needed to train GANs on real data. In <strong>Part 3</strong>, we will train both models on MNIST, analyze the loss dynamics, compare the visual quality of generated samples, and discuss the practical challenges of adversarial training including mode collapse.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

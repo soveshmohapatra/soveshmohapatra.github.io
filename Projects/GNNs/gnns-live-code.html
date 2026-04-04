@@ -1,0 +1,281 @@
+---
+layout: null
+title: "Deconstructing GNNs: Part 2 — PyTorch Implementation"
+description: "Building GCN and GAT layers from scratch in pure PyTorch — adjacency normalization, message passing, attention computation, and multi-head aggregation. By Sovesh Mohapatra."
+permalink: /projects/gnns-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing GNNs: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <!-- Prism.js for Code Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/gnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to GNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing GNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>This second installment translates the GCN and GAT equations from Part 1 into working Python code using only <code>torch.nn</code> and <code>torch.Tensor</code> operations. We walk through adjacency normalization, the GCN forward pass, GAT attention computation, and multi-head concatenation. The complete implementation is ~150 lines with no external graph libraries.</p>
+            </div>
+
+            <h2>Design Philosophy</h2>
+            <p>Our implementation follows three rules:</p>
+            <ol>
+                <li><strong>Pure PyTorch</strong> -- no <code>torch_geometric</code>, no <code>dgl</code>, no external graph libraries.</li>
+                <li><strong>Readable</strong> -- each mathematical operation maps to one or two lines of code.</li>
+                <li><strong>Correct</strong> -- numerically stable, with proper initialization and masking.</li>
+            </ol>
+
+            <h2>Adjacency Normalization</h2>
+            <p>The most important utility function computes the symmetric normalization from Part 1:</p>
+
+<pre><code class="language-python">@staticmethod
+def compute_norm_adj(adj: torch.Tensor) -> torch.Tensor:
+    # A_hat = A + I  (self-loops)
+    a_hat = adj + torch.eye(adj.size(0), device=adj.device)
+    # Degree vector
+    d_hat = a_hat.sum(dim=1)                        # (N,)
+    # D^{-1/2}
+    d_inv_sqrt = torch.pow(d_hat, -0.5)
+    d_inv_sqrt[torch.isinf(d_inv_sqrt)] = 0.0
+    # D^{-1/2} A_hat D^{-1/2}
+    norm_adj = d_inv_sqrt.unsqueeze(1) * a_hat * d_inv_sqrt.unsqueeze(0)
+    return norm_adj</code></pre>
+
+            <p><strong>Key details:</strong></p>
+            <ul>
+                <li>Self-loops (<code>+ torch.eye</code>) ensure every node includes its own features in the aggregation.</li>
+                <li>The <code>isinf</code> guard handles isolated nodes (degree 0) that would cause division by zero.</li>
+                <li>The outer product trick avoids constructing a full diagonal matrix, saving memory.</li>
+            </ul>
+
+            <h2>GCN Layer Implementation</h2>
+
+<pre><code class="language-python">class GCNLayer(nn.Module):
+    def __init__(self, in_features, out_features,
+                 activation=True, bias=True):
+        super().__init__()
+        self.linear = nn.Linear(in_features, out_features, bias=bias)
+        self.activation = activation
+
+    def forward(self, x, adj):
+        norm_adj = self.compute_norm_adj(adj)   # (N, N)
+        support = self.linear(x)                # (N, out)
+        out = torch.mm(norm_adj, support)       # (N, out)
+        if self.activation:
+            out = F.relu(out)
+        return out</code></pre>
+
+            <p>The order of operations matters:</p>
+            <ol>
+                <li><strong>Transform first</strong> ($\mathbf{XW}$): reduces dimensionality before the expensive matrix multiply with the adjacency.</li>
+                <li><strong>Then aggregate</strong> ($\hat{\mathbf{A}}_{\text{norm}} \cdot \mathbf{XW}$): propagates the already-projected features.</li>
+            </ol>
+
+            <p>This is more efficient than aggregating first when $F' < F$, which is the common case in later layers.</p>
+
+            <h2>GAT Layer Implementation</h2>
+            <p>The GAT layer is more involved. We break it into four stages.</p>
+
+            <h3>Stage 1: Linear Projection</h3>
+
+<pre><code class="language-python"># W: (K, F_in, F_out)  -- K independent heads
+h = torch.einsum("nf,kfo->kno", x, self.W)   # (K, N, F_out)</code></pre>
+
+            <p>Each of the $K$ attention heads has its own weight matrix. The <code>einsum</code> computes all $K$ projections in one fused operation.</p>
+
+            <h3>Stage 2: Attention Scores</h3>
+
+<pre><code class="language-python">e_left  = torch.matmul(h, self.a_left).squeeze(-1)   # (K, N)
+e_right = torch.matmul(h, self.a_right).squeeze(-1)   # (K, N)
+
+# e_ij = e_left_i + e_right_j  via broadcasting
+e = e_left.unsqueeze(2) + e_right.unsqueeze(1)         # (K, N, N)
+e = self.leaky_relu(e)</code></pre>
+
+            <p>The original GAT paper concatenates $[\mathbf{W}\mathbf{h}_i \,\|\, \mathbf{W}\mathbf{h}_j]$ and applies the attention vector $\mathbf{a}$. Since $\mathbf{a}$ acts on the two halves independently, we can split it into $\mathbf{a}_{\text{left}}$ and $\mathbf{a}_{\text{right}}$ and use broadcasting instead of explicit concatenation. This avoids creating an $O(N^2 F')$ intermediate tensor.</p>
+
+            <h3>Stage 3: Masked Softmax</h3>
+
+<pre><code class="language-python">mask = (adj_hat == 0).unsqueeze(0)             # (1, N, N)
+e = e.masked_fill(mask, float("-inf"))
+alpha = F.softmax(e, dim=2)                    # (K, N, N)
+alpha = self.dropout(alpha)                    # attention dropout</code></pre>
+
+            <p>Non-edges receive $-\infty$ before softmax, ensuring $\alpha_{ij} = 0$ for disconnected pairs. Dropout on attention coefficients is a regularization technique from the original GAT paper.</p>
+
+            <h3>Stage 4: Aggregation and Multi-Head Output</h3>
+
+<pre><code class="language-python">out = torch.bmm(alpha, h)                     # (K, N, F_out)
+
+if self.concat:
+    # Concatenate K heads -> (N, K * F_out)
+    out = out.permute(1, 0, 2).contiguous().view(N, -1)
+else:
+    # Average K heads -> (N, F_out)
+    out = out.mean(dim=0)</code></pre>
+
+            <p>Hidden layers concatenate heads (increasing expressivity); the output layer averages them (producing $C$-dimensional logits).</p>
+
+            <h2>Full Model Architectures</h2>
+
+            <h3>GCN Model</h3>
+
+<pre><code class="language-python">class GCN(nn.Module):
+    def __init__(self, n_features, n_hidden, n_classes, dropout=0.5):
+        super().__init__()
+        self.gc1 = GCNLayer(n_features, n_hidden, activation=True)
+        self.gc2 = GCNLayer(n_hidden, n_classes, activation=False)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, adj):
+        x = self.gc1(x, adj)
+        x = self.dropout(x)
+        x = self.gc2(x, adj)
+        return x  # raw logits</code></pre>
+
+            <h3>GAT Model</h3>
+
+<pre><code class="language-python">class GAT(nn.Module):
+    def __init__(self, n_features, n_hidden, n_classes,
+                 n_heads=4, dropout=0.6):
+        super().__init__()
+        self.attn1 = GATLayer(n_features, n_hidden,
+                              n_heads=n_heads, concat=True,
+                              dropout=dropout)
+        self.attn2 = GATLayer(n_hidden * n_heads, n_classes,
+                              n_heads=1, concat=False,
+                              dropout=dropout)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, adj):
+        x = self.dropout(x)
+        x = self.attn1(x, adj)
+        x = F.elu(x)
+        x = self.dropout(x)
+        x = self.attn2(x, adj)
+        return x</code></pre>
+
+            <p>ELU activation (not ReLU) is used between GAT layers, following the original paper. Input dropout is also applied, which provides additional regularization.</p>
+
+            <h2>Parameter Initialization</h2>
+            <p>Both layers use Xavier uniform initialization:</p>
+
+<pre><code class="language-python">nn.init.xavier_uniform_(self.linear.weight)
+nn.init.zeros_(self.linear.bias)</code></pre>
+
+            <p>For GAT, all three parameter tensors ($\mathbf{W}$, $\mathbf{a}_\text{left}$, $\mathbf{a}_\text{right}$) are Xavier-initialized. This ensures that the variance of activations is preserved through layers at initialization, which is critical for stable training with LeakyReLU attention.</p>
+
+            <h2>Summary</h2>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Component</th>
+                        <th style="text-align:center; padding: 0.75rem;">GCN</th>
+                        <th style="text-align:center; padding: 0.75rem;">GAT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Lines of code (layer)</td>
+                        <td style="text-align:center; padding: 0.75rem;">35</td>
+                        <td style="text-align:center; padding: 0.75rem;">55</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Lines of code (model)</td>
+                        <td style="text-align:center; padding: 0.75rem;">15</td>
+                        <td style="text-align:center; padding: 0.75rem;">20</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Parameters (our config)</td>
+                        <td style="text-align:center; padding: 0.75rem;">610</td>
+                        <td style="text-align:center; padding: 0.75rem;">1,378</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">External dependencies</td>
+                        <td style="text-align:center; padding: 0.75rem;">None</td>
+                        <td style="text-align:center; padding: 0.75rem;">None</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>In <strong>Part 3</strong>, we put these models to the test on Zachary's Karate Club -- a real social network where the graph structure alone must separate two factions using only 4 labeled nodes.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

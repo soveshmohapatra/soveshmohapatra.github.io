@@ -1,0 +1,294 @@
+---
+layout: null
+title: "Deconstructing VAEs: Part 1 — The Math of Latent Spaces"
+description: "The mathematical foundations of Variational Autoencoders — latent variable models, the ELBO, KL divergence, and the reparameterization trick. By Sovesh Mohapatra."
+permalink: /projects/vaes-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing VAEs: Part 1 - The Math of Latent Spaces | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/vaes/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to VAEs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing VAEs from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Latent Spaces</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Variational Autoencoders occupy a unique position in deep learning: they sit at the intersection of neural networks and probabilistic inference. Unlike standard autoencoders, which learn a deterministic compression, VAEs learn a <em>distribution</em> over latent representations---and this seemingly small change unlocks the ability to generate entirely new data.</p>
+                <p>In Part 1 of this series, we derive the mathematical foundations that make VAEs work: latent variable models, the Evidence Lower Bound (ELBO), KL divergence, and the reparameterization trick.</p>
+            </div>
+
+            <h2>Latent Variable Models</h2>
+            <p>The core assumption behind a VAE is that observed data $\mathbf{x}$ is generated by some unobserved (latent) variable $\mathbf{z}$:</p>
+
+            <div class="math-block">
+                $$ p(\mathbf{x}) = \int p(\mathbf{x} | \mathbf{z}) \, p(\mathbf{z}) \, d\mathbf{z} $$
+            </div>
+
+            <p>We choose the prior $p(\mathbf{z}) = \mathcal{N}(\mathbf{0}, \mathbf{I})$---a standard multivariate Gaussian. The likelihood $p(\mathbf{x} | \mathbf{z})$ is parameterized by a neural network (the decoder).</p>
+
+            <p>The problem: computing $p(\mathbf{x})$ requires integrating over all possible $\mathbf{z}$, which is intractable for high-dimensional latent spaces. We need an approximation.</p>
+
+            <h2>Variational Inference and the ELBO</h2>
+            <p>Since we cannot compute the true posterior $p(\mathbf{z} | \mathbf{x})$, we approximate it with a learned distribution $q_\phi(\mathbf{z} | \mathbf{x})$ (the encoder), parameterized by $\phi$.</p>
+
+            <p>Starting from the log-evidence:</p>
+
+            <div class="math-block">
+                $$ \log p(\mathbf{x}) = \log \int p(\mathbf{x} | \mathbf{z}) \, p(\mathbf{z}) \, d\mathbf{z} $$
+            </div>
+
+            <p>We introduce $q_\phi(\mathbf{z} | \mathbf{x})$ and apply Jensen's inequality:</p>
+
+            <div class="math-block">
+                $$ \log p(\mathbf{x}) \geq \mathbb{E}_{q_\phi(\mathbf{z} | \mathbf{x})} \left[ \log p(\mathbf{x} | \mathbf{z}) \right] - D_{\text{KL}}\left( q_\phi(\mathbf{z} | \mathbf{x}) \| p(\mathbf{z}) \right) $$
+            </div>
+
+            <p>This lower bound is the <strong>Evidence Lower Bound (ELBO)</strong>:</p>
+
+            <div class="math-block">
+                $$ \mathcal{L}(\theta, \phi; \mathbf{x}) = \underbrace{\mathbb{E}_{q_\phi(\mathbf{z} | \mathbf{x})} \left[ \log p_\theta(\mathbf{x} | \mathbf{z}) \right]}_{\text{Reconstruction term}} - \underbrace{D_{\text{KL}}\left( q_\phi(\mathbf{z} | \mathbf{x}) \| p(\mathbf{z}) \right)}_{\text{Regularization term}} $$
+            </div>
+
+            <p>The reconstruction term encourages accurate decoding. The KL term regularizes the latent space, pushing $q_\phi$ toward the prior.</p>
+
+            <h2>KL Divergence: Closed Form</h2>
+            <p>When both the approximate posterior and prior are Gaussian, the KL divergence has a closed-form solution. For $q_\phi(\mathbf{z} | \mathbf{x}) = \mathcal{N}(\boldsymbol{\mu}, \text{diag}(\boldsymbol{\sigma}^2))$ and $p(\mathbf{z}) = \mathcal{N}(\mathbf{0}, \mathbf{I})$:</p>
+
+            <div class="math-block">
+                $$ D_{\text{KL}} = -\frac{1}{2} \sum_{j=1}^{J} \left( 1 + \log \sigma_j^2 - \mu_j^2 - \sigma_j^2 \right) $$
+            </div>
+
+            <p>In code, we parameterize $\log \sigma^2$ (i.e., $\log\_var$) instead of $\sigma$ directly, for numerical stability:</p>
+
+            <div class="math-block">
+                $$ D_{\text{KL}} = -\frac{1}{2} \sum_{j=1}^{J} \left( 1 + \log\_var_j - \mu_j^2 - e^{\log\_var_j} \right) $$
+            </div>
+
+            <h2>The Reparameterization Trick</h2>
+            <p>Maximizing the ELBO requires computing gradients through the expectation $\mathbb{E}_{q_\phi(\mathbf{z} | \mathbf{x})}[\cdot]$. But sampling $\mathbf{z} \sim q_\phi(\mathbf{z} | \mathbf{x})$ is a stochastic operation---we cannot backpropagate through a random number generator.</p>
+
+            <p>The reparameterization trick resolves this by expressing $\mathbf{z}$ as a deterministic function of $\boldsymbol{\mu}$, $\boldsymbol{\sigma}$, and an auxiliary noise variable:</p>
+
+            <div class="math-block">
+                $$ \mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}) $$
+            </div>
+
+            <p>Now $\mathbf{z}$ is differentiable with respect to $\boldsymbol{\mu}$ and $\boldsymbol{\sigma}$ (and hence $\phi$), while $\boldsymbol{\epsilon}$ is treated as a fixed input. The stochasticity is "externalized," and standard backpropagation applies.</p>
+
+            <p>This single trick is what made VAEs practical. Without it, training would require high-variance score function estimators (REINFORCE), which converge far too slowly for deep networks.</p>
+
+            <h2>Putting It Together</h2>
+            <p>The full VAE training procedure:</p>
+            <ol>
+                <li><strong>Encode</strong>: Map input $\mathbf{x}$ to distribution parameters $(\boldsymbol{\mu}, \log \boldsymbol{\sigma}^2)$.</li>
+                <li><strong>Reparameterize</strong>: Sample $\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\epsilon} \odot e^{0.5 \cdot \log \boldsymbol{\sigma}^2}$.</li>
+                <li><strong>Decode</strong>: Reconstruct $\hat{\mathbf{x}}$ from $\mathbf{z}$.</li>
+                <li><strong>Compute ELBO</strong>: Reconstruction loss (BCE) + KL divergence.</li>
+                <li><strong>Backpropagate</strong>: Update encoder and decoder parameters jointly.</li>
+            </ol>
+
+            <h2>Conclusion</h2>
+            <p>The mathematical machinery behind VAEs---variational inference, the ELBO, and the reparameterization trick---transforms an intractable generative modeling problem into a tractable optimization problem. In <strong>Part 2</strong>, we translate every equation into working PyTorch code.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

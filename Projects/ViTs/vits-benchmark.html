@@ -1,0 +1,222 @@
+---
+layout: null
+title: "Deconstructing ViTs: Part 3 — Patches vs Pixels"
+description: "Training Vision Transformers on CIFAR-10 — ViT vs CNN accuracy, attention map analysis, positional embedding visualization, and the data efficiency question. By Sovesh Mohapatra."
+permalink: /projects/vits-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing ViTs: Part 3 - Patches vs Pixels | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/vits/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to ViTs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing ViTs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Patches vs Pixels</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Parts 1 and 2, we derived and implemented a Vision Transformer from scratch: patch embeddings via Conv2d, multi-head self-attention without <code>nn.MultiheadAttention</code>, pre-norm Transformer blocks, and the full ViT assembly. Now we confront the critical question: how does it actually perform?</p>
+                <p>We train our ViT-Tiny on CIFAR-10 alongside a simple CNN baseline, both on a restricted 5,000-image subset for 30 epochs. The results reveal a fundamental tension between architectural flexibility and data efficiency -- and confirm a central finding of the original ViT paper.</p>
+            </div>
+
+            <h2>Experimental Setup</h2>
+
+            <h3>Models</h3>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Model</th>
+                        <th style="padding:0.75rem; text-align:right;">Parameters</th>
+                        <th style="padding:0.75rem; text-align:center;">Inductive Bias</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">ViT-Tiny</td><td style="padding:0.75rem; text-align:right;">1,205,898</td><td style="padding:0.75rem; text-align:center;">None (learned)</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">SimpleCNN</td><td style="padding:0.75rem; text-align:right;">141,354</td><td style="padding:0.75rem; text-align:center;">Locality, equivariance</td></tr>
+                    <tr><td style="padding:0.75rem;">SmallResNet</td><td style="padding:0.75rem; text-align:right;">175,258</td><td style="padding:0.75rem; text-align:center;">Locality, residual</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Training</h3>
+            <p>Optimizer: AdamW (weight decay $= 0.01$). Learning rate: $10^{-3}$ with linear warmup (5 epochs for ViT, 3 for CNN) + cosine annealing. Loss: Cross-entropy with label smoothing ($\epsilon = 0.1$). 30 epochs on 5,000 training images, 1,000 test images.</p>
+
+            <h2>Results</h2>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Model</th>
+                        <th style="padding:0.75rem; text-align:right;">Params</th>
+                        <th style="padding:0.75rem; text-align:center;">Best Test Acc</th>
+                        <th style="padding:0.75rem; text-align:center;">Final Train Acc</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">ViT-Tiny</td><td style="padding:0.75rem; text-align:right;">1,205,898</td><td style="padding:0.75rem; text-align:center;">49.60%</td><td style="padding:0.75rem; text-align:center;">53.52%</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">SimpleCNN</td><td style="padding:0.75rem; text-align:right;">141,354</td><td style="padding:0.75rem; text-align:center;"><strong>70.80%</strong></td><td style="padding:0.75rem; text-align:center;">80.24%</td></tr>
+                    <tr><td style="padding:0.75rem;">SmallResNet</td><td style="padding:0.75rem; text-align:right;">175,258</td><td style="padding:0.75rem; text-align:center;">63.30%</td><td style="padding:0.75rem; text-align:center;">69.06%</td></tr>
+                </tbody>
+            </table>
+
+            <p>The CNN outperforms the ViT by <strong>21.2 percentage points</strong> despite having <strong>$8.5\times$ fewer parameters</strong>.</p>
+
+            <h3>Training Dynamics</h3>
+            <ul>
+                <li><strong>CNN</strong>: Fast initial learning, reaching 50% train accuracy by epoch 5. Continues to climb steadily, with a growing train-test gap indicating mild overfitting on the small dataset.</li>
+                <li><strong>ViT</strong>: Slow start during the warmup phase (~16% at epoch 1, barely above random). Gradual improvement throughout training but never achieves the CNN's learning rate. The train-test gap remains modest -- the model is underfitting, not overfitting.</li>
+            </ul>
+
+            <p>This is a crucial distinction: the CNN's failure mode on small data is <em>overfitting</em> (80% train vs 70% test). The ViT's failure mode is <em>underfitting</em> (54% train vs 50% test) -- it cannot even fit the training data well, despite having $8.5\times$ more parameters.</p>
+
+            <h2>Attention Map Analysis</h2>
+            <p>We extract the attention weights from the last Transformer layer and examine which patches the CLS token attends to. Each of the 4 heads produces a $65 \times 65$ attention matrix; we take the CLS token's row (index 0) and the patch columns (indices 1-64), reshaping into an $8 \times 8$ spatial map.</p>
+
+            <h3>Observations</h3>
+            <p>Even with limited training, the attention heads show differentiated behavior:</p>
+            <ul>
+                <li>Some heads attend broadly across the image, aggregating global context</li>
+                <li>Other heads show localized attention patterns, focusing on specific spatial regions</li>
+                <li>The attention distributions are non-uniform -- the model has learned that some patches are more informative than others for the given input</li>
+            </ul>
+
+            <p>This head specialization is consistent with findings from NLP Transformers and suggests that the multi-head mechanism is serving its intended purpose: different heads capture different types of relationships between patches.</p>
+
+            <h2>Positional Embedding Analysis</h2>
+            <p>We compute the cosine similarity between all pairs of learned positional embeddings. If the model has learned meaningful spatial structure, nearby patches should have more similar positional embeddings than distant ones.</p>
+
+            <h3>Similarity to Center Patch</h3>
+            <p>For a more intuitive visualization, we compute the cosine similarity of every patch position to the center patch (index 32 in our $8 \times 8$ grid). The resulting $8 \times 8$ heatmap shows:</p>
+            <ul>
+                <li>Highest similarity at and near the center position</li>
+                <li>Decreasing similarity with increasing distance</li>
+                <li>The model has discovered 2D spatial locality from 1D positional indices</li>
+            </ul>
+
+            <p>This confirms Dosovitskiy et al.'s finding: even 1D positional embeddings can capture 2D spatial structure. The model learns that patch 32 is spatially close to patches 31 and 33 (horizontal neighbors) and patches 24 and 40 (vertical neighbors, 8 positions apart in the flattened sequence).</p>
+
+            <h2>Why ViTs Fail on Small Data</h2>
+            <p>Our results cleanly reproduce the central finding of the ViT paper. The explanation involves the concept of <strong>inductive bias</strong>.</p>
+
+            <h3>What CNNs Know a Priori</h3>
+            <p>Convolutional networks encode two strong assumptions about images:</p>
+            <ol>
+                <li><strong>Locality</strong>: A $3 \times 3$ filter only sees nearby pixels. Important features (edges, textures) are local.</li>
+                <li><strong>Translation equivariance</strong>: The same filter is applied at every spatial location. A cat in the top-left looks the same as a cat in the bottom-right.</li>
+            </ol>
+
+            <p>These assumptions are correct for natural images and dramatically reduce the hypothesis space. A CNN doesn't need to <em>learn</em> that nearby pixels are related -- it knows this architecturally.</p>
+
+            <h3>What ViTs Must Learn from Data</h3>
+            <p>A Vision Transformer has none of these built-in assumptions:</p>
+            <ul>
+                <li>Every patch can attend to every other patch from layer 1 -- there is no locality constraint</li>
+                <li>Positional embeddings are learned from scratch -- spatial structure is not given</li>
+                <li>The attention pattern is input-dependent -- the model must learn <em>when</em> to attend locally vs globally</li>
+            </ul>
+
+            <p>This flexibility is powerful with sufficient data (ViT was originally trained on JFT-300M, a dataset of 300 million images). But with only 5,000 images, the model cannot learn these spatial priors effectively.</p>
+
+            <h3>The Bias-Variance Tradeoff</h3>
+            <p>In classical statistical terms:</p>
+            <ul>
+                <li><strong>CNNs</strong>: High bias (strong assumptions), low variance $\rightarrow$ good on small data</li>
+                <li><strong>ViTs</strong>: Low bias (few assumptions), high variance $\rightarrow$ need large data to generalize</li>
+            </ul>
+
+            <p>This is why ViT-Large with JFT-300M pretraining surpasses the best CNNs, but our ViT-Tiny on 5,000 images loses by 21 points. The crossover point -- where ViTs begin to outperform CNNs -- occurs somewhere around ImageNet scale (~1M images) with appropriate regularization.</p>
+
+            <h2>Bridging the Gap</h2>
+            <p>Several subsequent works have addressed ViT's data efficiency:</p>
+            <ul>
+                <li><strong>DeiT</strong> (Touvron et al., 2021): Training recipe with strong data augmentation, knowledge distillation, and regularization enables ViT to match CNNs on ImageNet-1K alone</li>
+                <li><strong>Hybrid models</strong>: CCT, CvT, and CoAtNet introduce convolutional stems or local attention to inject inductive bias</li>
+                <li><strong>Masked pretraining</strong>: MAE (He et al., 2022) uses masked image modeling as a self-supervised pretext task, enabling data-efficient ViT training</li>
+            </ul>
+
+            <h2>Conclusion</h2>
+            <p>Our from-scratch ViT implementation demonstrates both the elegance and the limitation of applying pure self-attention to images:</p>
+            <ul>
+                <li>The architecture is remarkably simple: patch embed, stack Transformer blocks, classify the CLS token</li>
+                <li>Attention maps show meaningful spatial specialization even with limited training</li>
+                <li>Positional embeddings learn 2D structure from 1D indices</li>
+                <li>But data efficiency remains the fundamental bottleneck in the low-data regime</li>
+            </ul>
+
+            <p>The lesson is not that ViTs are inferior to CNNs -- they are not. The lesson is that <strong>inductive biases are priors, not limitations</strong>. When your prior matches the data distribution (as spatial locality matches natural images), it accelerates learning. When you have enough data to overcome the lack of priors, the more flexible architecture wins.</p>
+
+            <p>This is arguably the deepest insight of the ViT paper: the boundary between "architecture design" and "learning from data" is a spectrum, not a binary choice. Vision Transformers shifted that boundary decisively toward data-driven learning, and the field has never looked back.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

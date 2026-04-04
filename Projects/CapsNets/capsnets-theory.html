@@ -1,0 +1,208 @@
+---
+layout: null
+title: "Deconstructing CapsNets: Part 1 — The Math of Equivariance"
+description: "The mathematical foundations of Capsule Networks — why pooling loses information, capsule vectors for equivariant pose encoding, and dynamic routing by agreement. By Sovesh Mohapatra."
+permalink: /projects/capsnets-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing CapsNets: Part 1 - The Math of Equivariance | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/capsnets/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to CapsNets Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing CapsNets from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Equivariance</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Convolutional Neural Networks achieve remarkable performance on visual tasks, yet they suffer from a fundamental flaw: max-pooling discards the spatial relationships between features. <strong>Capsule Networks</strong>, introduced by Sabour, Frosst, and Hinton (2017), address this by replacing scalar activations with vector outputs that encode both the probability and the <em>pose</em> of detected features.</p>
+                <p>This first installment introduces the mathematical foundations: why pooling loses information, how capsule vectors encode equivariant representations, and how dynamic routing by agreement enables compositional understanding.</p>
+            </div>
+
+            <h2>The Problem with Pooling</h2>
+
+            <h3>What Max-Pooling Does</h3>
+            <p>In a standard CNN, a max-pooling layer takes a spatial region (e.g., $2 \times 2$) and outputs only the maximum activation:</p>
+
+            <div class="math-block">
+                $$ y = \max(x_{1,1},\; x_{1,2},\; x_{2,1},\; x_{2,2}) $$
+            </div>
+
+            <p>This achieves two goals: (1) reducing spatial dimensionality, and (2) providing a degree of translation invariance -- small shifts in the input do not change the maximum value.</p>
+
+            <h3>What Max-Pooling Loses</h3>
+            <p>The cost is significant. Max-pooling discards <em>where</em> within the pooling region the maximum occurred. After several pooling layers, the network knows <em>that</em> certain features exist but not <em>where</em> they are relative to each other.</p>
+
+            <p>Consider face detection. A CNN with pooling can detect "eyes exist" and "mouth exists," but it cannot easily verify that the eyes are above the mouth. A scrambled face -- eyes below the mouth, nose on the forehead -- activates the same pooled features as a normal face.</p>
+
+            <h3>Invariance vs. Equivariance</h3>
+            <p>This reveals a deeper issue: the distinction between <strong>invariance</strong> and <strong>equivariance</strong>.</p>
+            <ul>
+                <li><strong>Invariance</strong>: The output does not change when the input is transformed. $f(T(x)) = f(x)$ for transformation $T$.</li>
+                <li><strong>Equivariance</strong>: The output changes in a corresponding way when the input is transformed. $f(T(x)) = T'(f(x))$ for some corresponding transformation $T'$.</li>
+            </ul>
+
+            <p>Max-pooling pushes CNNs toward invariance. But for understanding spatial structure, we want <em>equivariance</em>: if the input rotates, the representation should rotate correspondingly, not remain unchanged.</p>
+
+            <h2>Capsule Vectors: Encoding Pose</h2>
+
+            <h3>From Scalars to Vectors</h3>
+            <p>The key idea of Capsule Networks is to replace scalar feature activations with <strong>vector</strong> outputs called <em>capsules</em>. Each capsule encodes:</p>
+            <ul>
+                <li><strong>Length</strong> $\|\mathbf{v}\| \in [0, 1)$: The probability that the entity exists.</li>
+                <li><strong>Orientation</strong>: The <em>pose</em> of the entity -- its position, rotation, scale, and other instantiation parameters.</li>
+            </ul>
+
+            <p>For example, a capsule detecting an eye might output an 8-dimensional vector where the length (0.92) indicates high confidence that an eye is present, and the direction encodes that the eye is rotated 15 degrees, scaled at $0.8\times$, and shifted 3 pixels right.</p>
+
+            <h3>Why Vectors Enable Equivariance</h3>
+            <p>When the input image rotates, the capsule vector's <em>orientation</em> changes but its <em>length</em> (probability) remains stable. This is equivariance: the representation transforms in a predictable way corresponding to the input transformation.</p>
+
+            <p>A scalar neuron has no way to represent this. It can only say "eye: 0.92." A capsule says "eye: 0.92 probability, at pose $\mathbf{p}$."</p>
+
+            <h2>The Squashing Function</h2>
+            <p>Since capsule lengths represent probabilities, we need a non-linearity that maps any vector to a vector with length in $[0, 1)$ while preserving orientation. This is the <strong>squashing function</strong>:</p>
+
+            <div class="math-block">
+                $$ \mathbf{v} = \frac{\|\mathbf{s}\|^2}{1 + \|\mathbf{s}\|^2} \cdot \frac{\mathbf{s}}{\|\mathbf{s}\|} $$
+            </div>
+
+            <h3>Dissecting the Formula</h3>
+            <p>The squashing function is the product of two terms:</p>
+            <ol>
+                <li><strong>Scaling factor</strong>: $\frac{\|\mathbf{s}\|^2}{1 + \|\mathbf{s}\|^2}$ -- when $\|\mathbf{s}\|$ is small: $\approx \|\mathbf{s}\|^2 \to 0$ (short vectors get shrunk further); when $\|\mathbf{s}\|$ is large: $\approx 1$ (long vectors get normalized to just below 1).</li>
+                <li><strong>Unit vector</strong>: $\frac{\mathbf{s}}{\|\mathbf{s}\|}$ -- preserves the direction (pose information).</li>
+            </ol>
+
+            <p>The result: $\|\mathbf{v}\| \in [0, 1)$ for any input $\mathbf{s}$. Short vectors (low confidence) get pushed toward zero. Long vectors (high confidence) get pushed toward unit length.</p>
+
+            <h3>Comparison to Sigmoid and Softmax</h3>
+            <ul>
+                <li><strong>Sigmoid</strong> maps a scalar $\to [0,1]$. No directional information.</li>
+                <li><strong>Softmax</strong> maps a vector of scalars $\to$ probability distribution. No pose encoding.</li>
+                <li><strong>Squash</strong> maps a vector $\to$ vector with $\|\cdot\| < 1$. Preserves direction as pose.</li>
+            </ul>
+
+            <h2>Dynamic Routing by Agreement</h2>
+
+            <h3>The Routing Problem</h3>
+            <p>Given a layer of lower-level capsules (e.g., detecting eyes, noses, mouths) and a layer of higher-level capsules (e.g., detecting faces, houses), how should we decide which lower-level capsule sends its output to which higher-level capsule?</p>
+
+            <p>In standard CNNs, this is determined by the fixed connectivity pattern (receptive fields). Capsule Networks use a <em>dynamic</em> mechanism: <strong>routing by agreement</strong>.</p>
+
+            <h3>Prediction Vectors</h3>
+            <p>Each lower-level capsule $i$ produces a <strong>prediction vector</strong> $\hat{\mathbf{u}}_{j|i}$ for each higher-level capsule $j$:</p>
+
+            <div class="math-block">
+                $$ \hat{\mathbf{u}}_{j|i} = \mathbf{W}_{ij} \, \mathbf{u}_i $$
+            </div>
+
+            <p>where $\mathbf{W}_{ij}$ is a learned transformation matrix and $\mathbf{u}_i$ is the output of capsule $i$. The prediction vector answers: "If capsule $i$ is an eye, and the eye belongs to face $j$, then face $j$ should have this pose."</p>
+
+            <h3>The Routing Algorithm</h3>
+            <ol>
+                <li><strong>Initialize</strong> logits $b_{ij} = 0$ for all pairs $(i, j)$.</li>
+                <li><strong>For each routing iteration</strong> $r = 1, 2, \ldots, R$:
+                    <ul>
+                        <li>Compute coupling coefficients: $c_{ij} = \text{softmax}_j(b_{ij})$</li>
+                        <li>Compute weighted sum: $\mathbf{s}_j = \sum_i c_{ij} \hat{\mathbf{u}}_{j|i}$</li>
+                        <li>Squash: $\mathbf{v}_j = \text{squash}(\mathbf{s}_j)$</li>
+                        <li>Update logits: $b_{ij} \leftarrow b_{ij} + \hat{\mathbf{u}}_{j|i} \cdot \mathbf{v}_j$</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Intuition: Voting and Consensus</h3>
+            <p>The routing algorithm implements a voting scheme:</p>
+            <ul>
+                <li>Each lower-level capsule <em>votes</em> for what the higher-level capsule's pose should be.</li>
+                <li>If many lower-level capsules <em>agree</em> (their prediction vectors point in similar directions), the higher-level capsule activates strongly.</li>
+                <li>Agreement increases the coupling coefficient $c_{ij}$, sending more information to the agreed-upon capsule.</li>
+                <li>Disagreement decreases the coupling coefficient, routing information elsewhere.</li>
+            </ul>
+
+            <p>This is why it is called "routing by agreement": information flows toward consensus.</p>
+
+            <h3>Why Three Iterations?</h3>
+            <p>Sabour et al. found that three routing iterations work well empirically. Fewer iterations do not allow sufficient refinement of the coupling coefficients. More iterations provide diminishing returns and increase computational cost.</p>
+
+            <h2>Looking Ahead</h2>
+            <p>With the mathematical foundations in place -- capsule vectors for equivariant representation, the squashing function for probability normalization, and dynamic routing for compositional part-whole reasoning -- we are ready to implement a full Capsule Network in PyTorch.</p>
+
+            <p>In <strong>Part 2</strong>, we will build <code>PrimaryCapsule</code> (converting conv features to capsule vectors), <code>DigitCapsule</code> (the routing algorithm in code, with all tensor shape details), and <code>CapsuleLoss</code> (margin loss for classification plus reconstruction regularization).</p>
+
+            <p><em>The implementation reveals challenges the math does not: tensor broadcasting with 5D weight matrices, gradient detachment for routing stability, and the careful balance between margin loss and reconstruction loss.</em></p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

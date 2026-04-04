@@ -1,0 +1,351 @@
+---
+layout: null
+title: "Deconstructing Neural ODEs: Part 1 — The Math of Continuous Depth"
+description: "The mathematical foundations of Neural ODEs — initial value problems, Euler and RK4 solvers, the ResNet-to-ODE connection, and the adjoint method. By Sovesh Mohapatra."
+permalink: /projects/neural-odes-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Neural ODEs: Part 1 - The Math of Continuous Depth | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/neural-odes/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Neural ODEs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Neural ODEs from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Continuous Depth</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>What if a neural network had no fixed depth? What if, instead of stacking a finite number of layers, we described the transformation of data as a <em>continuous</em> process governed by a differential equation?</p>
+                <p>This is the central idea of <strong>Neural Ordinary Differential Equations</strong> (Neural ODEs), introduced by Chen et al. (NeurIPS 2018). They replace discrete residual blocks with a continuous dynamical system:</p>
+                <div class="math-block">
+                    $$ \frac{d\mathbf{y}}{dt} = f(\mathbf{y}(t),\, t;\, \boldsymbol{\theta}), \qquad \mathbf{y}(0) = \mathbf{x}, $$
+                </div>
+                <p>where $f$ is a neural network parameterized by $\boldsymbol{\theta}$, and the "output" of the network is the state at $t=1$: $\hat{\mathbf{y}} = \mathbf{y}(1)$.</p>
+                <p>In this first part of a three-part series, we develop the mathematical foundations: initial value problems, numerical solvers, and the adjoint method for memory-efficient training.</p>
+            </div>
+
+            <h2>ODEs and Initial Value Problems</h2>
+            <p>An <strong>ordinary differential equation</strong> (ODE) describes how a quantity $\mathbf{y}(t) \in \mathbb{R}^d$ evolves over time:</p>
+
+            <div class="math-block">
+                $$ \frac{d\mathbf{y}}{dt} = f(t,\, \mathbf{y}(t)). $$
+            </div>
+
+            <p>Given an <strong>initial condition</strong> $\mathbf{y}(t_0) = \mathbf{y}_0$, this is called an <em>initial value problem</em> (IVP). Under mild regularity conditions on $f$ (Lipschitz continuity), the Picard-Lindelof theorem guarantees a unique solution exists.</p>
+
+            <p>In the neural network context:</p>
+            <ul>
+                <li>$\mathbf{y}(t)$ is the hidden state at "time" (depth) $t$.</li>
+                <li>$f$ is the learned dynamics -- a neural network.</li>
+                <li>$\mathbf{y}_0 = \mathbf{x}$ is the input data.</li>
+                <li>$\mathbf{y}(T)$ is the output, with $T$ typically set to 1.</li>
+            </ul>
+
+            <p>A critical property of ODE solutions is that <strong>trajectories cannot cross</strong>. In $\mathbb{R}^d$, two solution curves starting at different initial conditions will never intersect. This has deep implications for what Neural ODEs can and cannot represent -- and is the reason why augmenting the state dimension is essential for complex tasks.</p>
+
+            <h2>Euler and Runge-Kutta Methods</h2>
+            <p>Since we rarely have closed-form solutions, we solve the IVP numerically using <em>fixed-step</em> methods.</p>
+
+            <h3>Forward Euler Method</h3>
+            <p>The simplest approach: approximate the derivative with a forward difference.</p>
+
+            <div class="math-block">
+                $$ \mathbf{y}_{n+1} = \mathbf{y}_n + \Delta t \cdot f(t_n,\, \mathbf{y}_n). $$
+            </div>
+
+            <p>This is a <strong>first-order</strong> method: the local truncation error is $O(\Delta t^2)$ and the global error is $O(\Delta t)$.</p>
+
+            <p><strong>Key observation:</strong> Compare this to a residual network block:</p>
+
+            <div class="math-block">
+                $$ \mathbf{h}_{l+1} = \mathbf{h}_l + f_l(\mathbf{h}_l). $$
+            </div>
+
+            <p>A ResNet is literally a forward Euler discretization of an ODE, with $\Delta t = 1$ and each block $f_l$ having its own parameters.</p>
+
+            <h3>Classical Runge-Kutta (RK4)</h3>
+            <p>A fourth-order method using four intermediate evaluations:</p>
+
+            <div class="math-block">
+                $$\begin{align}
+                  \mathbf{k}_1 &= f(t_n,\; \mathbf{y}_n), \\
+                  \mathbf{k}_2 &= f\!\left(t_n + \tfrac{\Delta t}{2},\; \mathbf{y}_n + \tfrac{\Delta t}{2}\,\mathbf{k}_1\right), \\
+                  \mathbf{k}_3 &= f\!\left(t_n + \tfrac{\Delta t}{2},\; \mathbf{y}_n + \tfrac{\Delta t}{2}\,\mathbf{k}_2\right), \\
+                  \mathbf{k}_4 &= f(t_n + \Delta t,\; \mathbf{y}_n + \Delta t\,\mathbf{k}_3), \\[6pt]
+                  \mathbf{y}_{n+1} &= \mathbf{y}_n + \frac{\Delta t}{6}\left(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4\right).
+                \end{align}$$
+            </div>
+
+            <p>The global error is $O(\Delta t^4)$ -- dramatically better accuracy for the same step count, at the cost of four function evaluations per step instead of one.</p>
+
+            <h3>Trade-off</h3>
+            <p>For Neural ODEs, each "function evaluation" means a forward pass through the dynamics network $f$. So:</p>
+            <ul>
+                <li><strong>Euler:</strong> 1 NFE/step $\times$ 20 steps = 20 NFE per forward pass</li>
+                <li><strong>RK4:</strong> 4 NFE/step $\times$ 20 steps = 80 NFE per forward pass</li>
+            </ul>
+            <p>Whether the accuracy improvement justifies the $4\times$ compute cost depends on the problem.</p>
+
+            <h2>From ResNets to Continuous Depth</h2>
+            <p>The connection between residual networks and ODEs can be made precise.</p>
+
+            <p>A standard ResNet computes:</p>
+
+            <div class="math-block">
+                $$ \mathbf{h}_{l+1} = \mathbf{h}_l + f_l(\mathbf{h}_l;\, \boldsymbol{\theta}_l), \qquad l = 0, 1, \ldots, L-1. $$
+            </div>
+
+            <p>Each block $f_l$ has its own parameters $\boldsymbol{\theta}_l$. Now consider what happens as $L \to \infty$ and each block becomes infinitesimally small:</p>
+
+            <div class="math-block">
+                $$ \mathbf{h}_{l+1} - \mathbf{h}_l = \frac{1}{L}\, f\!\left(\frac{l}{L},\, \mathbf{h}_l;\, \boldsymbol{\theta}\right) \quad \xrightarrow{L \to \infty} \quad \frac{d\mathbf{h}}{dt} = f(t,\, \mathbf{h};\, \boldsymbol{\theta}). $$
+            </div>
+
+            <p>This is the Neural ODE. The discrete layer index $l$ becomes continuous time $t$. Separate per-layer parameters $\boldsymbol{\theta}_l$ collapse into a single shared $\boldsymbol{\theta}$.</p>
+
+            <p><strong>Consequences:</strong></p>
+            <ol>
+                <li><strong>Parameter efficiency:</strong> One network $f$ replaces $L$ separate blocks. In our experiments, this gives a $19.3\times$ parameter reduction.</li>
+                <li><strong>Adaptive depth:</strong> We can use fewer or more solver steps at test time without retraining.</li>
+                <li><strong>Invertibility:</strong> ODE flows are inherently invertible (just integrate backward in time), enabling normalizing flows.</li>
+            </ol>
+
+            <h2>The Adjoint Method</h2>
+            <p>Training a Neural ODE requires computing gradients $\frac{\partial \mathcal{L}}{\partial \boldsymbol{\theta}}$. The naive approach (backpropagate through all solver steps) stores the entire forward trajectory, using $O(L)$ memory.</p>
+
+            <p>The <strong>adjoint method</strong> avoids this by solving a second ODE <em>backward in time</em>.</p>
+
+            <p>Define the <strong>adjoint state</strong>:</p>
+
+            <div class="math-block">
+                $$ \mathbf{a}(t) = \frac{\partial \mathcal{L}}{\partial \mathbf{y}(t)}. $$
+            </div>
+
+            <p>It satisfies the adjoint ODE:</p>
+
+            <div class="math-block">
+                $$ \frac{d\mathbf{a}}{dt} = -\mathbf{a}(t)^\top \frac{\partial f}{\partial \mathbf{y}}, $$
+            </div>
+
+            <p>which is integrated backward from $t = T$ to $t = 0$, with terminal condition $\mathbf{a}(T) = \frac{\partial \mathcal{L}}{\partial \mathbf{y}(T)}$.</p>
+
+            <p>The parameter gradients accumulate as:</p>
+
+            <div class="math-block">
+                $$ \frac{\partial \mathcal{L}}{\partial \boldsymbol{\theta}} = -\int_T^0 \mathbf{a}(t)^\top \frac{\partial f}{\partial \boldsymbol{\theta}} \, dt. $$
+            </div>
+
+            <p><strong>Memory cost:</strong> $O(1)$ in depth -- we only need the current state, not the full trajectory. This is the key advantage that makes Neural ODEs practical for very deep (many-step) integration.</p>
+
+            <p><strong>Compute cost:</strong> We must re-solve the forward ODE (or store checkpoints) to evaluate $\frac{\partial f}{\partial \mathbf{y}}$ at each backward step. This trades memory for computation.</p>
+
+            <h2>Summary</h2>
+            <ul>
+                <li>Neural ODEs replace discrete residual layers with a continuous ODE: $d\mathbf{y}/dt = f(t, \mathbf{y}; \boldsymbol{\theta})$.</li>
+                <li>Euler and RK4 solvers trade off accuracy vs. compute (1 vs. 4 function evaluations per step).</li>
+                <li>The ResNet-to-ODE connection is exact: a ResNet <em>is</em> a forward Euler discretization of an ODE.</li>
+                <li>The adjoint method enables $O(1)$-memory training by solving a backward ODE instead of backpropagating through all solver steps.</li>
+            </ul>
+
+            <p>In Part 2, we implement all of this from scratch in pure PyTorch: ODE solvers, the dynamics network, the Neural ODE layer, and a classifier for spiral data.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

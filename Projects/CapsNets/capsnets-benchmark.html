@@ -1,0 +1,233 @@
+---
+layout: null
+title: "Deconstructing CapsNets: Part 3 — Viewpoint Invariance"
+description: "Testing Capsule Networks on rotation robustness — MNIST accuracy, reconstruction quality, and the growing advantage over CNNs at increasing rotation angles. By Sovesh Mohapatra."
+permalink: /projects/capsnets-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing CapsNets: Part 3 - Viewpoint Invariance | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/capsnets/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to CapsNets Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing CapsNets from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Viewpoint Invariance</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>The theoretical promise of Capsule Networks is equivariant representations that handle viewpoint changes more gracefully than standard CNNs. This final installment puts that claim to the test. We evaluate our from-scratch CapsNet on MNIST classification accuracy, reconstruction quality, and -- critically -- robustness to rotations never seen during training. We compare directly against a simple CNN baseline trained on identical data, quantifying exactly where and how much capsule representations help.</p>
+            </div>
+
+            <h2>Experimental Setup</h2>
+
+            <h3>Training Configuration</h3>
+            <p>Both models were trained on identical data with comparable optimization:</p>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Setting</th>
+                        <th style="padding:0.75rem; text-align:center;">CapsNet</th>
+                        <th style="padding:0.75rem; text-align:center;">Simple CNN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Training images</td><td style="padding:0.75rem; text-align:center;">5,000</td><td style="padding:0.75rem; text-align:center;">5,000</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Test images</td><td style="padding:0.75rem; text-align:center;">10,000</td><td style="padding:0.75rem; text-align:center;">10,000</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Optimizer</td><td style="padding:0.75rem; text-align:center;">Adam</td><td style="padding:0.75rem; text-align:center;">Adam</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Learning rate</td><td style="padding:0.75rem; text-align:center;">0.001</td><td style="padding:0.75rem; text-align:center;">0.001</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Batch size</td><td style="padding:0.75rem; text-align:center;">64</td><td style="padding:0.75rem; text-align:center;">64</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Epochs</td><td style="padding:0.75rem; text-align:center;">20</td><td style="padding:0.75rem; text-align:center;">20</td></tr>
+                    <tr><td style="padding:0.75rem;">Parameters</td><td style="padding:0.75rem; text-align:center;">8,141,840</td><td style="padding:0.75rem; text-align:center;">421,642</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Rotation Test Protocol</h3>
+            <p>After training on <strong>unrotated</strong> images only, we evaluate both models on the full 10,000-image test set at four rotation angles: $0^\circ$, $15^\circ$, $30^\circ$, and $45^\circ$. Rotations are applied via affine transformation with zero-padding.</p>
+
+            <h2>MNIST Classification Results</h2>
+
+            <h3>Test Accuracy</h3>
+            <p>On the standard (unrotated) test set:</p>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Model</th>
+                        <th style="padding:0.75rem; text-align:center;">Test Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">CapsNet</td><td style="padding:0.75rem; text-align:center;">98.34%</td></tr>
+                    <tr><td style="padding:0.75rem;">Simple CNN</td><td style="padding:0.75rem; text-align:center;">96.31%</td></tr>
+                </tbody>
+            </table>
+
+            <p>Both models achieve strong performance, with CapsNet holding a 2.03 percentage point advantage. Even on standard benchmarks, capsule representations provide a measurable edge -- and the benefit grows dramatically under transformation.</p>
+
+            <h2>Reconstruction Quality</h2>
+            <p>The reconstruction decoder takes the 16-dimensional capsule vector of the predicted class and attempts to reconstruct the original $28 \times 28$ image. This serves both as a regularizer during training and as evidence that the capsule representation captures meaningful structure.</p>
+
+            <p>Qualitative observation: the reconstructed digits are clearly recognizable, preserving the overall shape, stroke width, and slant of the originals. Some fine details (sharp edges, thin strokes) are slightly smoothed, which is expected given the bottleneck through a 16D vector.</p>
+
+            <p>The reconstruction MSE on the test set was approximately 0.052, corresponding to an average per-pixel error of about 0.23 (on $[0,1]$ scale). For reference, a trivial reconstruction (all zeros) would have MSE approximately 0.13 on MNIST, so the decoder is capturing substantial structure.</p>
+
+            <h2>Rotation Robustness</h2>
+            <p>This is the central experiment. Neither model saw any rotated images during training. We evaluate on the full test set rotated by $15^\circ$, $30^\circ$, and $45^\circ$.</p>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Rotation</th>
+                        <th style="padding:0.75rem; text-align:center;">CapsNet</th>
+                        <th style="padding:0.75rem; text-align:center;">Simple CNN</th>
+                        <th style="padding:0.75rem; text-align:center;">CapsNet Advantage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">$0^\circ$ (baseline)</td><td style="padding:0.75rem; text-align:center;">98.34%</td><td style="padding:0.75rem; text-align:center;">96.31%</td><td style="padding:0.75rem; text-align:center;">+2.03%</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">$15^\circ$</td><td style="padding:0.75rem; text-align:center;">96.21%</td><td style="padding:0.75rem; text-align:center;">90.81%</td><td style="padding:0.75rem; text-align:center;">+5.40%</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">$30^\circ$</td><td style="padding:0.75rem; text-align:center;">83.64%</td><td style="padding:0.75rem; text-align:center;">69.09%</td><td style="padding:0.75rem; text-align:center;">+14.55%</td></tr>
+                    <tr><td style="padding:0.75rem;">$45^\circ$</td><td style="padding:0.75rem; text-align:center;">58.17%</td><td style="padding:0.75rem; text-align:center;">37.04%</td><td style="padding:0.75rem; text-align:center;">+21.13%</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Analysis</h3>
+            <p>The key finding: <strong>the CapsNet advantage grows monotonically with rotation angle</strong>. At $0^\circ$, CapsNet already leads by +2.03%. At $45^\circ$, CapsNet outperforms the CNN by 21.13 percentage points.</p>
+
+            <p><strong>Degradation Rates:</strong></p>
+            <ul>
+                <li><strong>CapsNet</strong>: 98.34% to 58.17% = <strong>40.17 points</strong> lost over $45^\circ$.</li>
+                <li><strong>Simple CNN</strong>: 96.31% to 37.04% = <strong>59.27 points</strong> lost over $45^\circ$.</li>
+            </ul>
+            <p>The CNN loses 47% more accuracy than the CapsNet under the same rotational perturbation.</p>
+
+            <p><strong>Why CapsNets Are More Robust:</strong> The capsule representation encodes pose in the vector orientation. When an input digit rotates:</p>
+            <ol>
+                <li>The primary capsule vectors change orientation (representing the new pose).</li>
+                <li>The routing algorithm still finds agreement -- rotated parts still agree on a rotated whole.</li>
+                <li>The digit capsule vector rotates correspondingly, but its <em>length</em> (classification confidence) remains relatively stable.</li>
+            </ol>
+
+            <p>In contrast, the CNN's max-pooled features are designed to be invariant to small translations, but rotations shift features across spatial locations in ways that pooling cannot absorb.</p>
+
+            <h2>The Cost of Capsules</h2>
+
+            <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--border-color);">
+                        <th style="padding:0.75rem; text-align:left;">Metric</th>
+                        <th style="padding:0.75rem; text-align:center;">CapsNet</th>
+                        <th style="padding:0.75rem; text-align:center;">Simple CNN</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Parameters</td><td style="padding:0.75rem; text-align:center;">8,141,840</td><td style="padding:0.75rem; text-align:center;">421,642</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Parameter ratio</td><td style="padding:0.75rem; text-align:center;">$19.3\times$</td><td style="padding:0.75rem; text-align:center;">$1\times$</td></tr>
+                    <tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem;">Training time (per epoch)</td><td style="padding:0.75rem; text-align:center;">~30s</td><td style="padding:0.75rem; text-align:center;">~0.7s</td></tr>
+                    <tr><td style="padding:0.75rem;">Time ratio</td><td style="padding:0.75rem; text-align:center;">~$43\times$</td><td style="padding:0.75rem; text-align:center;">$1\times$</td></tr>
+                </tbody>
+            </table>
+
+            <p>CapsNets are nearly $20\times$ larger and $43\times$ slower than the simple CNN. The iterative routing algorithm is the primary bottleneck -- each forward pass requires three iterations of the full routing computation.</p>
+
+            <h2>Discussion and Broader Perspective</h2>
+
+            <h3>What Capsule Networks Get Right</h3>
+            <ol>
+                <li><strong>Equivariant representations</strong>: Capsule vectors encode pose information that scalar activations cannot represent.</li>
+                <li><strong>Part-whole reasoning</strong>: Dynamic routing implements a soft attention mechanism where parts vote on wholes -- a form of compositional understanding.</li>
+                <li><strong>Reconstruction as regularization</strong>: Forcing the capsule to reconstruct the input ensures the representation is information-rich, not just discriminative.</li>
+            </ol>
+
+            <h3>What Capsule Networks Get Wrong (or at Least Hard)</h3>
+            <ol>
+                <li><strong>Scalability</strong>: The routing algorithm scales quadratically with the number of capsules. CapsNets have not been successfully scaled to ImageNet-scale tasks.</li>
+                <li><strong>Computational cost</strong>: The iterative routing makes both forward and backward passes expensive.</li>
+                <li><strong>Training stability</strong>: The routing algorithm can be sensitive to initialization and hyperparameters.</li>
+                <li><strong>Marginal gains on standard benchmarks</strong>: On unrotated data, the advantage over well-tuned CNNs is small.</li>
+            </ol>
+
+            <h2>Conclusion</h2>
+            <p>This three-part series deconstructed Capsule Networks from first principles:</p>
+            <ol>
+                <li><strong>Part 1</strong>: The math -- why pooling loses spatial information, how capsule vectors encode equivariant pose, and how routing by agreement enables compositional reasoning.</li>
+                <li><strong>Part 2</strong>: The implementation -- squashing, primary capsules, digit capsules with dynamic routing, margin loss, and reconstruction decoder, all in pure PyTorch.</li>
+                <li><strong>Part 3</strong>: The results -- 98.34% test accuracy on MNIST, recognizable reconstructions from 16D vectors, and a growing robustness advantage over CNNs that reaches +21.13 percentage points at $45^\circ$ rotation.</li>
+            </ol>
+
+            <p>Capsule Networks are not the dominant paradigm in deep learning today. But the core insight -- that neural representations should encode <em>how</em> something appears, not just <em>that</em> it appears -- remains one of the most important ideas in the field.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

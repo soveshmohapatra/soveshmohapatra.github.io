@@ -1,0 +1,245 @@
+---
+layout: null
+title: "Deconstructing Hopfield Networks: Part 1 — The Math of Associative Memory"
+description: "The mathematical foundations of Hopfield Networks — energy functions, Hebbian learning, storage capacity, and the modern continuous extension connecting to Transformer attention. By Sovesh Mohapatra."
+permalink: /projects/hopfield-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Hopfield Networks: Part 1 - The Math of Associative Memory | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/hopfield/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Hopfield Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Hopfield Networks from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Associative Memory</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>Hopfield Networks are energy-based models where memory storage and retrieval emerge from the physics of energy minimization. In this first installment of a three-part series, we develop the mathematical foundations: the energy function, Hebbian learning, storage capacity bounds, and the modern continuous extension that connects directly to Transformer attention. No code yet---just the math that makes it all work.</p>
+            </div>
+
+            <h2>Energy-Based Models and Associative Memory</h2>
+            <p>The central premise of a Hopfield network is deceptively simple: <strong>memories are energy minima</strong>.</p>
+
+            <p>Consider a system of $N$ binary neurons, each taking values in $\{-1, +1\}$. The state of the network is a vector $\mathbf{x} \in \{-1, +1\}^N$. We define an energy function over states:</p>
+
+            <div class="math-block">
+                $$ E(\mathbf{x}) = -\frac{1}{2} \mathbf{x}^\top W \mathbf{x} $$
+            </div>
+
+            <p>where $W \in \mathbb{R}^{N \times N}$ is a symmetric weight matrix with zero diagonal ($W_{ii} = 0$).</p>
+
+            <p>The key insight: if we can construct $W$ such that the stored patterns $\{\boldsymbol{\xi}^1, \ldots, \boldsymbol{\xi}^P\}$ correspond to <em>local minima</em> of $E$, then retrieval becomes gradient descent on the energy landscape. Starting from a corrupted query, the dynamics roll downhill until they settle into the nearest minimum---recovering the stored memory.</p>
+
+            <p>This is <strong>content-addressable memory</strong>: you retrieve by content (a partial or noisy version of the memory), not by address.</p>
+
+            <h2>Hebbian Learning: Constructing the Weight Matrix</h2>
+            <p>How do we construct $W$ so that the desired patterns are energy minima? The answer comes from Hebb's rule (1949): <em>"Neurons that fire together, wire together."</em></p>
+
+            <p>Given $P$ patterns $\boldsymbol{\xi}^\mu \in \{-1, +1\}^N$ for $\mu = 1, \ldots, P$, the Hebbian weight matrix is:</p>
+
+            <div class="math-block">
+                $$ W = \frac{1}{N} \sum_{\mu=1}^{P} \boldsymbol{\xi}^\mu (\boldsymbol{\xi}^\mu)^\top, \qquad W_{ii} = 0 $$
+            </div>
+
+            <p>The diagonal is zeroed to prevent self-reinforcement.</p>
+
+            <h3>Why This Works</h3>
+            <p>Consider the "local field" acting on neuron $i$ when the network is in state $\boldsymbol{\xi}^\nu$ (one of the stored patterns):</p>
+
+            <div class="math-block">
+                $$ h_i = \sum_{j \neq i} W_{ij} \xi^\nu_j = \frac{1}{N} \sum_{\mu=1}^{P} \xi^\mu_i \sum_{j \neq i} \xi^\mu_j \xi^\nu_j $$
+            </div>
+
+            <p>For the term $\mu = \nu$ (the "signal"):</p>
+
+            <div class="math-block">
+                $$ \frac{1}{N} \xi^\nu_i \sum_{j \neq i} (\xi^\nu_j)^2 = \frac{N-1}{N} \xi^\nu_i \approx \xi^\nu_i $$
+            </div>
+
+            <p>When patterns are random and uncorrelated, the crosstalk term (from $\mu \neq \nu$) has mean zero and variance $\sim P/N$. As long as $P/N$ is small, the signal dominates and $\text{sign}(h_i) = \xi^\nu_i$---the pattern is a fixed point.</p>
+
+            <h2>The Update Rule</h2>
+            <p>Retrieval uses <strong>asynchronous updates</strong>. At each step, a neuron $i$ is selected (randomly or sequentially) and updated:</p>
+
+            <div class="math-block">
+                $$ x_i \leftarrow \text{sign}\left(\sum_{j} W_{ij} x_j\right) $$
+            </div>
+
+            <h3>Energy Always Decreases</h3>
+            <p>A crucial property: each asynchronous update can only decrease (or maintain) the energy. The change in energy when neuron $i$ flips:</p>
+
+            <div class="math-block">
+                $$ \Delta E = -\left(x_i^{\text{new}} - x_i\right) \sum_j W_{ij} x_j \leq 0 $$
+            </div>
+
+            <p>Since the energy is bounded below and strictly non-increasing, the dynamics must converge to a fixed point (a local minimum of $E$).</p>
+
+            <h2>Storage Capacity</h2>
+            <p>The fundamental question: <strong>how many patterns can a Hopfield network reliably store?</strong></p>
+
+            <h3>The Classical Bound</h3>
+            <p>The answer, established by Amit, Gutfreund, and Sompolinsky (1985), is:</p>
+
+            <div class="math-block">
+                $$ P_{\max} \approx \frac{N}{2 \ln N} $$
+            </div>
+
+            <p>for perfect retrieval. In practice, if we allow a small fraction of bit errors, the capacity is approximately:</p>
+
+            <div class="math-block">
+                $$ P_{\max} \approx 0.14 N $$
+            </div>
+
+            <p>This is <strong>linear</strong> in $N$. For a network with $N = 100$ neurons, the practical capacity is roughly 13--14 patterns.</p>
+
+            <h3>Why Capacity Is Limited</h3>
+            <p>The bottleneck is crosstalk. Each additional stored pattern adds noise to the local field. When $P$ grows relative to $N$, the crosstalk overwhelms the signal, creating <em>spurious attractors</em>---stable states that do not correspond to any stored pattern. These are "chimeric" mixtures of multiple patterns.</p>
+
+            <h2>The Modern Continuous Hopfield Network</h2>
+            <p>In 2020, Ramsauer et al. proposed a radical upgrade: replace the quadratic energy with a log-sum-exp.</p>
+
+            <h3>Continuous States and the New Energy</h3>
+            <p>Instead of binary states, we allow $\mathbf{x} \in \mathbb{R}^d$. The stored patterns are continuous vectors $\boldsymbol{\xi}^1, \ldots, \boldsymbol{\xi}^P \in \mathbb{R}^d$. The energy function becomes:</p>
+
+            <div class="math-block">
+                $$ E(\mathbf{x}) = -\frac{1}{\beta} \ln \left( \sum_{\mu=1}^{P} \exp\left(\beta \, (\boldsymbol{\xi}^\mu)^\top \mathbf{x}\right) \right) + \frac{1}{2} \|\mathbf{x}\|^2 + \text{const} $$
+            </div>
+
+            <p>where $\beta > 0$ is an inverse temperature parameter.</p>
+
+            <h3>The Update Rule Is Attention</h3>
+            <p>Setting $\nabla_\mathbf{x} E = 0$ and solving, the fixed-point update becomes:</p>
+
+            <div class="math-block">
+                $$ \mathbf{x}^{\text{new}} = \sum_{\mu=1}^{P} \text{softmax}\left(\beta \, \Xi^\top \mathbf{x}\right)_\mu \, \boldsymbol{\xi}^\mu = \Xi^\top \, \text{softmax}\left(\beta \, \Xi^\top \mathbf{x}\right) $$
+            </div>
+
+            <p>Now compare with standard softmax attention:</p>
+
+            <div class="math-block">
+                $$ \text{Attention}(Q, K, V) = V^\top \, \text{softmax}\left(\frac{K^\top Q}{\sqrt{d_k}}\right) $$
+            </div>
+
+            <p>Setting $K = V = \Xi$ (stored patterns), $Q = \mathbf{x}$ (query), and $\beta = 1/\sqrt{d_k}$, the modern Hopfield update is <em>exactly</em> the attention mechanism.</p>
+
+            <h3>Exponential Capacity</h3>
+            <p>The log-sum-exp energy creates much sharper minima than the quadratic energy. The resulting storage capacity is:</p>
+
+            <div class="math-block">
+                $$ P_{\max} \sim \exp\left(\frac{d}{2}\right) $$
+            </div>
+
+            <p>which is <strong>exponential</strong> in the pattern dimension $d$. For $d = 64$, this is astronomically larger than the classical $0.14N$ bound.</p>
+
+            <h2>Summary and Preview</h2>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Property</th>
+                        <th style="text-align:center; padding: 0.75rem;">Classical (1982)</th>
+                        <th style="text-align:center; padding: 0.75rem;">Modern (2020)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">State space</td><td style="text-align:center; padding: 0.75rem;">Binary $\{-1, +1\}^N$</td><td style="text-align:center; padding: 0.75rem;">Continuous $\mathbb{R}^d$</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Update</td><td style="text-align:center; padding: 0.75rem;">$\text{sign}(W\mathbf{x})$</td><td style="text-align:center; padding: 0.75rem;">$\Xi^\top \text{softmax}(\beta \Xi^\top \mathbf{x})$</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Learning</td><td style="text-align:center; padding: 0.75rem;">Hebbian outer products</td><td style="text-align:center; padding: 0.75rem;">Direct pattern storage</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Capacity</td><td style="text-align:center; padding: 0.75rem;">$\sim 0.14N$ (linear)</td><td style="text-align:center; padding: 0.75rem;">$\sim \exp(d/2)$ (exponential)</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Connection</td><td style="text-align:center; padding: 0.75rem;">---</td><td style="text-align:center; padding: 0.75rem;">= Softmax Attention</td></tr>
+                </tbody>
+            </table>
+
+            <p>In <strong>Part 2</strong>, we implement both networks from scratch in pure PyTorch and verify these mathematical properties empirically.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

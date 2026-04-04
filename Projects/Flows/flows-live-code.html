@@ -1,0 +1,215 @@
+---
+layout: null
+title: "Deconstructing Normalizing Flows: Part 2 — PyTorch Implementation"
+description: "Building Normalizing Flows from scratch in PyTorch — PlanarFlow, AffineCouplingLayer, BatchNormFlow, and RealNVP. By Sovesh Mohapatra."
+permalink: /projects/flows-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Normalizing Flows: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/flows/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Normalizing Flows Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Normalizing Flows from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we established the mathematical foundation of normalizing flows: the change of variables formula for exact likelihood, the rank-1 determinant trick for planar flows, and the triangular Jacobian for affine coupling layers.</p>
+                <p>Today, we implement everything in pure PyTorch. No external normalizing flow libraries. We build three modules from scratch: <code>PlanarFlow</code>, <code>AffineCouplingLayer</code>, and <code>RealNVP</code>.</p>
+            </div>
+
+            <h2>Component 1: Planar Flow</h2>
+            <p>A planar flow transforms $z' = z + u \cdot \tanh(w^\top z + b)$. The implementation requires three key pieces: the forward transformation, the log-determinant computation, and the invertibility constraint.</p>
+
+            <h3>The Invertibility Constraint</h3>
+            <p>The unconstrained parameters $w, u, b$ do not guarantee invertibility. We enforce $w^\top \hat{u} \geq -1$ using:</p>
+
+            <pre><code class="language-python">def _get_u_hat(self):
+    wtu = torch.dot(self.w, self.u)
+    m_wtu = -1.0 + F.softplus(wtu)
+    u_hat = self.u + (m_wtu - wtu) * self.w / (self.w @ self.w + 1e-8)
+    return u_hat</code></pre>
+
+            <p>The softplus function $m(x) = -1 + \log(1 + e^x)$ smoothly maps any real number to $[-1, \infty)$, ensuring the constraint is always satisfied during gradient-based optimization.</p>
+
+            <h3>Forward Pass and Log-Determinant</h3>
+
+            <pre><code class="language-python">def forward(self, z):
+    u_hat = self._get_u_hat()
+    linear = z @ self.w + self.b          # (batch,)
+    z_prime = z + u_hat * torch.tanh(linear).unsqueeze(1)
+
+    # psi = h'(w^T z + b) * w
+    psi = (1 - torch.tanh(linear)**2).unsqueeze(1) * self.w
+    det = 1.0 + (psi * u_hat).sum(dim=1)  # (batch,)
+    log_det = torch.log(torch.abs(det) + 1e-8)
+    return z_prime, log_det</code></pre>
+
+            <p>A single planar flow has only $2d + 1$ parameters (5 parameters for $d=2$). We stack $K=32$ flows for a total of 160 parameters -- extremely lightweight but limited in expressiveness.</p>
+
+            <h2>Component 2: Affine Coupling Layer</h2>
+            <p>The coupling layer is the workhorse of modern normalizing flows. It uses a binary mask to split the input, keeps the masked dimensions fixed, and transforms the rest using learned scale ($s$) and translation ($t$) networks.</p>
+
+            <h3>Mask Construction</h3>
+
+            <pre><code class="language-python"># Even mask: [1, 0, 1, 0, ...]
+mask = torch.zeros(dim)
+mask[::2] = 1.0</code></pre>
+
+            <p>The masked input <code>x * mask</code> is passed to the $s$ and $t$ networks, and the outputs are zeroed on masked dimensions with <code>* (1 - mask)</code>. This ensures the masked dimensions pass through unchanged.</p>
+
+            <h3>Scale and Translation Networks</h3>
+
+            <pre><code class="language-python">s_net = nn.Sequential(
+    nn.Linear(dim, hidden_dim),
+    nn.LeakyReLU(0.2),
+    nn.Linear(hidden_dim, hidden_dim),
+    nn.LeakyReLU(0.2),
+    nn.Linear(hidden_dim, dim),
+    nn.Tanh()  # Clamp scale to [-1, 1]
+)</code></pre>
+
+            <p>The final <code>Tanh</code> on the scale network is critical for training stability. Without it, the scale can explode during early training, causing numerical overflow in $\exp(s)$. Clamping to $[-1, 1]$ means the affine scaling factor $\exp(s)$ stays within $[e^{-1}, e] \approx [0.37, 2.72]$.</p>
+
+            <h3>Forward and Inverse</h3>
+
+            <pre><code class="language-python">def forward(self, x):
+    x_masked = x * self.mask
+    s = self.s_net(x_masked) * (1 - self.mask)
+    t = self.t_net(x_masked) * (1 - self.mask)
+    y = x * torch.exp(s) + t
+    log_det = s.sum(dim=1)
+    return y, log_det
+
+def inverse(self, y):
+    y_masked = y * self.mask
+    s = self.s_net(y_masked) * (1 - self.mask)
+    t = self.t_net(y_masked) * (1 - self.mask)
+    x = (y - t) * torch.exp(-s)
+    return x</code></pre>
+
+            <p>Note that the inverse uses the <em>same</em> networks $s$ and $t$ with the same parameters -- no separate inverse network is needed. This is the key advantage of the coupling architecture.</p>
+
+            <h2>Component 3: Batch Normalization for Flows</h2>
+            <p>Standard batch normalization is not invertible in general. However, we can design a flow-compatible version that normalizes activations between coupling layers and contributes its own log-determinant:</p>
+
+            <div class="math-block">
+                $$ y = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} \cdot \exp(\gamma) + \beta $$
+            </div>
+
+            <p>The log-determinant is:</p>
+
+            <div class="math-block">
+                $$ \log |\det J| = \sum_i \left( \gamma_i - \frac{1}{2} \log(\sigma_i^2 + \epsilon) \right) $$
+            </div>
+
+            <p>At training time, $\mu$ and $\sigma^2$ are batch statistics; at evaluation time, we use exponential moving averages. This stabilizes training significantly for deep flow stacks.</p>
+
+            <h2>Component 4: RealNVP</h2>
+            <p>The complete RealNVP model stacks 8 affine coupling layers with alternating even/odd masks, interleaved with batch normalization:</p>
+
+            <pre><code class="language-python">class RealNVP(nn.Module):
+    def __init__(self, dim, hidden_dim=64, num_layers=8):
+        self.layers = nn.ModuleList()
+        for i in range(num_layers):
+            mask = 'even' if i % 2 == 0 else 'odd'
+            self.layers.append(AffineCouplingLayer(dim, hidden_dim, mask))
+            self.layers.append(BatchNormFlow(dim))</code></pre>
+
+            <p>The mask alternation is essential. In even-indexed layers, dimensions $\{0, 2, 4, \ldots\}$ are fixed while $\{1, 3, 5, \ldots\}$ are transformed. In odd-indexed layers, the roles reverse. After two consecutive layers, every dimension has been transformed at least once.</p>
+
+            <h3>Training Objective</h3>
+            <p>The training loop is pure maximum likelihood estimation:</p>
+
+            <pre><code class="language-python">log_prob = model.log_prob(batch)
+loss = -log_prob.mean()  # Minimize NLL
+loss.backward()</code></pre>
+
+            <p>No reconstruction loss. No KL divergence. No discriminator. The objective directly maximizes the exact log-likelihood of the data under the model.</p>
+
+            <h3>Architecture Summary</h3>
+            <p>Our RealNVP with $d=2$, <code>hidden_dim</code>=64, and 8 coupling layers has <strong>71,744 trainable parameters</strong>. The planar flow with $K=32$ layers has only <strong>160 parameters</strong>. This $450\times$ difference in capacity will be clearly reflected in the density estimation quality in Part 3.</p>
+
+            <h2>Next Steps: Watching Gaussians Become Moons</h2>
+            <p>We now have a complete, tested implementation of two normalizing flow architectures. Every forward pass computes exact log-likelihoods. Every inverse pass generates new samples.</p>
+
+            <p>In <strong>Part 3</strong>, we will train both models on 2D density estimation benchmarks (Two Moons and Two Circles), visualize the learned density heatmaps, watch Gaussian samples warp into the target distribution, and compare the expressiveness of planar flows versus affine coupling layers.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

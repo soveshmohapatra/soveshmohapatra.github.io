@@ -1,0 +1,218 @@
+---
+layout: null
+title: "Deconstructing GNNs: Part 3 — Classifying Nodes in Graphs"
+description: "Evaluating GCN and GAT on Zachary's Karate Club — semi-supervised node classification with only 4 labeled nodes achieving 100% accuracy. By Sovesh Mohapatra."
+permalink: /projects/gnns-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing GNNs: Part 3 - Classifying Nodes in Graphs | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/gnns/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to GNNs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing GNNs from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Classifying Nodes in Graphs</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>We evaluate the GCN and GAT architectures from Parts 1--2 on the classic Zachary's Karate Club benchmark. Using only 4 labeled nodes out of 34 (semi-supervised), both models achieve <strong>100% node classification accuracy</strong>. We analyze training dynamics, convergence behavior, and what the graph visualizations reveal about how message passing propagates labels through the network.</p>
+            </div>
+
+            <h2>The Benchmark: Zachary's Karate Club</h2>
+            <p>Wayne Zachary's 1977 study documented the social network of a university karate club that split into two factions after a dispute between the instructor (Mr. Hi, node 0) and the club officer (node 33).</p>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Property</th>
+                        <th style="text-align:right; padding: 0.75rem;">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Nodes</td><td style="text-align:right; padding: 0.75rem;">34</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Undirected edges</td><td style="text-align:right; padding: 0.75rem;">78</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Classes</td><td style="text-align:right; padding: 0.75rem;">2 (Mr. Hi vs. Officer)</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Node features</td><td style="text-align:right; padding: 0.75rem;">One-hot identity (34-dim)</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Class 0 (Mr. Hi)</td><td style="text-align:right; padding: 0.75rem;">16 nodes</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Class 1 (Officer)</td><td style="text-align:right; padding: 0.75rem;">18 nodes</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Semi-Supervised Setup</h3>
+            <p>Following the standard semi-supervised protocol:</p>
+            <ul>
+                <li><strong>Training</strong>: 2 randomly selected nodes per class (4 total): nodes 3, 6, 18, 20</li>
+                <li><strong>Evaluation</strong>: All 34 nodes</li>
+                <li><strong>Task</strong>: Predict which faction each member joined</li>
+            </ul>
+
+            <p>The challenge: can 4 labels, propagated through the graph structure, correctly classify all 34 nodes?</p>
+
+            <h2>Experimental Configuration</h2>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Hyperparameter</th>
+                        <th style="text-align:center; padding: 0.75rem;">GCN</th>
+                        <th style="text-align:center; padding: 0.75rem;">GAT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Architecture</td><td style="text-align:center; padding: 0.75rem;">34-16-2</td><td style="text-align:center; padding: 0.75rem;">34-[4x8=32]-2</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Activation</td><td style="text-align:center; padding: 0.75rem;">ReLU</td><td style="text-align:center; padding: 0.75rem;">ELU</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Dropout</td><td style="text-align:center; padding: 0.75rem;">0.5</td><td style="text-align:center; padding: 0.75rem;">0.6</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Learning rate</td><td style="text-align:center; padding: 0.75rem;">0.01</td><td style="text-align:center; padding: 0.75rem;">0.005</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Epochs</td><td style="text-align:center; padding: 0.75rem;">200</td><td style="text-align:center; padding: 0.75rem;">200</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Attention heads</td><td style="text-align:center; padding: 0.75rem;">--</td><td style="text-align:center; padding: 0.75rem;">4 (layer 1), 1 (output)</td></tr>
+                </tbody>
+            </table>
+
+            <h2>Results</h2>
+
+            <h3>Accuracy</h3>
+            <p>Both models achieve perfect separation of the two factions using only 4 labeled training nodes. GCN: <strong>100.00%</strong>. GAT: <strong>100.00%</strong>. Zero misclassified nodes.</p>
+
+            <h3>Training Dynamics</h3>
+            <p>The convergence behavior reveals important differences:</p>
+
+            <p><strong>GCN converges faster.</strong> At epoch 1, GCN already classifies 79.4% of nodes correctly. The symmetric normalization provides an immediate structural prior: nodes that share many neighbors with a labeled node receive a strong signal from the very first forward pass. By epoch 50, both loss and accuracy have essentially plateaued.</p>
+
+            <p><strong>GAT starts slower but has lower initial loss.</strong> GAT's accuracy at epoch 1 is only 64.7%, but its loss (0.648) is lower than GCN's (0.700). This apparent contradiction arises because GAT's attention weights are initially near-uniform, producing well-calibrated but indecisive predictions. As attention sharpens, accuracy jumps rapidly.</p>
+
+            <p><strong>GAT's higher final loss.</strong> GAT's loss at epoch 200 (0.061) is 20$\times$ higher than GCN's (0.003). This is not a sign of worse performance -- both achieve 100% accuracy. The difference stems from GAT's stronger dropout (0.6 vs. 0.5) and the stochasticity of attention dropout, which prevents the loss from collapsing to near-zero during training mode.</p>
+
+            <h2>Why Does Semi-Supervised Learning Work So Well?</h2>
+
+            <h3>Label Propagation via Message Passing</h3>
+            <p>A 2-layer GNN gives each node access to its 2-hop neighborhood. In the Karate Club graph, the average shortest path length is approximately 2.4, meaning most nodes are within 2--3 hops of a labeled node.</p>
+
+            <p>The mechanism:</p>
+            <ol>
+                <li><strong>Layer 1</strong>: Each labeled node's class signal spreads to its immediate neighbors.</li>
+                <li><strong>Layer 2</strong>: Those neighbors propagate the signal one hop further, reaching 2-hop neighborhoods.</li>
+            </ol>
+
+            <p>With 4 strategically placed labels (nodes 3, 6, 18, 20), the 2-hop coverage encompasses nearly the entire graph.</p>
+
+            <h3>Graph Structure as Implicit Regularization</h3>
+            <p>Even without meaningful node features (we use one-hot identities), the adjacency matrix encodes community structure. The normalized propagation $\hat{\mathbf{D}}^{-1/2}\hat{\mathbf{A}}\hat{\mathbf{D}}^{-1/2}$ acts as a smoothing operator: connected nodes are pushed toward similar representations. Since the two factions are densely connected <em>within</em> groups and sparsely connected <em>between</em> groups, this smoothing naturally separates them.</p>
+
+            <h3>The Homophily Assumption</h3>
+            <p>Both GCN and GAT implicitly assume <strong>homophily</strong> -- that connected nodes tend to share labels. Zachary's Karate Club exhibits strong homophily (members befriend those in their faction), making it an ideal benchmark. On heterophilous graphs (where connected nodes tend to have <em>different</em> labels), standard GNNs struggle and require architectural modifications.</p>
+
+            <h2>Limitations and Extensions</h2>
+            <ul>
+                <li><strong>Small scale</strong>: 34 nodes is trivial by modern standards. Real GNN benchmarks use Cora (2,708 nodes), CiteSeer (3,327), or OGB datasets (millions of nodes).</li>
+                <li><strong>No edge features</strong>: Our implementation handles binary adjacency. Real-world graphs often have typed or weighted edges.</li>
+                <li><strong>Transductive only</strong>: Both models require the full adjacency at test time. Inductive variants (GraphSAGE) can generalize to unseen nodes.</li>
+                <li><strong>Over-smoothing</strong>: Stacking too many GNN layers causes all node representations to converge, destroying discriminative information. Techniques like residual connections, jumping knowledge, and normalization help.</li>
+            </ul>
+
+            <h2>Conclusion</h2>
+            <p>Building GCN and GAT from scratch in pure PyTorch reveals that graph neural networks are, at their core, remarkably simple:</p>
+            <ol>
+                <li><strong>Normalize</strong> the adjacency matrix (GCN) or compute attention (GAT)</li>
+                <li><strong>Multiply</strong> by projected features</li>
+                <li><strong>Repeat</strong> for $L$ layers</li>
+            </ol>
+
+            <p>On Zachary's Karate Club, this procedure achieves perfect accuracy with only 4 labeled nodes -- a testament to the power of exploiting graph structure in semi-supervised learning.</p>
+
+            <p>The key takeaways:</p>
+            <ul>
+                <li>Graph structure alone carries significant information about node labels in homophilous networks</li>
+                <li>GCN's fixed normalization converges faster; GAT's learned attention provides flexibility for heterogeneous graphs</li>
+                <li>Semi-supervised learning on graphs is remarkably data-efficient: labeling less than 12% of nodes sufficed for perfect classification</li>
+            </ul>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

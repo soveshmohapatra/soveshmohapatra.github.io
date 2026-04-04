@@ -1,0 +1,340 @@
+---
+layout: null
+title: "Deconstructing Autoencoders: Part 2 — PyTorch Implementation"
+description: "Building four autoencoder variants from scratch in pure PyTorch — Vanilla, Denoising, Sparse, and Convolutional. By Sovesh Mohapatra."
+permalink: /projects/autoencoders-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Autoencoders: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <!-- Prism.js for Code Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/autoencoders/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Autoencoders Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Autoencoders from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we established the mathematical foundation of autoencoders---the information bottleneck, MSE reconstruction loss, and the manifold hypothesis. Today, we translate that math into code. We implement four distinct autoencoder variants from scratch in pure PyTorch, each illustrating a different design principle.</p>
+            </div>
+
+            <h2>Vanilla Autoencoder</h2>
+            <p>The baseline architecture is a symmetric encoder-decoder with fully-connected layers:</p>
+
+<pre><code class="language-python"># Encoder: 784 -> 512 -> 256 -> latent_dim
+self.encoder = nn.Sequential(
+    nn.Linear(784, 512),
+    nn.ReLU(inplace=True),
+    nn.Linear(512, 256),
+    nn.ReLU(inplace=True),
+    nn.Linear(256, latent_dim),
+)
+
+# Decoder: latent_dim -> 256 -> 512 -> 784
+self.decoder = nn.Sequential(
+    nn.Linear(latent_dim, 256),
+    nn.ReLU(inplace=True),
+    nn.Linear(256, 512),
+    nn.ReLU(inplace=True),
+    nn.Linear(512, 784),
+    nn.Sigmoid(),
+)</code></pre>
+
+            <h3>Architecture Choices</h3>
+            <ul>
+                <li><strong>Layer sizes</strong> (784 &rarr; 512 &rarr; 256 &rarr; d): The encoder progressively halves the representation, creating a smooth compression funnel rather than an abrupt bottleneck.</li>
+                <li><strong>ReLU activations</strong>: Introduce non-linearity so the autoencoder can learn non-linear manifolds. Without activations, stacking linear layers is equivalent to a single linear layer (PCA).</li>
+                <li><strong>Sigmoid output</strong>: Constrains the reconstruction to $[0, 1]$, matching the normalized pixel range of MNIST images.</li>
+                <li><strong>No Sigmoid on the bottleneck</strong>: The latent code $\mathbf{z}$ is unconstrained, allowing the network to use the full real line.</li>
+            </ul>
+
+            <h2>Denoising Autoencoder</h2>
+            <p>The denoising variant uses the same encoder-decoder architecture but corrupts the input during training:</p>
+
+<pre><code class="language-python">def add_noise(self, x):
+    noise = self.noise_factor * torch.randn_like(x)
+    noisy = x + noise
+    return torch.clamp(noisy, 0.0, 1.0)
+
+def forward(self, x):
+    if self.training:
+        x_input = self.add_noise(x)
+    else:
+        x_input = x
+    z = self.encode(x_input)
+    return self.decode(z)</code></pre>
+
+            <h3>Key Design Decisions</h3>
+            <ul>
+                <li><strong>Noise injection is training-only</strong>: The <code>self.training</code> flag ensures that during evaluation, the autoencoder processes clean inputs. This is critical for fair comparison with other variants.</li>
+                <li><strong>Clamping to $[0,1]$</strong>: After adding Gaussian noise, we clamp to keep pixel values in the valid range. Without clamping, the noisy input could have negative values or values above 1, which would shift the input distribution away from what the Sigmoid output can produce.</li>
+                <li><strong>Clean reconstruction targets</strong>: The loss is always computed against the <em>original</em> clean input $\mathbf{x}$, not the noisy input $\tilde{\mathbf{x}}$. This is what forces the network to denoise.</li>
+                <li><strong>Noise factor 0.3</strong>: This adds substantial corruption---roughly 30% of the pixel range as standard deviation. High enough to challenge the network, low enough that the digit identity is usually preserved.</li>
+            </ul>
+
+            <h2>Sparse Autoencoder</h2>
+            <p>The sparse variant adds an L1 penalty on the bottleneck activations. The key change is that <code>forward()</code> returns both the reconstruction and the latent code:</p>
+
+<pre><code class="language-python">def forward(self, x):
+    z = self.encode(x)
+    x_hat = self.decode(z)
+    return x_hat, z  # return both for sparsity loss</code></pre>
+
+            <p>The training loop then computes the composite loss:</p>
+
+<pre><code class="language-python">recon, z = model(flat)
+mse = criterion(recon, flat)
+l1 = sparsity_weight * torch.mean(torch.abs(z))
+loss = mse + l1</code></pre>
+
+            <h3>L1 Sparsity Formulation</h3>
+            <p>The total loss is:</p>
+
+            <div class="math-block">
+                $$ \mathcal{L} = \underbrace{\frac{1}{N}\sum_{i=1}^N \|\mathbf{x}_i - \hat{\mathbf{x}}_i\|^2}_{\text{reconstruction}} + \underbrace{\lambda \cdot \frac{1}{N}\sum_{i=1}^N \|\mathbf{z}_i\|_1}_{\text{sparsity penalty}} $$
+            </div>
+
+            <p>The L1 norm $\|\mathbf{z}\|_1 = \sum_k |z_k|$ is non-differentiable at zero, but PyTorch's automatic differentiation handles this correctly using subgradients. The sparsity weight $\lambda = 10^{-3}$ balances reconstruction quality against sparsity---too high and reconstructions degrade, too low and the penalty has no effect.</p>
+
+            <h2>Convolutional Autoencoder</h2>
+            <p>The convolutional variant replaces fully-connected layers with Conv2d and ConvTranspose2d:</p>
+
+<pre><code class="language-python"># Encoder
+self.enc_conv = nn.Sequential(
+    nn.Conv2d(1, 16, 3, stride=2, padding=1),   # 28x28 -> 14x14
+    nn.ReLU(inplace=True),
+    nn.Conv2d(16, 32, 3, stride=2, padding=1),  # 14x14 -> 7x7
+    nn.ReLU(inplace=True),
+)
+self.enc_fc = nn.Linear(32 * 7 * 7, latent_dim)
+
+# Decoder
+self.dec_fc = nn.Linear(latent_dim, 32 * 7 * 7)
+self.dec_conv = nn.Sequential(
+    nn.ConvTranspose2d(32, 16, 3, stride=2, padding=1,
+                       output_padding=1),         # 7x7 -> 14x14
+    nn.ReLU(inplace=True),
+    nn.ConvTranspose2d(16, 1, 3, stride=2, padding=1,
+                       output_padding=1),          # 14x14 -> 28x28
+    nn.Sigmoid(),
+)</code></pre>
+
+            <h3>Why Convolutions Win</h3>
+            <ul>
+                <li><strong>Spatial structure</strong>: Fully-connected layers flatten images into 784-dimensional vectors, treating adjacent pixels the same as distant ones. Convolutions preserve the 2D grid, so the encoder learns local spatial features (edges, corners, curves).</li>
+                <li><strong>Parameter efficiency</strong>: A 3$\times$3 conv with 16 filters has $1 \times 16 \times 3 \times 3 = 144$ parameters. The equivalent fully-connected layer would have $784 \times 512 = 401{,}408$ parameters.</li>
+                <li><strong>Translation equivariance</strong>: A "7" in the top-left corner produces the same feature activations as a "7" in the bottom-right, shifted accordingly. This built-in invariance reduces the number of examples needed to learn.</li>
+            </ul>
+
+            <h3>ConvTranspose2d: Learned Upsampling</h3>
+            <p>The decoder uses transposed convolutions (sometimes called "deconvolutions") to upsample feature maps. With stride=2 and output_padding=1, each ConvTranspose2d doubles the spatial dimensions:</p>
+            <ul>
+                <li>$7 \times 7 \to 14 \times 14$ (first layer)</li>
+                <li>$14 \times 14 \to 28 \times 28$ (second layer, restoring original resolution)</li>
+            </ul>
+
+            <p>The <code>output_padding=1</code> resolves the ambiguity that arises because multiple input sizes can produce the same output size under stride-2 convolution ($\lfloor(n-1)/2\rfloor + 1$ is the same for $n=13$ and $n=14$).</p>
+
+            <h2>Training Configuration</h2>
+            <p>All four variants are trained with:</p>
+            <ul>
+                <li><strong>Dataset</strong>: 5,000-image MNIST subset (for fast CPU training)</li>
+                <li><strong>Optimizer</strong>: Adam (lr=$10^{-3}$)</li>
+                <li><strong>Loss</strong>: MSE for vanilla and conv; MSE against clean targets for denoising; MSE + L1 for sparse</li>
+                <li><strong>Epochs</strong>: 30</li>
+                <li><strong>Batch size</strong>: 128</li>
+                <li><strong>Latent dim</strong>: 2 (for visualization) and 32 (for quality comparison)</li>
+            </ul>
+
+            <h2>Next Steps: What Does the Bottleneck Learn?</h2>
+            <p>With all four variants implemented, we can now train them and investigate what the bottleneck actually discovers. In <strong>Part 3</strong>, we visualize the 2D latent space as a scatter plot colored by digit class, demonstrate the denoising autoencoder's ability to remove heavy Gaussian noise, and compare reconstruction quality across all four architectures.</p>
+
+            <p><em>Full code is on the GitHub repo. Stay tuned for the training results!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

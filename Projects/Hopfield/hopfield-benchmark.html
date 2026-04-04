@@ -1,0 +1,281 @@
+---
+layout: null
+title: "Deconstructing Hopfield Networks: Part 3 — Memory Retrieval vs Attention"
+description: "Benchmarking classical and modern Hopfield networks — retrieval accuracy, storage capacity, exponential scaling, and numerical proof of attention equivalence. By Sovesh Mohapatra."
+permalink: /projects/hopfield-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Hopfield Networks: Part 3 - Memory Retrieval vs Attention | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/hopfield/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Hopfield Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Hopfield Networks from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Memory Retrieval vs Attention</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Abstract</div>
+                <p>In the final installment of this three-part series, we present empirical results from our from-scratch Hopfield Network implementations. We measure classical retrieval accuracy under corruption, map the storage capacity curve, demonstrate the modern network's exponential capacity advantage, and provide a numerical proof that the modern Hopfield update is identical to softmax attention. All results are from actual benchmark runs.</p>
+            </div>
+
+            <h2>Experimental Setup</h2>
+            <p>All experiments use PyTorch 2.5.1 on CPU with fixed random seed (42) for reproducibility. We test:</p>
+            <ol>
+                <li><strong>Classical retrieval</strong>: 7 patterns in 100 neurons, 25% bit corruption</li>
+                <li><strong>Classical capacity</strong>: 1--30 patterns in 100 neurons, 20% corruption, 5 trials each</li>
+                <li><strong>Modern retrieval</strong>: 20 patterns in 64 dimensions, 30% Gaussian noise</li>
+                <li><strong>Modern capacity</strong>: 5--500 patterns in 64 dimensions, single-step attention retrieval</li>
+                <li><strong>Attention equivalence</strong>: Hopfield update vs. manual softmax attention</li>
+            </ol>
+
+            <p>Total runtime: approximately 10 seconds.</p>
+
+            <h2>Classical Hopfield: Retrieval Accuracy</h2>
+            <p>We stored 7 random binary patterns in a 100-neuron network and corrupted each by flipping 25 of 100 bits.</p>
+
+            <p><strong>Key observations:</strong></p>
+            <ul>
+                <li><strong>Perfect retrieval</strong>: All 7 patterns recovered exactly, zero bit errors.</li>
+                <li><strong>Fast convergence</strong>: 2--3 asynchronous sweeps suffice. The network reaches a fixed point rapidly.</li>
+                <li><strong>Energy descent</strong>: Energy drops by roughly 4$\times$ from the corrupted state to the stored pattern (from approximately $-11$ to $-48$), confirming that stored patterns sit in deep energy minima.</li>
+            </ul>
+
+            <p>With only 7 patterns in 100 neurons ($P/N = 0.07$), we are well below the capacity limit. The signal-to-noise ratio in the local field is high enough for error-free retrieval.</p>
+
+            <h2>Classical Hopfield: Storage Capacity</h2>
+            <p>We systematically increased the number of stored patterns from 1 to 30, using 20% corruption and averaging over 5 trials per count.</p>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Patterns Stored</th>
+                        <th style="text-align:center; padding: 0.75rem;">Mean Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">1--9</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">10</td><td style="text-align:center; padding: 0.75rem;">98.6%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">13</td><td style="text-align:center; padding: 0.75rem;">~95% (threshold)</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">15</td><td style="text-align:center; padding: 0.75rem;">91.5%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">20</td><td style="text-align:center; padding: 0.75rem;">83.7%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">25</td><td style="text-align:center; padding: 0.75rem;">73.4%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">30</td><td style="text-align:center; padding: 0.75rem;">71.2%</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Analysis</h3>
+            <p>The capacity at 95% accuracy is approximately <strong>13 patterns</strong>, giving a ratio of $P/N = 0.130$. This aligns closely with the theoretical bound of $\sim 0.14N$.</p>
+
+            <p>The degradation is smooth, not catastrophic. At 30 patterns, the network still recovers about 71% of bits correctly---it is not random ($\approx 50\%$), suggesting partial retrieval even beyond capacity.</p>
+
+            <h2>Modern Hopfield: Continuous Retrieval</h2>
+            <p>We stored 20 random continuous patterns in 64 dimensions and tested retrieval with 30% additive Gaussian noise.</p>
+
+            <p>All 10 tested queries correctly retrieved the target pattern with cosine similarity 1.0000 (four decimal places). The modern Hopfield network using iterative softmax updates with $\beta = 1.0$ achieves perfect pattern discrimination even with substantial noise.</p>
+
+            <h2>Modern Hopfield: Exponential Capacity</h2>
+            <p>The most striking result: we tested the modern network's capacity by storing up to 500 patterns in 64 dimensions.</p>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Patterns Stored</th>
+                        <th style="text-align:center; padding: 0.75rem;">Retrieval Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">5</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">10</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">20</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">50</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">100</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">200</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">500</td><td style="text-align:center; padding: 0.75rem;">100.0%</td></tr>
+                </tbody>
+            </table>
+
+            <p><strong>100% accuracy at every tested pattern count</strong>, up to 500 patterns in 64 dimensions.</p>
+
+            <p>Compare with the classical network: 100 neurons can reliably store ~13 patterns. The modern network in 64 dimensions stores at least 500 patterns with no degradation. The theoretical capacity is exponential: $P_{\max} \sim \exp(d/2) = \exp(32) \approx 10^{13}$.</p>
+
+            <h3>Why Exponential?</h3>
+            <p>The log-sum-exp energy creates <strong>exponentially many well-separated minima</strong> in $\mathbb{R}^d$. Intuitively:</p>
+            <ul>
+                <li>The classical quadratic energy has minima at the <em>corners</em> of the weight matrix's eigenspace---a linear number of directions.</li>
+                <li>The modern log-sum-exp energy has minima near each stored pattern, and the softmax sharpening at high $\beta$ creates exponentially narrow basins of attraction.</li>
+            </ul>
+
+            <h2>Attention Equivalence: Numerical Proof</h2>
+            <p>We computed both the Hopfield single-step update and standard softmax attention with identical inputs:</p>
+            <ul>
+                <li>Stored patterns: 20 random vectors in $\mathbb{R}^{64}$</li>
+                <li>$K = V = \Xi$ (pattern matrix), $Q = \mathbf{x}$ (random query)</li>
+                <li>$\beta = 1/\sqrt{d} = 1/\sqrt{64} = 0.125$</li>
+            </ul>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Metric</th>
+                        <th style="text-align:center; padding: 0.75rem;">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Max absolute difference</td><td style="text-align:center; padding: 0.75rem;">$0.00 \times 10^{0}$</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Mean absolute difference</td><td style="text-align:center; padding: 0.75rem;">$0.00 \times 10^{0}$</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Cosine similarity</td><td style="text-align:center; padding: 0.75rem;">0.9999999404</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Identical (tolerance $10^{-6}$)</td><td style="text-align:center; padding: 0.75rem;">True</td></tr>
+                </tbody>
+            </table>
+
+            <p>The two computations produce <strong>numerically identical</strong> results. The tiny deviation in cosine similarity from 1.0 is within floating-point precision ($\sim 10^{-7}$).</p>
+
+            <h3>What This Means</h3>
+            <ol>
+                <li><strong>Transformers are energy-based models</strong>. Each attention head minimizes a modern Hopfield energy function. The key-value pairs are stored patterns; the query is the probe.</li>
+                <li><strong>Attention is memory retrieval</strong>. The softmax operation is not just "weighting by importance"---it is the fixed-point update of an energy-based associative memory.</li>
+                <li><strong>Multi-head attention = multiple Hopfield memories</strong>. Each head stores a different set of patterns (keys/values) and retrieves independently.</li>
+                <li><strong>Capacity explains head dimension</strong>. The exponential capacity $\sim \exp(d_{\text{head}}/2)$ explains why Transformers work well with relatively small head dimensions (64 or 128): even modest dimensions provide enormous storage.</li>
+            </ol>
+
+            <h2>Capacity Comparison: The Full Picture</h2>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;"></th>
+                        <th style="text-align:center; padding: 0.75rem;">Classical</th>
+                        <th style="text-align:center; padding: 0.75rem;">Modern</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Network/Dim</td><td style="text-align:center; padding: 0.75rem;">$N = 100$</td><td style="text-align:center; padding: 0.75rem;">$d = 64$</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Max patterns tested</td><td style="text-align:center; padding: 0.75rem;">30</td><td style="text-align:center; padding: 0.75rem;">500</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">At 13 patterns</td><td style="text-align:center; padding: 0.75rem;">~95%</td><td style="text-align:center; padding: 0.75rem;">100%</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Theoretical capacity</td><td style="text-align:center; padding: 0.75rem;">$\sim 14$</td><td style="text-align:center; padding: 0.75rem;">$\sim 10^{13}$</td></tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);"><td style="padding: 0.75rem;">Scaling</td><td style="text-align:center; padding: 0.75rem;">Linear $O(N)$</td><td style="text-align:center; padding: 0.75rem;">Exponential $O(\exp(d))$</td></tr>
+                </tbody>
+            </table>
+
+            <h2>Connection to Transformers</h2>
+            <p>The chain of equivalences we have established:</p>
+
+            <div class="math-block">
+                $$ \underbrace{\mathbf{x}^{\text{new}} = \Xi^\top \text{softmax}(\beta \Xi \mathbf{x})}_{\text{Modern Hopfield update}} \;=\; \underbrace{V^\top \text{softmax}\!\left(\frac{K^\top Q}{\sqrt{d_k}}\right)}_{\text{Softmax Attention}} $$
+            </div>
+
+            <p>This means:</p>
+            <ul>
+                <li>Every attention layer in GPT, BERT, or any Transformer is performing energy minimization in a Hopfield landscape.</li>
+                <li>The "attention pattern" (the softmax distribution) is the retrieval weight vector of the Hopfield memory.</li>
+                <li>Training a Transformer is, in part, learning which patterns to store in each attention head's Hopfield memory.</li>
+            </ul>
+
+            <p>This perspective offers new ways to analyze Transformers: attention head capacity, energy landscape visualization, and memory interference between stored patterns (analogous to crosstalk in classical Hopfield networks).</p>
+
+            <h2>Conclusion</h2>
+            <p>Across three parts, we have:</p>
+            <ol>
+                <li>Derived the mathematics of associative memory from energy functions and Hebbian learning.</li>
+                <li>Implemented both classical and modern Hopfield networks from scratch in pure PyTorch.</li>
+                <li>Demonstrated empirically that:
+                    <ul>
+                        <li>Classical Hopfield achieves perfect retrieval below capacity ($\sim 0.14N$).</li>
+                        <li>Modern Hopfield stores 500+ patterns in 64 dimensions with 100% accuracy.</li>
+                        <li>The modern Hopfield update is <em>numerically identical</em> to softmax attention.</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <p>The deep insight is that <strong>attention is not just a mechanism---it is a physics</strong>. It is the equilibrium dynamics of an energy-based memory system. Understanding this connection opens new avenues for designing, analyzing, and improving Transformer architectures.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

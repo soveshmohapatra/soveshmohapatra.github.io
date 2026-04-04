@@ -1,0 +1,202 @@
+---
+layout: null
+title: "Deconstructing Normalizing Flows: Part 1 — The Math of Invertible Transforms"
+description: "The mathematical foundations of Normalizing Flows — change of variables formula, Jacobian determinants, planar flows, and affine coupling layers. By Sovesh Mohapatra."
+permalink: /projects/flows-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Normalizing Flows: Part 1 - The Math of Invertible Transforms | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/flows/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Normalizing Flows Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Normalizing Flows from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Invertible Transforms</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>What if a generative model could give you the <em>exact</em> probability of any data point? Not a lower bound (like VAEs), not an implicit density (like GANs), but the true log-likelihood under the model?</p>
+                <p><strong>Normalizing Flows</strong> achieve this through a beautifully simple mathematical framework: construct an invertible mapping between a simple base distribution and a complex data distribution, and use the change of variables formula to track the exact density transformation at every step.</p>
+                <p>In this 3-part "Build in Public" series, we will deconstruct Normalizing Flows from first principles. Today, we lay the mathematical foundation: the change of variables formula, the Jacobian determinant, and the two key architectural ideas (planar flows and coupling layers) that make this computationally tractable. In Part 2, we build everything in pure PyTorch. In Part 3, we train on 2D density estimation benchmarks and analyze the results.</p>
+            </div>
+
+            <h2>The Change of Variables Formula</h2>
+            <p>The entire framework rests on one equation from probability theory. Suppose we have a random variable $z \sim p_z(z)$ drawn from a known base distribution (typically a standard Gaussian), and we apply an invertible, differentiable transformation $f: \mathbb{R}^d \to \mathbb{R}^d$ to obtain $x = f(z)$.</p>
+
+            <p>What is the density of $x$? The change of variables formula gives us:</p>
+
+            <div class="math-block">
+                $$ p_x(x) = p_z(f^{-1}(x)) \left| \det \frac{\partial f^{-1}}{\partial x} \right| $$
+            </div>
+
+            <p>Taking the logarithm and parameterizing the forward direction as $x \to z$ (data to latent):</p>
+
+            <div class="math-block">
+                $$ \log p_x(x) = \log p_z(f(x)) + \log \left| \det J_f(x) \right| $$
+            </div>
+
+            <p>where $J_f(x) = \frac{\partial f}{\partial x}$ is the Jacobian matrix of the transformation. This is the core equation of normalizing flows. It says: to evaluate the likelihood of any data point $x$, push it through the forward mapping $f$ to get $z$, evaluate the base density at $z$, and add a correction term for how the transformation stretches or compresses volume.</p>
+
+            <h2>The Jacobian Determinant Problem</h2>
+            <p>There is an immediate computational challenge. The Jacobian $J_f(x)$ is a $d \times d$ matrix. Computing its determinant costs $O(d^3)$ in general, which is prohibitive for high-dimensional data. The entire design challenge of normalizing flows is: <em>how do we build expressive invertible transformations whose Jacobian determinant is cheap to compute?</em></p>
+
+            <p>Two foundational solutions have been proposed: planar flows and coupling layers.</p>
+
+            <h2>Planar Flows</h2>
+            <p>Rezende and Mohamed (2015) introduced one of the simplest possible flows. A <strong>planar flow</strong> applies the transformation:</p>
+
+            <div class="math-block">
+                $$ z' = z + u \cdot \tanh(w^\top z + b) $$
+            </div>
+
+            <p>where $w, u \in \mathbb{R}^d$ and $b \in \mathbb{R}$ are learnable parameters. This warps the density along the hyperplane defined by $w$.</p>
+
+            <p>The Jacobian of this transformation has a special rank-1 structure:</p>
+
+            <div class="math-block">
+                $$ J = I + u \cdot \psi(z)^\top $$
+            </div>
+
+            <p>where $\psi(z) = h'(w^\top z + b) \cdot w$ and $h' = 1 - \tanh^2$ is the derivative of tanh. By the matrix determinant lemma, the determinant of this rank-1 update to the identity is:</p>
+
+            <div class="math-block">
+                $$ \det(J) = 1 + u^\top \psi(z) $$
+            </div>
+
+            <p>This is an $O(d)$ computation -- a massive improvement over the general $O(d^3)$.</p>
+
+            <h3>The Invertibility Constraint</h3>
+            <p>For the transformation to be invertible, we need $\det(J) \neq 0$, or equivalently $1 + u^\top \psi(z) \neq 0$. Rezende and Mohamed enforce this by constraining $u$ so that $w^\top u \geq -1$. The constrained $\hat{u}$ is computed as:</p>
+
+            <div class="math-block">
+                $$ \hat{u} = u + \left( m(w^\top u) - w^\top u \right) \frac{w}{\|w\|^2} $$
+            </div>
+
+            <p>where $m(x) = -1 + \text{softplus}(x) = -1 + \log(1 + e^x)$. This guarantees $w^\top \hat{u} \geq -1$.</p>
+
+            <p>By stacking $K$ such planar transformations, we obtain increasingly complex densities. However, each individual planar flow can only warp the density along a single hyperplane, limiting expressiveness.</p>
+
+            <h2>Affine Coupling Layers</h2>
+            <p>Dinh et al. (2015, 2017) introduced a far more powerful approach. An <strong>affine coupling layer</strong> partitions the input $x \in \mathbb{R}^d$ into two groups: $x_1$ (the first $d/2$ dimensions) and $x_2$ (the rest). The transformation is:</p>
+
+            <div class="math-block">
+                $$\begin{align}
+                    y_1 &= x_1 \\
+                    y_2 &= x_2 \odot \exp(s(x_1)) + t(x_1)
+                \end{align}$$
+            </div>
+
+            <p>where $s$ and $t$ are arbitrary neural networks (they do not need to be invertible!) that map $\mathbb{R}^{d/2} \to \mathbb{R}^{d/2}$.</p>
+
+            <p>The Jacobian of this transformation is <strong>lower triangular</strong>:</p>
+
+            <div class="math-block">
+                $$ J = \begin{pmatrix} I_{d/2} & 0 \\ \frac{\partial y_2}{\partial x_1} & \text{diag}(\exp(s(x_1))) \end{pmatrix} $$
+            </div>
+
+            <p>The determinant of a triangular matrix is the product of its diagonal entries:</p>
+
+            <div class="math-block">
+                $$ \log |\det J| = \sum_{i} s_i(x_1) $$
+            </div>
+
+            <p>This is $O(d)$ and requires no matrix inversion or decomposition. The inverse is equally trivial:</p>
+
+            <div class="math-block">
+                $$\begin{align}
+                    x_1 &= y_1 \\
+                    x_2 &= (y_2 - t(y_1)) \odot \exp(-s(y_1))
+                \end{align}$$
+            </div>
+
+            <p>The key insight is that while $x_1$ passes through unchanged, it controls the transformation of $x_2$ through arbitrarily complex neural networks $s$ and $t$. To ensure all dimensions are transformed, we <strong>alternate the mask</strong> between layers: in even layers, the first half is fixed; in odd layers, the second half is fixed.</p>
+
+            <h2>Composing Flows</h2>
+            <p>If we compose $K$ invertible transformations $f = f_K \circ f_{K-1} \circ \cdots \circ f_1$, the total log-determinant is simply the sum:</p>
+
+            <div class="math-block">
+                $$ \log |\det J_f| = \sum_{k=1}^{K} \log |\det J_{f_k}| $$
+            </div>
+
+            <p>This additivity is what makes deep normalizing flows practical. Each layer adds a small, cheap log-det correction, and together they build up an expressive transformation.</p>
+
+            <h2>Next Steps: From Math to Code</h2>
+            <p>We have established the mathematical toolkit for normalizing flows: the change of variables formula for exact likelihood, the rank-1 determinant trick for planar flows, and the triangular Jacobian trick for coupling layers.</p>
+
+            <p>In <strong>Part 2</strong>, we will implement both architectures in pure PyTorch: a PlanarFlow with the softplus invertibility constraint, an AffineCouplingLayer with learned scale and translation MLPs, and a complete RealNVP model with 8 alternating coupling layers and batch normalization.</p>
+
+            <p><em>Stay tuned for the code drop as we build exact-likelihood generative models from scratch!</em></p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

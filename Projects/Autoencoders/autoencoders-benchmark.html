@@ -1,0 +1,328 @@
+---
+layout: null
+title: "Deconstructing Autoencoders: Part 3 — What the Bottleneck Learns"
+description: "Training four autoencoder variants on MNIST, visualizing 2D latent spaces, demonstrating denoising, and comparing reconstruction quality. By Sovesh Mohapatra."
+permalink: /projects/autoencoders-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Autoencoders: Part 3 - What the Bottleneck Learns | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+
+    <!-- MathJax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/autoencoders/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Autoencoders Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Autoencoders from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: What the Bottleneck Learns</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we derived the mathematics of compression---the information bottleneck, MSE reconstruction loss, and the manifold hypothesis. In Part 2, we built four autoencoder variants from scratch in pure PyTorch: Vanilla, Denoising, Sparse, and Convolutional.</p>
+                <p>Today, we put all four to the test. We train on a 5,000-image MNIST subset, measure reconstruction quality, visualize the 2D latent space, and demonstrate denoising. The goal is not state-of-the-art performance but understanding: what does the bottleneck actually learn?</p>
+            </div>
+
+            <h2>Experimental Setup</h2>
+            <p>To make the experiment reproducible on any standard CPU in under 2 minutes, we configured:</p>
+            <ul>
+                <li><strong>Dataset</strong>: 5,000 randomly sampled MNIST training images</li>
+                <li><strong>Epochs</strong>: 30</li>
+                <li><strong>Optimizer</strong>: Adam (lr = $10^{-3}$)</li>
+                <li><strong>Batch size</strong>: 128</li>
+                <li><strong>Latent dimensions</strong>: $d=2$ (visualization) and $d=32$ (quality comparison)</li>
+            </ul>
+
+            <h2>Training Results</h2>
+            <p>All five configurations converged smoothly over 30 epochs:</p>
+
+            <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align:left; padding: 0.75rem;">Variant</th>
+                        <th style="text-align:center; padding: 0.75rem;">Latent Dim</th>
+                        <th style="text-align:center; padding: 0.75rem;">Final Loss</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Vanilla</td>
+                        <td style="text-align:center; padding: 0.75rem;">2</td>
+                        <td style="text-align:center; padding: 0.75rem;">0.0401</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Vanilla</td>
+                        <td style="text-align:center; padding: 0.75rem;">32</td>
+                        <td style="text-align:center; padding: 0.75rem;">0.0125</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Denoising</td>
+                        <td style="text-align:center; padding: 0.75rem;">32</td>
+                        <td style="text-align:center; padding: 0.75rem;">0.0191</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Sparse (MSE+L1)</td>
+                        <td style="text-align:center; padding: 0.75rem;">32</td>
+                        <td style="text-align:center; padding: 0.75rem;">0.0130</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;">Convolutional</td>
+                        <td style="text-align:center; padding: 0.75rem;">32</td>
+                        <td style="text-align:center; padding: 0.75rem;">0.0083</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Analysis of the Loss Numbers</h3>
+            <p>Several patterns emerge from the results:</p>
+            <ol>
+                <li><strong>Bottleneck width matters</strong>: Vanilla $d=2$ (0.0401) vs. vanilla $d=32$ (0.0125) --- a 16$\times$ wider bottleneck reduces reconstruction error by 3.2$\times$. This confirms that MNIST digits have more than 2 intrinsic dimensions of variation, but 32 dimensions capture most of the structure.</li>
+                <li><strong>Denoising costs extra</strong>: The denoising autoencoder (0.0191) has higher loss than vanilla (0.0125) because it trains on corrupted inputs. The network must simultaneously denoise <em>and</em> reconstruct, which is a harder task. However, this extra difficulty produces more robust representations.</li>
+                <li><strong>Sparsity is nearly free</strong>: Sparse (0.0130) vs. vanilla (0.0125) --- the L1 penalty ($\lambda = 10^{-3}$) barely increases reconstruction error while enforcing a structured, sparse latent code.</li>
+                <li><strong>Convolutions win</strong>: The convolutional autoencoder (0.0083) achieves the lowest loss by a significant margin---34% lower than vanilla $d=32$. Preserving spatial structure via Conv2d/ConvTranspose2d gives the network a massive advantage on image data.</li>
+            </ol>
+
+            <h2>2D Latent Space Visualization</h2>
+            <p>The most revealing visualization is the 2D latent space of the vanilla autoencoder trained with $d=2$. By encoding all 10,000 MNIST test images and plotting them as a scatter plot colored by digit class, we can directly observe the structure the bottleneck has learned.</p>
+
+            <h3>What the Scatter Plot Reveals</h3>
+            <ul>
+                <li><strong>Unsupervised clustering</strong>: The network was never given digit labels, yet it organizes the 10 classes into clearly separated regions. The bottleneck pressure alone forces semantically similar inputs to cluster together.</li>
+                <li><strong>Similarity structure</strong>: Visually similar digits are placed near each other in latent space. The digits 4 and 9 (which share a vertical stroke and a loop/angle at the top) cluster near each other, as do 3 and 5 (similar upper curves). The digit 1 (a simple vertical stroke) occupies its own distinct region.</li>
+                <li><strong>Continuity</strong>: Traversing a straight line between two digit clusters in latent space produces smooth interpolations---the decoder generates images that gradually morph from one digit to another. This confirms that the latent space is smooth, not fragmented.</li>
+                <li><strong>Manifold structure</strong>: The fact that 10,000 images organize into a structured 2D landscape confirms the manifold hypothesis: the "true" dimensionality of handwritten digits is far lower than 784.</li>
+            </ul>
+
+            <h2>Denoising Quality</h2>
+            <p>The denoising autoencoder demonstrates a striking capability: given heavily corrupted inputs (Gaussian noise, $\sigma = 0.3$), it recovers clean, recognizable digits.</p>
+
+            <h3>Why Denoising Works</h3>
+            <p>The bottleneck acts as a noise filter. Noise is high-frequency, random, and uncorrelated---it cannot be efficiently encoded in a 32-dimensional latent space. The true signal (digit structure) is low-frequency, patterned, and compressible. By forcing the noisy input through the bottleneck, only the compressible signal survives.</p>
+
+            <p>This is precisely the mechanism described by Vincent et al. (2008): the denoising autoencoder learns to project corrupted inputs back onto the data manifold. The reconstruction is not a denoised version of the specific noisy input---it is the nearest point on the learned manifold.</p>
+
+            <h2>Reconstruction Comparison</h2>
+            <p>Comparing reconstructions across all four variants reveals the qualitative differences in what each architecture captures.</p>
+
+            <h3>Observations</h3>
+            <ul>
+                <li><strong>Vanilla</strong>: Produces slightly blurred reconstructions. Fine details (thin strokes, sharp corners) are softened. This is characteristic of MSE-trained autoencoders, which average over uncertainty in pixel values.</li>
+                <li><strong>Denoising</strong>: Similar quality to vanilla despite training on corrupted inputs. The regularization from noise does not significantly hurt reconstruction quality at $d=32$, while making the representation more robust.</li>
+                <li><strong>Sparse</strong>: Nearly identical to vanilla. The L1 penalty ($\lambda = 10^{-3}$) is mild enough that reconstruction quality is preserved. The difference is in the latent code: sparse activations rather than dense ones.</li>
+                <li><strong>Convolutional</strong>: The sharpest reconstructions by far. Thin strokes remain thin, curves remain smooth, and fine details are better preserved. The Conv2d/ConvTranspose2d architecture encodes spatial relationships directly, avoiding the information loss from flattening.</li>
+            </ul>
+
+            <h2>Connections to Modern Architectures</h2>
+            <p>Autoencoders may be decades old, but their core ideas permeate modern deep learning:</p>
+            <ol>
+                <li><strong>Variational Autoencoders (VAEs)</strong>: Replace the deterministic bottleneck with a probabilistic one---the encoder outputs a mean and variance, and the latent code is sampled from a Gaussian. This enables generation of new samples by sampling from the latent space.</li>
+                <li><strong>Diffusion Models</strong>: The denoising autoencoder's principle---learn to reverse corruption---is the foundation of denoising diffusion probabilistic models (DDPMs). Modern diffusion models like Stable Diffusion apply this iteratively across multiple noise levels.</li>
+                <li><strong>Sparse Autoencoders in Mechanistic Interpretability</strong>: Recent work by Anthropic and others uses sparse autoencoders to decompose the internal representations of large language models into interpretable features. The same L1-penalized bottleneck we implemented is being used to understand what Transformer neurons encode.</li>
+                <li><strong>Latent Diffusion</strong>: Stable Diffusion uses a convolutional autoencoder (specifically, a VQ-VAE) to compress images into a latent space, then runs the diffusion process in that compressed space. The autoencoder's job is exactly what we studied: compress images into a compact, meaningful representation.</li>
+            </ol>
+
+            <h2>Conclusion</h2>
+            <p>We derived the math, built the code, and validated the results. Four autoencoder variants, trained from scratch on 5,000 MNIST images, demonstrate the fundamental principle: forcing data through a bottleneck reveals its structure.</p>
+
+            <p>The convolutional autoencoder achieved the best reconstruction (MSE = 0.0083) by preserving spatial structure. The 2D latent space scatter showed unsupervised digit clustering. The denoising autoencoder successfully stripped heavy Gaussian noise from corrupted inputs. And the sparse autoencoder maintained reconstruction quality while enforcing a structured latent code.</p>
+
+            <p>These are not just historical curiosities. The information bottleneck, the manifold hypothesis, and the reconstruction objective are alive in every modern generative model. Understanding autoencoders from first principles is understanding the foundation of representation learning.</p>
+
+            <p><em>Thank you for following this 3-part "Build in Public" series on Autoencoders. The full code, training logs, and visualizations are live on the GitHub repo. Run the 2-minute training script yourself to watch the bottleneck organize digits in real time!</em></p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

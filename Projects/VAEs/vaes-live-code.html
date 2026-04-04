@@ -1,0 +1,288 @@
+---
+layout: null
+title: "Deconstructing VAEs: Part 2 — PyTorch Implementation"
+description: "Building a complete VAE from scratch in pure PyTorch — encoder, reparameterization, decoder, ELBO loss, and convolutional variant. By Sovesh Mohapatra."
+permalink: /projects/vaes-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing VAEs: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <!-- Prism.js for Code Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Custom Style for Reading Layout -->
+    <style>
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .article-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 2rem;
+            color: var(--accent-light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+
+        .article-title {
+            font-size: 2.5rem;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .article-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .article-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .article-content {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        .article-content h2 {
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+            color: var(--text-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .article-content h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .article-content h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+            color: var(--text-color);
+        }
+
+        .article-content p {
+            margin-bottom: 1.5rem;
+        }
+
+        .article-content ul,
+        .article-content ol {
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .article-content strong {
+            font-weight: 600;
+            color: var(--accent-light);
+        }
+
+        .math-block {
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin: 1.5rem 0;
+            background: rgba(var(--bg-card-rgb), 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .abstract-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .abstract-title {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--accent-light);
+        }
+
+        [data-theme="dark"] .MathJax {
+            color: var(--text-color) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/vaes/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to VAEs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing VAEs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we derived the ELBO, KL divergence, and the reparameterization trick. Now we translate every equation into working PyTorch code, building a complete VAE from scratch---no generative modeling libraries, just <code>torch.nn</code>.</p>
+            </div>
+
+            <h2>The Encoder</h2>
+            <p>The encoder maps a flattened 28$\times$28 MNIST image (784 dimensions) to the parameters of a Gaussian distribution over the latent space:</p>
+
+<pre><code class="language-python">self.enc_fc1 = nn.Linear(784, 512)
+self.enc_fc2 = nn.Linear(512, 256)
+self.fc_mu = nn.Linear(256, latent_dim)
+self.fc_log_var = nn.Linear(256, latent_dim)</code></pre>
+
+            <p>Two hidden layers with ReLU activations form the shared backbone. The final layer splits into two parallel heads: one for $\boldsymbol{\mu}$ and one for $\log \boldsymbol{\sigma}^2$. This dual-head design is the key architectural difference from a standard autoencoder.</p>
+
+            <p>Why $\log \boldsymbol{\sigma}^2$ instead of $\boldsymbol{\sigma}$? The log-variance can take any real value, while $\boldsymbol{\sigma}$ must be positive. Parameterizing in log-space avoids the need for explicit positivity constraints and improves numerical stability.</p>
+
+            <h2>The Reparameterization Trick</h2>
+            <p>The most elegant function in the entire model:</p>
+
+<pre><code class="language-python">def reparameterize(self, mu, log_var):
+    std = torch.exp(0.5 * log_var)
+    eps = torch.randn_like(std)
+    z = mu + eps * std
+    return z</code></pre>
+
+            <p>Three lines. <code>torch.exp(0.5 * log_var)</code> converts log-variance to standard deviation. <code>torch.randn_like(std)</code> samples $\boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$ with the same shape and device. The final line computes $\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\epsilon} \odot \boldsymbol{\sigma}$.</p>
+
+            <p>During training, this introduces stochasticity---each forward pass samples a different $\mathbf{z}$ for the same input. At inference time, you can either sample or simply use $\boldsymbol{\mu}$ as the latent representation.</p>
+
+            <h2>The Decoder</h2>
+            <p>The decoder mirrors the encoder, mapping from latent space back to pixel space:</p>
+
+<pre><code class="language-python">self.dec_fc1 = nn.Linear(latent_dim, 256)
+self.dec_fc2 = nn.Linear(256, 512)
+self.dec_fc3 = nn.Linear(512, 784)</code></pre>
+
+            <p>ReLU activations on hidden layers, sigmoid on the output to bound reconstructions to $[0, 1]$ (matching the normalized pixel range of MNIST).</p>
+
+            <h2>The ELBO Loss Function</h2>
+            <p>The loss decomposes into two terms:</p>
+
+<pre><code class="language-python">def vae_loss(recon_x, x, mu, log_var):
+    recon_loss = F.binary_cross_entropy(
+        recon_x.view(-1, 784), x.view(-1, 784), reduction='sum')
+    kl_loss = -0.5 * torch.sum(
+        1 + log_var - mu.pow(2) - log_var.exp())
+    return recon_loss + kl_loss, recon_loss, kl_loss</code></pre>
+
+            <p>The <strong>reconstruction loss</strong> (BCE) measures how well the decoder reproduces the input. Using <code>reduction='sum'</code> sums over all 784 pixels and all batch elements, giving a total loss that scales with both image size and batch size.</p>
+
+            <p>The <strong>KL divergence</strong> implements the closed-form expression:</p>
+
+            <div class="math-block">
+                $$ D_{\text{KL}} = -\frac{1}{2} \sum \left( 1 + \log\_var - \mu^2 - e^{\log\_var} \right) $$
+            </div>
+
+            <p>We return both terms separately to monitor them during training---the balance between reconstruction and KL is critical for understanding VAE behavior.</p>
+
+            <h2>The Convolutional Variant</h2>
+            <p>For better spatial feature capture, we also implement a <code>ConvVAE</code>:</p>
+
+            <p><strong>Encoder</strong>: Two <code>Conv2d</code> layers with stride 2 for downsampling (1$\times$28$\times$28 &rarr; 32$\times$14$\times$14 &rarr; 64$\times$7$\times$7), followed by a fully connected layer to the latent parameters.</p>
+
+            <p><strong>Decoder</strong>: Fully connected layer to 64$\times$7$\times$7, then two <code>ConvTranspose2d</code> layers with stride 2 for upsampling back to 1$\times$28$\times$28.</p>
+
+            <p>The convolutional variant preserves spatial structure that the fully connected model discards when flattening.</p>
+
+            <h2>Parameter Counts</h2>
+            <p>With <code>latent_dim=2</code>: 1,068,820 trainable parameters.
+            With <code>latent_dim=20</code>: 1,082,680 trainable parameters.</p>
+
+            <p>The difference is minimal---only 13,860 additional parameters---because the latent layer is tiny compared to the hidden layers. Yet the impact on reconstruction quality is dramatic, as we will see in Part 3.</p>
+
+            <h2>Training Setup</h2>
+            <ul>
+                <li><strong>Dataset</strong>: MNIST, 5,000-image training subset</li>
+                <li><strong>Optimizer</strong>: Adam with learning rate $10^{-3}$</li>
+                <li><strong>Batch size</strong>: 64</li>
+                <li><strong>Epochs</strong>: 30</li>
+                <li><strong>Latent dimensions</strong>: 2 (visualization) and 20 (quality)</li>
+            </ul>
+
+            <h2>Conclusion</h2>
+            <p>The complete VAE implementation requires surprisingly little code---under 150 lines for the model and loss function. The architectural simplicity belies the mathematical depth. In <strong>Part 3</strong>, we train these models and explore their latent spaces through visualization, interpolation, and random generation.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>

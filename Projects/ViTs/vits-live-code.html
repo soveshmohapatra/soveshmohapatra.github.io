@@ -1,0 +1,263 @@
+---
+layout: null
+title: "Deconstructing ViTs: Part 2 — PyTorch Implementation"
+description: "Building Vision Transformers from scratch in PyTorch — PatchEmbedding, MultiHeadSelfAttention, TransformerBlock, and the complete ViT architecture. By Sovesh Mohapatra."
+permalink: /projects/vits-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing ViTs: Part 2 - PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+    </style>
+
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/vits/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to ViTs Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing ViTs from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: PyTorch Implementation</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>April 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>In Part 1, we established the mathematical foundations of Vision Transformers: images as patch sequences, the CLS token as a global aggregator, and learnable positional embeddings for spatial awareness. Now we translate every equation into working PyTorch code.</p>
+                <p>We build four modules from scratch: <code>PatchEmbedding</code>, <code>MultiHeadSelfAttention</code>, <code>TransformerBlock</code>, and <code>VisionTransformer</code>. Crucially, we implement attention manually -- no <code>nn.MultiheadAttention</code> -- to expose every matrix multiplication and softmax operation.</p>
+            </div>
+
+            <h2>PatchEmbedding: The Conv2d Trick</h2>
+
+            <pre><code class="language-python">class PatchEmbedding(nn.Module):
+    def __init__(self, img_size=32, patch_size=4,
+                 in_channels=3, embed_dim=128):
+        super().__init__()
+        self.num_patches = (img_size // patch_size) ** 2
+        # Conv2d trick: kernel_size=stride=patch_size
+        self.projection = nn.Conv2d(
+            in_channels, embed_dim,
+            kernel_size=patch_size, stride=patch_size
+        )
+        self.cls_token = nn.Parameter(
+            torch.randn(1, 1, embed_dim)
+        )
+        self.position_embeddings = nn.Parameter(
+            torch.randn(1, 1 + self.num_patches, embed_dim)
+        )</code></pre>
+
+            <p>For CIFAR-10 ($32 \times 32$, $P=4$, $D=128$):</p>
+            <ul>
+                <li>Input: $(B, 3, 32, 32)$</li>
+                <li>After Conv2d: $(B, 128, 8, 8)$ -- 64 patches, each projected to 128 dims</li>
+                <li>After flatten + transpose: $(B, 64, 128)$</li>
+                <li>After CLS prepend: $(B, 65, 128)$</li>
+                <li>After position addition: $(B, 65, 128)$</li>
+            </ul>
+
+            <h2>MultiHeadSelfAttention: From Scratch</h2>
+            <p>This is the core of the Transformer. We implement scaled dot-product attention with multiple heads, entirely from linear projections and matrix multiplications:</p>
+
+            <pre><code class="language-python">class MultiHeadSelfAttention(nn.Module):
+    def __init__(self, embed_dim=128, num_heads=4):
+        super().__init__()
+        self.num_heads = num_heads
+        self.head_dim = embed_dim // num_heads  # 32
+        self.scale = self.head_dim ** -0.5
+
+        self.W_q = nn.Linear(embed_dim, embed_dim)
+        self.W_k = nn.Linear(embed_dim, embed_dim)
+        self.W_v = nn.Linear(embed_dim, embed_dim)
+        self.out_proj = nn.Linear(embed_dim, embed_dim)</code></pre>
+
+            <p>The forward pass follows the attention formula precisely:</p>
+
+            <div class="math-block">
+                $$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right) V $$
+            </div>
+
+            <pre><code class="language-python">def forward(self, x):
+    B, N, C = x.shape
+    # Project and reshape for multi-head
+    Q = self.W_q(x).reshape(B, N, self.num_heads, self.head_dim).permute(0,2,1,3)
+    K = self.W_k(x).reshape(B, N, self.num_heads, self.head_dim).permute(0,2,1,3)
+    V = self.W_v(x).reshape(B, N, self.num_heads, self.head_dim).permute(0,2,1,3)
+
+    # Scaled dot-product attention
+    attn = (Q @ K.transpose(-2,-1)) * self.scale  # (B,h,N,N)
+    attn = F.softmax(attn, dim=-1)
+    out = attn @ V  # (B, h, N, d_k)
+
+    # Concatenate heads and project
+    out = out.permute(0,2,1,3).reshape(B, N, C)
+    return self.out_proj(out), attn</code></pre>
+
+            <p>The attention weights $\text{attn} \in \mathbb{R}^{B \times h \times N \times N}$ tell us exactly how much each token attends to every other token. We return these for visualization.</p>
+
+            <h3>Why the $\sqrt{d_k}$ Scaling?</h3>
+            <p>Without scaling, the dot products $QK^\top$ grow in magnitude with dimension $d_k$. For large $d_k$, the softmax saturates into near-one-hot distributions, producing vanishingly small gradients. Dividing by $\sqrt{d_k}$ keeps the variance of the dot products at approximately 1.</p>
+
+            <h2>TransformerBlock: Pre-Norm Architecture</h2>
+
+            <pre><code class="language-python">class TransformerBlock(nn.Module):
+    def __init__(self, embed_dim=128, num_heads=4, mlp_ratio=4.0):
+        super().__init__()
+        self.norm1 = nn.LayerNorm(embed_dim)
+        self.attn = MultiHeadSelfAttention(embed_dim, num_heads)
+        self.norm2 = nn.LayerNorm(embed_dim)
+        mlp_dim = int(embed_dim * mlp_ratio)
+        self.mlp = nn.Sequential(
+            nn.Linear(embed_dim, mlp_dim),   # 128 -> 512
+            nn.GELU(),
+            nn.Linear(mlp_dim, embed_dim),   # 512 -> 128
+        )
+
+    def forward(self, x):
+        # Pre-norm MHSA + residual
+        attn_out, attn_w = self.attn(self.norm1(x))
+        x = x + attn_out
+        # Pre-norm MLP + residual
+        x = x + self.mlp(self.norm2(x))
+        return x, attn_w</code></pre>
+
+            <h3>Pre-Norm vs Post-Norm</h3>
+            <p>ViT uses <strong>pre-norm</strong>: LayerNorm is applied <em>before</em> each sub-layer. Pre-norm stabilizes training, especially for deeper models, because the residual path remains unnormalized -- gradients flow through the identity connection without being scaled by normalization.</p>
+
+            <h3>GELU Activation</h3>
+            <p>The MLP uses GELU (Gaussian Error Linear Unit) rather than ReLU:</p>
+
+            <div class="math-block">
+                $$ \text{GELU}(x) = x \cdot \Phi(x) \approx 0.5 \cdot x \cdot \left(1 + \tanh\left[\sqrt{2/\pi}(x + 0.044715x^3)\right]\right) $$
+            </div>
+
+            <p>GELU provides a smooth approximation to ReLU, avoiding the sharp zero-gradient region, and has become standard in Transformer architectures.</p>
+
+            <h3>The Residual Connection</h3>
+            <p>The residual connection $x + F(x)$ is the same principle from our ResNet series. The mathematical guarantee is identical:</p>
+
+            <div class="math-block">
+                $$ \frac{\partial \mathcal{L}}{\partial x} = \frac{\partial \mathcal{L}}{\partial y}\left(\frac{\partial F}{\partial x} + \mathbf{I}\right) $$
+            </div>
+
+            <p>The identity term $\mathbf{I}$ ensures gradients always flow, regardless of how many layers the network has.</p>
+
+            <h2>VisionTransformer: Full Assembly</h2>
+
+            <pre><code class="language-python">class VisionTransformer(nn.Module):
+    def __init__(self, img_size=32, patch_size=4,
+                 in_channels=3, num_classes=10,
+                 embed_dim=128, num_heads=4,
+                 depth=6, mlp_ratio=4.0):
+        super().__init__()
+        self.patch_embed = PatchEmbedding(...)
+        self.blocks = nn.ModuleList([
+            TransformerBlock(...) for _ in range(depth)
+        ])
+        self.norm = nn.LayerNorm(embed_dim)
+        self.head = nn.Linear(embed_dim, num_classes)
+
+    def forward(self, x):
+        x = self.patch_embed(x)        # (B, 65, 128)
+        for block in self.blocks:
+            x, _ = block(x)            # 6x Transformer
+        x = self.norm(x)
+        cls = x[:, 0]                  # CLS token
+        return self.head(cls)           # (B, 10)</code></pre>
+
+            <h3>Architecture Summary</h3>
+            <p>Our ViT-Tiny for CIFAR-10:</p>
+            <ul>
+                <li>Image: $32 \times 32 \times 3$</li>
+                <li>Patch size: $4 \times 4$ $\rightarrow$ 64 patches</li>
+                <li>Embedding dimension: $D = 128$</li>
+                <li>Heads: $h = 4$ (each with $d_k = 32$)</li>
+                <li>Depth: $L = 6$ Transformer blocks</li>
+                <li>MLP ratio: $4\times$ (hidden dim $= 512$)</li>
+                <li>Total parameters: <strong>1,205,898</strong></li>
+            </ul>
+
+            <h2>Parameter Count Breakdown</h2>
+            <p>Where do the 1.2M parameters come from?</p>
+            <ul>
+                <li><strong>Patch Embedding Conv2d</strong>: $3 \times 128 \times 4 \times 4 + 128 = 6{,}272$</li>
+                <li><strong>CLS token</strong>: $128$</li>
+                <li><strong>Positional embeddings</strong>: $65 \times 128 = 8{,}320$</li>
+                <li><strong>Per Transformer block</strong>: Q, K, V projections ($49{,}536$) + Output projection ($16{,}512$) + MLP ($131{,}712$) + LayerNorms ($512$) = $\approx 198{,}272$</li>
+                <li><strong>6 blocks</strong>: $6 \times 198{,}272 = 1{,}189{,}632$</li>
+                <li><strong>Classification head</strong>: $128 \times 10 + 10 = 1{,}290$</li>
+            </ul>
+
+            <p>The vast majority of parameters ($>$98%) are in the Transformer blocks, split roughly equally between attention projections and the MLP.</p>
+
+            <h2>Next Steps: Training and Analysis</h2>
+            <p>We have a complete, working Vision Transformer built entirely from scratch in PyTorch. In <strong>Part 3</strong>, we train it on CIFAR-10 alongside a CNN baseline and analyze training dynamics, attention maps, positional embeddings, and the data efficiency question.</p>
+
+        </article>
+    </main>
+
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+
+</html>
