@@ -81,12 +81,12 @@ permalink: /projects/vits-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In 2020, Dosovitskiy et al. posed a provocative question: can a pure Transformer, applied directly to sequences of image patches, match or surpass convolutional neural networks at image classification? The answer -- <strong>Vision Transformer (ViT)</strong> -- demonstrated that with sufficient data, the same architecture that powers GPT and BERT can achieve state-of-the-art results in computer vision.</p>
-                <p>The key insight is deceptively simple: an image is just a sequence. If we can convert pixels into tokens, we can apply the full machinery of self-attention without any convolution, pooling, or spatial inductive bias. In this first part of a three-part "Build in Public" series, we derive the mathematical foundations: how images become sequences, how positional information is encoded, and how a single learnable token aggregates global information.</p>
+                <p>In 2020, Dosovitskiy et al. asked whether a pure Transformer, applied directly to sequences of image patches, could match convolutional neural networks at image classification. The resulting <strong>Vision Transformer (ViT)</strong> showed that with enough data, the same architecture behind GPT and BERT reaches state-of-the-art accuracy in computer vision.</p>
+                <p>The core idea: treat an image as a sequence. Convert pixels into tokens, then apply self-attention -- no convolutions, no pooling, no hard-coded spatial assumptions. This post derives the math: how images become sequences, how positional information gets encoded, and how a single learnable token aggregates global information for classification.</p>
             </div>
 
             <h2>Image as Sequence</h2>
-            <p>A standard Transformer encoder expects a sequence of token embeddings $\{z_i\}_{i=1}^{N}$, each of dimension $D$. For NLP, each $z_i$ is a word embedding. For vision, we need to convert a 2D image into a 1D sequence.</p>
+            <p>A Transformer encoder expects a sequence of token embeddings $\{z_i\}_{i=1}^{N}$, each of dimension $D$. In NLP, each $z_i$ is a word embedding. For vision, we need to turn a 2D image into a 1D sequence.</p>
 
             <p>Given an image $\mathbf{x} \in \mathbb{R}^{H \times W \times C}$, ViT divides it into a grid of non-overlapping patches:</p>
 
@@ -94,7 +94,7 @@ permalink: /projects/vits-theory/
                 $$ \mathbf{x}_p^{(i)} \in \mathbb{R}^{P \times P \times C}, \quad i = 1, 2, \ldots, N, \quad N = \frac{HW}{P^2} $$
             </div>
 
-            <p>where $P$ is the patch size. For a $32 \times 32$ CIFAR-10 image with $P = 4$, we get $N = (32/4)^2 = 64$ patches, each of size $4 \times 4 \times 3 = 48$ values.</p>
+            <p>where $P$ is the patch size. For a $32 \times 32$ CIFAR-10 image with $P = 4$, we get $N = (32/4)^2 = 64$ patches, each containing $4 \times 4 \times 3 = 48$ values.</p>
 
             <p>Each patch is flattened into a vector and linearly projected to dimension $D$:</p>
 
@@ -103,14 +103,14 @@ permalink: /projects/vits-theory/
             </div>
 
             <h2>The Patch Embedding</h2>
-            <p>While the mathematical formulation uses a flatten-then-project approach, the implementation uses a more elegant trick: a single <code>Conv2d</code> with <code>kernel_size=P</code> and <code>stride=P</code>.</p>
+            <p>In practice, the flatten-then-project step is implemented as a single <code>Conv2d</code> with <code>kernel_size=P</code> and <code>stride=P</code>.</p>
 
-            <p>This convolution extracts non-overlapping $P \times P$ patches (because stride equals kernel size) and projects them to $D$ channels in one operation. The output tensor of shape $(B, D, H/P, W/P)$ is then flattened spatially to produce the sequence $(B, N, D)$.</p>
+            <p>Because stride equals kernel size, the convolution extracts non-overlapping $P \times P$ patches and projects them to $D$ channels in one shot. The output tensor has shape $(B, D, H/P, W/P)$, which gets flattened spatially to $(B, N, D)$.</p>
 
-            <p>Mathematically, this is identical to the flatten-project formulation -- the Conv2d weights encode the same linear projection $\mathbf{E}$ -- but it is computationally more efficient and leverages optimized convolution kernels.</p>
+            <p>This is mathematically identical to the flatten-project formulation -- the Conv2d weights encode the same linear projection $\mathbf{E}$ -- but it runs faster by leveraging optimized convolution kernels.</p>
 
             <h2>The [CLS] Token</h2>
-            <p>In BERT, a special <code>[CLS]</code> token is prepended to the input sequence, and its final representation serves as the aggregate sequence embedding for classification. ViT adopts the same strategy.</p>
+            <p>Borrowed from BERT: a special <code>[CLS]</code> token is prepended to the input sequence, and its final representation serves as the aggregate embedding for classification.</p>
 
             <p>A learnable vector $\mathbf{z}_{\text{cls}} \in \mathbb{R}^D$ is prepended to the patch sequence:</p>
 
@@ -118,16 +118,16 @@ permalink: /projects/vits-theory/
                 $$ \mathbf{z}^{(0)} = [\mathbf{z}_{\text{cls}}; \; \mathbf{z}_1^{(0)}; \; \mathbf{z}_2^{(0)}; \; \ldots; \; \mathbf{z}_N^{(0)}] $$
             </div>
 
-            <p>The full sequence now has length $N + 1$. Through $L$ Transformer layers, the CLS token attends to all patch tokens and accumulates global information. After the final layer, only the CLS token output $\mathbf{z}_{\text{cls}}^{(L)}$ is passed to the classification head:</p>
+            <p>The sequence now has length $N + 1$. Through $L$ Transformer layers, the CLS token attends to every patch token and accumulates global information. After the final layer, only its output $\mathbf{z}_{\text{cls}}^{(L)}$ feeds into the classification head:</p>
 
             <div class="math-block">
                 $$ \hat{y} = \text{MLP}_{\text{head}}(\text{LayerNorm}(\mathbf{z}_{\text{cls}}^{(L)})) $$
             </div>
 
-            <p>Why not just average all patch tokens? Both approaches work, but the CLS token has an appealing interpretation: it is a learnable "query" that asks "what class is this image?" and collects evidence from every patch through attention.</p>
+            <p>You could also just average all patch tokens (global average pooling). Both work. But the CLS token has a useful interpretation: it acts as a learnable query -- "what class is this image?" -- and collects evidence from every patch via attention.</p>
 
             <h2>Positional Embeddings</h2>
-            <p>Without convolutions, the Transformer has no notion of spatial order. Feeding patches in any permutation would yield the same output -- the model is permutation-equivariant by default. To inject spatial awareness, we add learnable positional embeddings:</p>
+            <p>Without convolutions, the Transformer has no notion of spatial order. Feeding patches in any permutation produces the same output -- the model is permutation-equivariant by default. To fix this, we add learnable positional embeddings:</p>
 
             <div class="math-block">
                 $$ \mathbf{z}^{(0)} = [\mathbf{z}_{\text{cls}} + \mathbf{p}_0; \; \mathbf{z}_1^{(0)} + \mathbf{p}_1; \; \ldots; \; \mathbf{z}_N^{(0)} + \mathbf{p}_N] $$
@@ -136,38 +136,36 @@ permalink: /projects/vits-theory/
             <p>where $\mathbf{p}_i \in \mathbb{R}^D$ are learnable parameters. Unlike the fixed sinusoidal encodings from "Attention Is All You Need," ViT uses fully learnable 1D positional embeddings.</p>
 
             <h3>What Do They Learn?</h3>
-            <p>Dosovitskiy et al. showed that the learned positional embeddings exhibit a striking pattern: the cosine similarity between two position embeddings correlates with the 2D spatial distance between the corresponding patches. Nearby patches have similar embeddings; distant patches have dissimilar ones. The model discovers 2D spatial structure from 1D position indices -- without being told the image is 2D.</p>
+            <p>Dosovitskiy et al. showed that the cosine similarity between two learned position embeddings correlates with the 2D spatial distance between the corresponding patches. Nearby patches end up with similar embeddings; distant patches get dissimilar ones. The model recovers 2D spatial structure from 1D position indices, without being told the image is 2D.</p>
 
             <h3>1D vs 2D Positional Embeddings</h3>
-            <p>ViT uses 1D positional embeddings (a single index per patch) rather than 2D (row, column pairs). The authors found no significant benefit from 2D embeddings, suggesting that the model can infer the 2D grid structure from the 1D positions and the image content.</p>
+            <p>ViT uses 1D positional embeddings (one index per patch) rather than 2D (row, column pairs). The authors found no significant benefit from 2D embeddings -- the model can apparently infer the 2D grid structure from 1D positions and the image content alone.</p>
 
             <h2>The Complete Embedding Pipeline</h2>
-            <p>Putting it all together:</p>
+            <p>Putting it together:</p>
             <ol>
                 <li><strong>Extract patches</strong>: Split image into $N = (H/P)^2$ non-overlapping patches using Conv2d</li>
                 <li><strong>Project</strong>: Each patch is linearly projected to dimension $D$</li>
-                <li><strong>Flatten</strong>: Spatial dimensions are collapsed to form a sequence of length $N$</li>
-                <li><strong>Prepend CLS</strong>: A learnable CLS token is prepended, making the sequence length $N+1$</li>
+                <li><strong>Flatten</strong>: Spatial dimensions collapse to a sequence of length $N$</li>
+                <li><strong>Prepend CLS</strong>: A learnable CLS token is prepended, giving sequence length $N+1$</li>
                 <li><strong>Add positions</strong>: Learnable positional embeddings are added element-wise</li>
             </ol>
 
-            <p>The output is a tensor of shape $(B, N+1, D)$ -- a batch of sequences ready for the Transformer encoder. For our CIFAR-10 configuration ($32 \times 32$ images, $P=4$, $D=128$), this is $(B, 65, 128)$: 65 tokens of 128 dimensions.</p>
+            <p>The output is a tensor of shape $(B, N+1, D)$ -- a batch of sequences ready for the Transformer encoder. For our CIFAR-10 setup ($32 \times 32$ images, $P=4$, $D=128$), that is $(B, 65, 128)$: 65 tokens of 128 dimensions each.</p>
 
             <h2>Comparison to CNNs</h2>
-            <p>The patch embedding reveals a fundamental philosophical difference between ViTs and CNNs:</p>
+            <p>The patch embedding exposes a real architectural divide:</p>
             <ul>
-                <li><strong>CNNs</strong>: Local receptive fields $\rightarrow$ hierarchical feature extraction $\rightarrow$ global pooling. Spatial structure is baked into the architecture through local connectivity and weight sharing.</li>
-                <li><strong>ViTs</strong>: Global patches $\rightarrow$ self-attention $\rightarrow$ CLS token. Spatial structure must be learned from positional embeddings and the data itself.</li>
+                <li><strong>CNNs</strong>: Local receptive fields $\rightarrow$ hierarchical feature extraction $\rightarrow$ global pooling. Spatial structure is hard-coded through local connectivity and weight sharing.</li>
+                <li><strong>ViTs</strong>: Global patches $\rightarrow$ self-attention $\rightarrow$ CLS token. Spatial structure must be learned from positional embeddings and the data.</li>
             </ul>
 
-            <p>CNNs impose strong <em>inductive biases</em>: locality (small filters see nearby pixels) and translation equivariance (the same filter is applied everywhere). These are correct assumptions for images and allow CNNs to learn efficiently from limited data. ViTs make no such assumptions -- they must learn locality and spatial structure from scratch, which requires vastly more data.</p>
+            <p>CNNs impose strong <em>inductive biases</em>: locality (small filters see nearby pixels) and translation equivariance (the same filter applies everywhere). These assumptions hold for natural images and let CNNs learn efficiently from limited data. ViTs make none of these assumptions -- they have to learn locality and spatial structure from scratch, which demands much more data.</p>
 
-            <h2>Next Steps: From Patches to Attention</h2>
-            <p>We have established the mathematical foundation: how an image becomes a sequence of patch tokens with positional awareness and a global aggregation mechanism (CLS token).</p>
+            <h2>Next: From Patches to Attention</h2>
+            <p>That covers the mathematical foundation: how an image becomes a sequence of patch tokens with positional awareness and a global aggregation mechanism (the CLS token).</p>
 
-            <p>In <strong>Part 2</strong>, we implement this exact pipeline in pure PyTorch, then build the Multi-Head Self-Attention mechanism from scratch (no <code>nn.MultiheadAttention</code>), the Transformer encoder block with pre-norm residual connections, and the complete ViT architecture.</p>
-
-            <p><em>Stay tuned for the code drop as we build Vision Transformers from scratch!</em></p>
+            <p>In <strong>Part 2</strong>, we implement this pipeline in pure PyTorch, then build Multi-Head Self-Attention from scratch (no <code>nn.MultiheadAttention</code>), the Transformer encoder block with pre-norm residual connections, and the complete ViT architecture.</p>
 
         </article>
     </main>

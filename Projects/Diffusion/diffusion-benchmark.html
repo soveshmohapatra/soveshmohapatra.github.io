@@ -230,81 +230,58 @@ permalink: /projects/diffusion-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we outlined the math of the forward corruption process. In Part 2, we built the UNet, the
-                    time embeddings, and the training loop in pure PyTorch.</p>
-                <p>Now, we reap the rewards: generating novel data from pure static. We trained our custom DDPM on the
-                    MNIST dataset for 15 epochs. While classifying MNIST is trivial for modern deep learning,
-                    <em>generating</em> MNIST from scratch using a continuous Markov chain is a visually stunning
-                    demonstration of how state-of-the-art architectures (like DALL-E and Sora) learn the fundamental
-                    distribution of data.</p>
+                <p>Part 1 covered the math. Part 2 built the UNet and training loop. Now we train and generate.</p>
+                <p>We trained the DDPM on MNIST for 15 epochs with a 324,705-parameter UNet. Classifying MNIST is
+                    trivial; <em>generating</em> it from a 1,000-step Markov chain is a different problem entirely,
+                    and it exposes the same mechanics that power large-scale models like DALL-E and Sora.</p>
             </div>
 
             <h2>The Training Process</h2>
-            <p>Our primary objective is predicting the Gaussian noise vector $\epsilon$ that was added to an image at
-                some random timestep $t$. The loss is the Mean Squared Error between the actual noise and the network's
-                prediction.</p>
+            <p>The objective: predict the Gaussian noise $\epsilon$ added at a random timestep $t$, minimize MSE.
+                Loss dropped from 0.2203 at epoch 1 to 0.0619 at epoch 15 -- a 72% reduction. The sharpest
+                improvement came in the first 3 epochs (0.2203 to 0.0987), with steady gains after that.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/diffusion/training_loss.png"
-                    alt="The MSE loss of the UNet predicting the added Gaussian noise over 15 epochs.">
-                <p class="figure-caption">The MSE loss of the UNet predicting the added Gaussian noise over 15 epochs.
-                    The smooth downward trend confirms the network is successfully learning the noise structure across
-                    all $T=1000$ timesteps.</p>
+                    alt="MSE loss over 15 epochs of training.">
+                <p class="figure-caption">MSE loss over 15 epochs. Loss dropped from 0.2203 to 0.0619.</p>
             </div>
 
-            <p>The UNet learns very quickly to separate structure from static. Note that because $t$ is sampled
-                uniformly $[0, T]$, the network is forced to learn how to denoise an image at every possible stage of
-                corruption—from a mostly clear digit with light grain ($t \approx 10$) to pure TV fuzz ($t \approx
-                1000$).</p>
+            <p>Since $t$ is sampled uniformly from $[0, T]$, the network must learn to denoise at every corruption
+                level -- from near-clean images at $t \approx 10$ to pure noise at $t \approx 1000$.</p>
 
             <h2>Generation: The Denoising Trajectory</h2>
-            <p>To generate a new image, we start with a tensor of pure Gaussian noise, $\mathcal{N}(0, \mathbf{I})$. We
-                feed this into the network with $t=1000$. The network guesses the noise, we subtract a fraction of it,
-                inject a small amount of new regularizing noise, and step to $t=999$. We recurse this process 1,000
-                times.</p>
-
-            <p>Figure 2 shows this beautiful, slow resolution of order from chaos:</p>
+            <p>To generate, we start from pure Gaussian noise $\mathcal{N}(0, \mathbf{I})$ and run the reverse
+                process: at each step from $t=1000$ down to $t=0$, the network predicts the noise, we subtract a
+                scaled fraction, and inject a small amount of fresh noise.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/diffusion/denoising_trajectory.png"
-                    alt="The reverse process in action, iteratively stripping predicted noise step-by-step.">
-                <p class="figure-caption">The reverse process in action. Starting from pure isotropic Gaussian noise at
-                    $T=1000$, the network iteratively strips away predicted noise. Notice how the shape remains highly
-                    ambiguous until around $T=400$, after which the high-frequency details of the specific digit
-                    crystallize.</p>
+                    alt="Denoising trajectory from T=1000 to T=0.">
+                <p class="figure-caption">Reverse process from $T=1000$ to $T=0$. Digit shape stays ambiguous until
+                    roughly $T=400$, then fine details emerge.</p>
             </div>
 
             <h2>The Final Generation Grid</h2>
-            <p>After running the full 1,000-step reverse process for a batch of 32 independent noise seeds, the network
-                produces a diverse array of handwritten digits (Figure 3).</p>
+            <p>Running the full 1,000-step reverse process on 32 independent noise seeds:</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/diffusion/generate_grid.png"
-                    alt="A 4x8 grid of generated MNIST digits.">
-                <p class="figure-caption">A 4x8 grid of generated MNIST digits. Unlike an Autoencoder, a Diffusion Model
-                    learns a fully expressive mapping from the isotropic Gaussian generic prior to the complex
-                    multi-modal data distribution. None of these exact digits exist in the training set.</p>
+                    alt="4x8 grid of generated MNIST digits.">
+                <p class="figure-caption">32 generated digits from independent noise seeds. None exist in the
+                    training set.</p>
             </div>
 
-            <p>The generated digits display remarkable variety in slant, thickness, and stylistic form—proving the
-                network didn't just memorize the training set, but actually learned the continuous latent manifold of
-                the digits.</p>
+            <p>The outputs vary in slant, stroke width, and style -- the network learned the distribution, not a
+                lookup table.</p>
 
             <h2>Conclusion</h2>
-            <p>Diffusion models have revolutionized generative AI because they solve a critical problem that GANs and
-                VAEs struggled with: stable, high-fidelity mapping from a simple prior (Gaussian noise) to a complex
-                data distribution.</p>
+            <p>DDPMs solve a problem GANs and VAEs struggled with: stable generation from a simple Gaussian prior
+                to a complex data distribution. By decomposing generation into 1,000 small denoising steps, they
+                replace adversarial training with a straightforward ELBO objective.</p>
 
-            <p>By breaking the generation process down into 1,000 tiny, easily learned denoising steps, DDPMs replace
-                the brittle adversarial training of GANs with a stable, mathematically rigorous maximum likelihood
-                (ELBO) objective.</p>
-
-            <p>We built this entirely from scratch in PyTorch—no external diffusion libraries, no pre-trained weights.
-                By seeing the raw UNet predict $\epsilon$ and watching the $T \to 0$ loop resolve into a digit, we
-                demystify the core algorithm powering today's most advanced AI systems.</p>
-
-            <p><em>Thank you for following this 3-part "Build in Public" series on Diffusion Models. Stay connected on
-                    LinkedIn for future architectural tear-downs!</em></p>
+            <p>This was built from scratch in PyTorch -- no diffusion libraries, no pre-trained weights. 324K
+                parameters, 15 epochs, and the model goes from static to handwritten digits.</p>
 
         </article>
     </main>

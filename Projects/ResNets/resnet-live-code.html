@@ -218,22 +218,20 @@ permalink: /projects/resnet-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we established why residual learning works — learning deviations from identity creates
-                    gradient highways that enable training of arbitrarily deep networks.</p>
-                <p>Today, we take that math and translate it into a pure PyTorch implementation. We will build from
-                    individual residual blocks up to the full ResNet-18/34/50/101/152 family, plus a SmallResNet variant
-                    optimized for CIFAR-10.</p>
+                <p>Part 1 covered why residual learning works -- learning deviations from identity gives gradients a
+                    clear path through deep networks. Now we translate that math into PyTorch, building from a single
+                    residual block up to the full ResNet-18/34/50/101/152 family and a smaller variant for CIFAR-10.</p>
                 <p style="margin-top: 1rem; font-weight: 500; color: var(--accent-light);">
                     <i class="fab fa-github"></i>
                     <a href="https://github.com/soveshmohapatra/ResNets" target="_blank"
-                        style="color: inherit; text-decoration: underline;">View Full Setup on GitHub</a>
+                        style="color: inherit; text-decoration: underline;">View Full Code on GitHub</a>
                 </p>
             </div>
 
             <h2>The Residual Block</h2>
-            <p>Our ResidualBlock implements the core $y = F(x) + x$ pattern: two convolutions with a skip connection
-                that bypasses both. The critical detail: ReLU comes <em>after</em> the addition, not before — this
-                ensures the skip connection passes through cleanly.</p>
+            <p>The ResidualBlock implements $y = F(x) + x$: two convolutions with a skip connection that bypasses
+                both. One detail matters here -- ReLU comes <em>after</em> the addition, not before. If you put ReLU
+                before the addition, the skip connection no longer passes a clean signal.</p>
 
             <pre><code class="language-python">class ResidualBlock(nn.Module):
     expansion = 1  # Output channels = in_channels * expansion
@@ -263,7 +261,7 @@ permalink: /projects/resnet-live-code/
 
             <h2>Handling Dimension Changes</h2>
             <p>When spatial dimensions or channel counts change between layers, the identity shortcut needs a
-                <strong>$1 \times 1$ convolution</strong> to match:</p>
+                $1 \times 1$ convolution to match:</p>
 
             <pre><code class="language-python"># Create downsampling for skip connection if needed
 if stride != 1 or self.in_channels != out_channels * block.expansion:
@@ -274,14 +272,16 @@ if stride != 1 or self.in_channels != out_channels * block.expansion:
     )</code></pre>
 
             <h2>Bottleneck Blocks</h2>
-            <p>For deeper ResNets (50+), direct $3 \times 3$ convolutions become computationally expensive at higher
-                channel counts. Bottleneck blocks solve this with a $1 \times 1 \rightarrow 3 \times 3 \rightarrow
-                1 \times 1$ pattern:</p>
+            <p>For ResNet-50 and deeper, running $3 \times 3$ convolutions at high channel counts gets expensive.
+                Bottleneck blocks use a $1 \times 1 \rightarrow 3 \times 3 \rightarrow 1 \times 1$ pattern to
+                keep computation manageable:</p>
             <ul>
-                <li><strong>$1 \times 1$ conv</strong>: Reduce channels (e.g., 256 &rarr; 64) — "squeeze"</li>
-                <li><strong>$3 \times 3$ conv</strong>: Process at reduced channels — the expensive operation</li>
-                <li><strong>$1 \times 1$ conv</strong>: Restore channels (64 &rarr; 256) — "expand"</li>
+                <li><strong>$1 \times 1$ conv</strong>: Reduce channels (e.g., 256 &rarr; 64)</li>
+                <li><strong>$3 \times 3$ conv</strong>: Do the actual spatial processing at reduced width</li>
+                <li><strong>$1 \times 1$ conv</strong>: Expand back (64 &rarr; 256)</li>
             </ul>
+
+            <p>The expansion factor is 4, so output channels are always 4x the bottleneck width.</p>
 
             <pre><code class="language-python">class BottleneckBlock(nn.Module):
     expansion = 4  # Output = in_channels * 4
@@ -306,7 +306,7 @@ if stride != 1 or self.in_channels != out_channels * block.expansion:
         return F.relu(out)</code></pre>
 
             <h2>The ResNet Family</h2>
-            <p>All ResNets share the same macro-architecture but differ in block type and depth:</p>
+            <p>Same macro-architecture, different block types and depths:</p>
 
             <h3>ResNet-18/34 (Basic Blocks)</h3>
             <pre><code class="language-python">ResNet-18: [2, 2, 2, 2] basic blocks    # 11.7M params
@@ -318,14 +318,17 @@ ResNet-101: [3, 4, 23, 3] bottleneck    # 44.5M params
 ResNet-152: [3, 8, 36, 3] bottleneck    # 60.2M params</code></pre>
 
             <h2>SmallResNet for CIFAR-10</h2>
-            <p>For smaller $32 \times 32$ images, the standard ResNet stem ($7 \times 7$ conv + maxpool) would reduce
-                spatial dimensions too aggressively. Our SmallResNet adapts:</p>
+            <p>The standard ResNet stem -- a $7 \times 7$ conv followed by max pooling -- is designed for
+                $224 \times 224$ ImageNet images. On $32 \times 32$ CIFAR-10 inputs, that would destroy spatial
+                information immediately. Our SmallResNet makes four changes:</p>
             <ul>
-                <li>Replaces $7 \times 7$ conv with $3 \times 3$ conv (stride=1)</li>
-                <li>Removes the initial max pooling layer</li>
-                <li>Uses 3 residual stages instead of 4</li>
-                <li>Starts with 16 channels instead of 64</li>
+                <li>$3 \times 3$ conv stem with stride 1 (instead of $7 \times 7$ stride 2)</li>
+                <li>No initial max pooling</li>
+                <li>3 residual stages instead of 4</li>
+                <li>16 initial channels instead of 64</li>
             </ul>
+
+            <p>This gives a 175,258-parameter model -- small enough to train on CPU in a few minutes.</p>
 
             <pre><code class="language-python">class SmallResNet(nn.Module):
     def __init__(self, block, blocks_per_layer, num_classes=10,
@@ -348,13 +351,14 @@ ResNet-152: [3, 8, 36, 3] bottleneck    # 60.2M params</code></pre>
         self.fc = nn.Linear(initial_channels * 4 * block.expansion, num_classes)</code></pre>
 
             <h2>Weight Initialization</h2>
-            <p>We use <strong>He (Kaiming) initialization</strong> for all convolutions — this is critical for ResNets.
-                Standard Xavier initialization underestimates the variance needed after ReLU (which zeros half the
-                distribution):</p>
+            <p>We use He (Kaiming) initialization for all convolutions. Xavier initialization underestimates
+                the variance needed after ReLU, which zeros out half the distribution:</p>
 
             <div class="math-block">
                 $$ W \sim \mathcal{N}\left(0, \sqrt{\frac{2}{n_{\text{out}}}}\right) $$
             </div>
+
+            <p>Batch norm weights go to 1, biases to 0.</p>
 
             <pre><code class="language-python">def _initialize_weights(self):
     for m in self.modules():
@@ -365,11 +369,11 @@ ResNet-152: [3, 8, 36, 3] bottleneck    # 60.2M params</code></pre>
             nn.init.constant_(m.bias, 0)</code></pre>
 
             <h2>Training Strategy</h2>
-            <p>We train our SmallResNet-18 on CIFAR-10 with:</p>
+            <p>For our SmallResNet-18 on a 5,000-image CIFAR-10 subset, 30 epochs:</p>
             <ul>
                 <li><strong>Data augmentation</strong>: Random horizontal flip + random crop with 4px padding</li>
-                <li><strong>SGD with momentum</strong> (0.9) and weight decay ($5 \times 10^{-4}$)</li>
-                <li><strong>Learning rate scheduling</strong>: Start at 0.1, decay $\times 0.1$ at epochs 15 and 25</li>
+                <li><strong>Optimizer</strong>: SGD, momentum 0.9, weight decay $5 \times 10^{-4}$</li>
+                <li><strong>Learning rate</strong>: 0.1, decayed by 10x at epochs 15 and 25</li>
                 <li><strong>Batch size</strong>: 128</li>
             </ul>
 
@@ -378,10 +382,10 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
 scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25], gamma=0.1)</code></pre>
 
-            <h2>Next Steps: Training Deep Networks</h2>
-            <p>With our ResNet implemented, we can now train and visualize how skip connections enable gradient flow
-                through deep architectures. In <strong>Part 3</strong>, we will benchmark on CIFAR-10, visualize
-                activation statistics layer-by-layer, and inspect learned feature maps.</p>
+            <h2>Next: Training Results</h2>
+            <p>The implementation is done. Part 3 trains this model, plots the loss and accuracy curves, and
+                visualizes activation magnitudes layer-by-layer to confirm that skip connections actually
+                preserve signal flow through the network.</p>
 
         </article>
     </main>

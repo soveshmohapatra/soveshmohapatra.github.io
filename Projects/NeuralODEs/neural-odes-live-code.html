@@ -218,8 +218,8 @@ permalink: /projects/neural-odes-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we developed the mathematical foundations of Neural ODEs: initial value problems, Euler and RK4 solvers, the ResNet-to-ODE connection, and the adjoint method. Now we translate every equation into working PyTorch code.</p>
-                <p>Our implementation consists of three files: <strong>ode_solver.py</strong> (Euler and RK4 fixed-step solvers), <strong>neural_ode.py</strong> (ODEFunc, NeuralODELayer, ODEClassifier), and <strong>train.py</strong> (spiral dataset, training loop, visualization). No external ODE libraries. No <code>torchdiffeq</code>. Every operation is explicit.</p>
+                <p>Part 1 covered the math. Now we turn those equations into PyTorch code.</p>
+                <p>The implementation lives in three files: <strong>ode_solver.py</strong> (Euler and RK4 fixed-step solvers), <strong>neural_ode.py</strong> (ODEFunc, NeuralODELayer, ODEClassifier), and <strong>train.py</strong> (spiral dataset, training loop, visualization). No <code>torchdiffeq</code>, no external ODE libraries.</p>
             </div>
 
             <h2>ODE Solvers</h2>
@@ -260,7 +260,7 @@ permalink: /projects/neural-odes-live-code/
             <p>The function returns the full trajectory tensor of shape <code>(n_steps+1, batch, dim)</code> -- useful for visualization -- plus the time grid.</p>
 
             <h2>The Dynamics Network: ODEFunc</h2>
-            <p>The heart of a Neural ODE is the function $f(t, \mathbf{y}; \boldsymbol{\theta})$ that defines the dynamics.</p>
+            <p>The core component of a Neural ODE is the function $f(t, \mathbf{y}; \boldsymbol{\theta})$ that defines the dynamics.</p>
 
             <h3>Architecture</h3>
 
@@ -285,7 +285,7 @@ permalink: /projects/neural-odes-live-code/
             <pre><code class="language-python">nn.init.zeros_(self.net[-1].weight)
 nn.init.zeros_(self.net[-1].bias)</code></pre>
 
-            <p>This means the initial dynamics are $d\mathbf{y}/dt \approx 0$, so $\mathbf{y}(1) \approx \mathbf{y}(0)$. The Neural ODE starts as an approximate identity map and gradually learns to deform the space. This dramatically improves optimization stability.</p>
+            <p>At initialization, the dynamics are $d\mathbf{y}/dt \approx 0$, so $\mathbf{y}(1) \approx \mathbf{y}(0)$. The network starts as an approximate identity map and gradually learns to deform the space. Without this, random initial dynamics can push states to extreme values and destabilize the solver.</p>
 
             <h2>The Neural ODE Layer</h2>
 
@@ -303,9 +303,9 @@ nn.init.zeros_(self.net[-1].bias)</code></pre>
             <h2>The Classifier: Dimensional Lifting</h2>
 
             <h3>Why Lifting is Necessary</h3>
-            <p>A fundamental limitation of ODEs in $\mathbb{R}^d$: by the uniqueness theorem, solution trajectories cannot cross. In 2D, this means a continuous flow cannot separate two interleaving spirals -- the trajectories would have to pass through each other.</p>
+            <p>ODE trajectories in $\mathbb{R}^d$ cannot cross (uniqueness theorem). In 2D, this means a continuous flow cannot separate two interleaving spirals -- the trajectories would have to pass through each other.</p>
 
-            <p>The solution: <strong>lift the data to a higher-dimensional space</strong> before the ODE.</p>
+            <p>Fix: <strong>lift the data to a higher-dimensional space</strong> before the ODE.</p>
 
             <pre><code class="language-python">class ODEClassifier(nn.Module):
     def __init__(self, input_dim, n_classes, ode_dim=6, ...):
@@ -325,12 +325,10 @@ nn.init.zeros_(self.net[-1].bias)</code></pre>
             </div>
 
             <h3>The Augmented Neural ODE Perspective</h3>
-            <p>This lifting strategy is equivalent to the <strong>Augmented Neural ODE</strong> (Dupont et al., 2019). Instead of running the ODE in the original input space, we augment the state with extra dimensions initialized via a learned projection. The ODE operates in this higher-dimensional space where the uniqueness constraint no longer prevents separation.</p>
-
-            <p>In our case, lifting from 2D to 6D provides four extra dimensions for the flow to use in untangling the spirals.</p>
+            <p>This is equivalent to the <strong>Augmented Neural ODE</strong> (Dupont et al., 2019): augment the state with extra dimensions via a learned projection, then run the ODE in that higher-dimensional space where uniqueness no longer prevents class separation. Here, lifting from 2D to 6D gives four extra dimensions for untangling the spirals.</p>
 
             <h2>The Baseline: ResNet MLP</h2>
-            <p>For comparison, we implement a discrete residual MLP that mirrors the Neural ODE:</p>
+            <p>For comparison, a discrete residual MLP that mirrors the Neural ODE structure:</p>
 
             <pre><code class="language-python">class ResNetMLP(nn.Module):
     def forward(self, x):

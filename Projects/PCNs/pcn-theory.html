@@ -209,24 +209,21 @@ permalink: /projects/pcn-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>If standard deep learning is about recognizing patterns through top-down error correction, then
-                    <strong>Predictive Coding Networks (PCNs)</strong> are about actively anticipating reality before it
-                    even happens.</p>
-                <p>For decades, Backpropagation has been the undisputed king of training Deep Neural Networks. It is
-                    mathematically elegant and highly efficient on modern GPUs. But Backpropagation has a fatal flaw when
-                    it comes to biological plausibility: it requires a precise, global error signal to be transmitted
-                    symmetrically backward through the entire network.</p>
-                <p>In this new 3-part "Build in Public" series, we will deconstruct Predictive Coding Networks from
-                    first principles. Today, we explore the mathematical foundation: Top-Down Predictions, Local Errors,
-                    and Energy Minimization. In Part 2, we will replace <code>loss.backward()</code> and build the PCN
-                    inference loops from scratch in pure PyTorch. In Part 3, we will benchmark this biological model
-                    against standard backpropagation on non-linear regression and MNIST image classification.</p>
+                <p>If standard deep learning recognizes patterns through top-down error correction,
+                    <strong>Predictive Coding Networks (PCNs)</strong> actively anticipate reality before it arrives.</p>
+                <p>Backpropagation is efficient on GPUs and mathematically clean. But it has a biological problem:
+                    it requires a precise, global error signal transmitted symmetrically backward through the entire
+                    network. Neuroscientists agree the brain does not do this. Synapses update based only on
+                    immediately adjacent neurons. There is no global supervisor freezing the network to compute
+                    chain-rule gradients.</p>
+                <p>This post covers the mathematical foundation of PCNs: top-down predictions, local errors, and
+                    energy minimization.</p>
             </div>
 
             <h2>The Generative Brain: Top-Down vs Bottom-Up</h2>
-            <p>Predictive Coding is a unified theory of brain function. It suggests that the brain does not passively
-                wait for sensory input to flow from the bottom up (like a standard Multilayer Perceptron). Instead, the
-                brain is a generative model constantly predicting what it is about to experience from the top down.</p>
+            <p>Predictive Coding proposes that the brain does not passively wait for sensory input to flow upward
+                (like a standard MLP). Instead, it constantly generates predictions of what it expects to see,
+                sending them downward.</p>
             <ul>
                 <li><strong>Standard MLP:</strong> Data flows Bottom $\rightarrow$ Top. Errors flow Top $\rightarrow$
                     Bottom.</li>
@@ -235,71 +232,59 @@ permalink: /projects/pcn-theory/
             </ul>
 
             <h2>The Mathematics of Local Beliefs</h2>
-            <p>To formalize this, imagine two adjacent layers in a neural network: a higher layer of latent nodes $v_l$
-                and a lower layer $v_{l-1}$.</p>
-            <p>The higher layer uses its synaptic weights $W_l$ to actively guess the activation of the lower layer:</p>
+            <p>Consider two adjacent layers: a higher layer of latent nodes $v_l$ and a lower layer $v_{l-1}$.</p>
+            <p>The higher layer uses weights $W_l$ to predict the activation of the lower layer:</p>
             <div class="math-block">
                 $$ \hat{v}_{l-1} = f(v_l) W_l $$
             </div>
-            <p>where $f$ is a non-linear activation function (like Tanh).</p>
-            <p>When the actual sensory input arrives, it generates a local prediction error at layer $l-1$, which is
-                simply the difference between the actual state and the predicted state:</p>
+            <p>where $f$ is a non-linear activation (e.g., Tanh).</p>
+            <p>When the actual input arrives, the local prediction error at layer $l-1$ is the difference between
+                the true state and the predicted state:</p>
             <div class="math-block">
                 $$ \epsilon_{l-1} = v_{l-1} - \hat{v}_{l-1} $$
             </div>
 
             <h2>Phase 1: Energy Minimization (Inference)</h2>
-            <p>In standard ANNs, inference is a single forward pass. In a PCN, inference is a dynamic, iterative
-                process. Before the network learns anything, it must first "settle" its beliefs to best explain the
-                sensory input. It does this by minimizing the total prediction error, defined as the <strong>Energy</strong>
-                ($E$) of the system:</p>
+            <p>In a standard ANN, inference is a single forward pass. In a PCN, inference is iterative. Before
+                learning, the network must first settle its beliefs to explain the sensory input by minimizing the
+                total prediction error, or the <strong>Energy</strong> ($E$):</p>
             <div class="math-block">
                 $$ E = \frac{1}{2} \sum_{l=0}^{L-1} \| \epsilon_l \|^2 $$
             </div>
-            <p>During inference, we hold the synaptic weights constant. We perform gradient descent strictly on the
-                latent node states $v_l$ to minimize $E$. The network iteratively adjusts its internal beliefs until
-                they align with reality.</p>
+            <p>Weights stay frozen. Gradient descent runs only on the latent node states $v_l$ to minimize $E$,
+                iteratively adjusting internal beliefs until they align with the input.</p>
 
             <h2>Phase 2: The Hebbian Weight Update (Learning)</h2>
-            <p>Once the network's latent states have settled into a low-energy configuration, learning occurs. Because
-                the energy function is defined entirely by local prediction errors, the gradient of the energy with
-                respect to the weights $W_l$ uses only local variables:</p>
+            <p>Once the latent states have settled, learning occurs. Because the energy function depends entirely
+                on local prediction errors, the gradient with respect to $W_l$ uses only local variables:</p>
             <div class="math-block">
                 $$ \Delta W_l \propto \epsilon_{l-1}^T f(v_l) $$
             </div>
-            <p>This is a profound result. The optimal weight update is exactly the outer product of the post-synaptic
-                error ($\epsilon_{l-1}$) and the pre-synaptic activity ($f(v_l)$). This is a strictly local Hebbian
-                learning rule derived purely from minimizing local energy. We have completely eliminated the need for
-                global backpropagation!</p>
+            <p>The weight update is the outer product of the post-synaptic error ($\epsilon_{l-1}$) and the
+                pre-synaptic activity ($f(v_l)$). This is a strictly local Hebbian rule derived from minimizing
+                local energy -- no global backpropagation required.</p>
 
-            <h2>The Reality Check: The Cost of Biological Plausibility</h2>
-            <p>While elegant, it is important to understand why Predictive Coding Networks currently perform worse than
-                standard Backpropagation (MLPs) on benchmarks like speed and accuracy:</p>
+            <h2>The Cost of Biological Plausibility</h2>
+            <p>PCNs currently underperform standard backpropagation on speed and accuracy for concrete reasons:</p>
             <ol>
-                <li><strong>The Inference Bottleneck (Time):</strong> An MLP performs a single, mathematical forward
-                    pass. A PCN must <em>iterate</em> 20 to 50 times during the inference phase to settle its latent
-                    beliefs before it can even learn. This makes training significantly slower.</li>
-                <li><strong>Local Heuristics vs. Global Exactness (Accuracy):</strong> Backpropagation uses the exact
-                    chain rule of calculus to compute perfect global error gradients. PCNs rely on local approximations
-                    where a weight only knows about its immediate neighbors. Coordinating deep, multi-layer feature
-                    clustering is inherently harder with only local information.</li>
-                <li><strong>Generative vs. Discriminative (Difficulty):</strong> Standard classification MLPs only try
-                    to draw discriminative boundaries between labels. PCNs, because they predict the state of the
-                    network from the top down, are fundamentally generative models trying to learn the entire
-                    distribution of the data.</li>
+                <li><strong>Inference Bottleneck:</strong> An MLP does one forward pass. A PCN iterates 20-50 times
+                    per sample to settle its latent states before any learning happens. Training is
+                    proportionally slower.</li>
+                <li><strong>Local vs. Global Gradients:</strong> Backpropagation computes exact global error
+                    gradients via the chain rule. PCN weights only see their immediate neighbors, making
+                    coordination across deep layers harder.</li>
+                <li><strong>Generative vs. Discriminative:</strong> MLPs draw decision boundaries between labels.
+                    PCNs predict layer states from the top down, effectively learning a generative model of the full
+                    data distribution -- a harder problem.</li>
             </ol>
-            <p>Despite these costs, removing the requirement for a global, synchronous gradient is the key to unlocking
-                analog, low-power <strong>Neuromorphic Hardware</strong> in the future.</p>
+            <p>Despite this, removing the global synchronous gradient is what makes PCNs compatible with analog,
+                low-power <strong>Neuromorphic Hardware</strong>.</p>
 
-            <h2>Next Steps: From Math to Code</h2>
-            <p>We have taken the biological intuition of the brain and formalized it into an energy-based objective:
-                predict the input, settle the latent states, and update the weights locally.</p>
-            <p>In <strong>Part 2</strong>, we will implement this exact formulation in pure PyTorch. We will write
-                custom inference phases utilizing <code>torch.autograd.grad</code> strictly on latent nodes, build the
-                custom local Hebbian learning rule, and prove that PyTorch doesn't need <code>loss.backward()</code> to
-                learn.</p>
-            <p><em>Stay tuned for the code drop as we build Artificial Intelligence that learns like Natural
-                    Intelligence!</em></p>
+            <h2>Next: From Math to Code</h2>
+            <p>The formulation is an energy-based objective: predict the input, settle the latent states, update
+                weights locally. <a href="{{ site.baseurl }}/projects/pcn-live-code/">Part 2</a> implements this
+                in pure PyTorch using <code>torch.autograd.grad</code> on latent nodes and a custom Hebbian update
+                rule -- no <code>loss.backward()</code>.</p>
 
         </article>
     </main>

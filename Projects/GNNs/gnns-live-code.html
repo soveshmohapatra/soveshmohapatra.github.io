@@ -82,11 +82,11 @@ permalink: /projects/gnns-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>This second installment translates the GCN and GAT equations from Part 1 into working Python code using only <code>torch.nn</code> and <code>torch.Tensor</code> operations. We walk through adjacency normalization, the GCN forward pass, GAT attention computation, and multi-head concatenation. The complete implementation is ~150 lines with no external graph libraries.</p>
+                <p>This post translates the GCN and GAT equations from Part 1 into working Python using only <code>torch.nn</code> and <code>torch.Tensor</code> operations -- adjacency normalization, the GCN forward pass, GAT attention, and multi-head concatenation in ~150 lines total, no graph libraries.</p>
             </div>
 
-            <h2>Design Philosophy</h2>
-            <p>Our implementation follows three rules:</p>
+            <h2>Ground Rules</h2>
+            <p>Three constraints for the implementation:</p>
             <ol>
                 <li><strong>Pure PyTorch</strong> -- no <code>torch_geometric</code>, no <code>dgl</code>, no external graph libraries.</li>
                 <li><strong>Readable</strong> -- each mathematical operation maps to one or two lines of code.</li>
@@ -223,7 +223,7 @@ else:
         x = self.attn2(x, adj)
         return x</code></pre>
 
-            <p>ELU activation (not ReLU) is used between GAT layers, following the original paper. Input dropout is also applied, which provides additional regularization.</p>
+            <p>ELU activation (not ReLU) between GAT layers follows the original paper. Input dropout is applied as well for extra regularization.</p>
 
             <h2>Parameter Initialization</h2>
             <p>Both layers use Xavier uniform initialization:</p>
@@ -231,7 +231,7 @@ else:
 <pre><code class="language-python">nn.init.xavier_uniform_(self.linear.weight)
 nn.init.zeros_(self.linear.bias)</code></pre>
 
-            <p>For GAT, all three parameter tensors ($\mathbf{W}$, $\mathbf{a}_\text{left}$, $\mathbf{a}_\text{right}$) are Xavier-initialized. This ensures that the variance of activations is preserved through layers at initialization, which is critical for stable training with LeakyReLU attention.</p>
+            <p>For GAT, all three parameter tensors ($\mathbf{W}$, $\mathbf{a}_\text{left}$, $\mathbf{a}_\text{right}$) are Xavier-initialized. Without this, the variance of activations drifts across layers and the LeakyReLU attention scores blow up or vanish.</p>
 
             <h2>Summary</h2>
 
@@ -267,7 +267,7 @@ nn.init.zeros_(self.linear.bias)</code></pre>
                 </tbody>
             </table>
 
-            <p>In <strong>Part 3</strong>, we put these models to the test on Zachary's Karate Club -- a real social network where the graph structure alone must separate two factions using only 4 labeled nodes.</p>
+            <p><strong>Part 3</strong> trains both models on Zachary's Karate Club -- a 34-node social network where graph structure alone must separate two factions using only 4 labeled nodes.</p>
 
         </article>
     </main>

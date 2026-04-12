@@ -93,113 +93,103 @@ permalink: /projects/lstms-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we established the mathematical foundation of gated recurrence. In Part 2, we built the complete LSTM architecture in pure PyTorch—from individual cells to multi-layer stacks, classifiers, taggers, and encoder-decoder models.</p>
-                <p>Now, we reap the rewards: training our LSTM on a long-range dependency task and dissecting what the gates actually learn. The results reveal the beautiful internal strategies that emerge when a neural network must learn to remember.</p>
+                <p>Part 1 covered the math. Part 2 built the architecture in PyTorch. Now we train the model on a long-range dependency task and look at what the gates actually learn.</p>
             </div>
 
-            <h2>The Training Process</h2>
-            <p>We trained a 2-layer LSTM (128 hidden units, 197,378 parameters) on a synthetic long-range dependency task: classify a sequence of length 30 based solely on the first and last elements. This task is deliberately designed to be impossible for standard RNNs—the model must preserve information across 30 time steps of irrelevant noise.</p>
+            <h2>Training Setup</h2>
+            <p>We trained a 2-layer LSTM (128 hidden units, 204,290 parameters) on a synthetic task: classify a length-30 sequence based solely on its first and last elements. The 28 intermediate values are random noise. A standard RNN cannot solve this -- by the time it reaches the end of the sequence, the first element has been washed out by vanishing gradients.</p>
 
-            <p>We used Adam optimizer with learning rate $10^{-3}$, a step learning rate scheduler (halving every 20 epochs), gradient clipping at $\|\nabla\| = 1.0$, and trained for 100 epochs on 5,000 training sequences.</p>
+            <p>Training details: Adam with lr $10^{-3}$, step scheduler halving every 20 epochs, gradient clipping at $\|\nabla\| = 1.0$, 100 epochs, 5,000 training sequences.</p>
 
             <figure class="benchmark-figure">
                 <img src="{{ site.baseurl }}/assets/projects/lstms/training_curves.png" alt="Training Loss and Accuracy Curves" class="benchmark-img">
-                <figcaption class="figure-caption">Figure 1: Training and test loss (left) and accuracy (right) over 100 epochs. The LSTM converges rapidly, reaching ~100% training accuracy by epoch 30 and peaking at ~95% test accuracy. The growing gap between train and test loss after epoch 30 shows classic overfitting—the model memorizes the training set while generalizing well to unseen sequences. Compare this to a standard RNN, which would plateau around 60-70% on the same task.</figcaption>
+                <figcaption class="figure-caption">Figure 1: Loss and accuracy over 100 epochs. The model hits 94.4% test accuracy by epoch 10 and peaks at 95.7% (epoch 17). After epoch 30, the train-test loss gap widens as the model overfits the 5,000 training examples.</figcaption>
             </figure>
 
             <h2>Training Results</h2>
-            <p>Our 2-layer LSTM achieves:</p>
+            <p>From the training log:</p>
             <ul>
-                <li>Training accuracy: ~100% (by epoch 30)</li>
-                <li>Peak test accuracy: ~95%</li>
-                <li>Successful learning of 30-step dependencies</li>
-                <li>Final training loss: 0.0003</li>
+                <li>Epoch 1: 62.4% train / 64.1% test accuracy</li>
+                <li>Epoch 8: first time above 94% test accuracy (94.1%)</li>
+                <li>Epoch 17: peak test accuracy of 95.7%</li>
+                <li>Epoch 50: 100% train accuracy, train loss 0.0020</li>
+                <li>Epoch 100: train loss 0.0003, test accuracy 94.1%</li>
             </ul>
 
-            <p>The model learns the long-range dependency task rapidly—reaching 94% test accuracy within just 10 epochs. This is remarkable given that a standard RNN would struggle to exceed 60-70% on the same task, even with extensive training, due to vanishing gradients.</p>
+            <p>The model cracks the task fast -- 90.5% test accuracy by epoch 5. The gap between the peak (95.7% at epoch 17) and the final test accuracy (94.1% at epoch 100) reflects overfitting on a small dataset, not a failure of the architecture.</p>
 
             <h2>Visualizing Gate Dynamics</h2>
 
-            <p>To understand <em>how</em> the LSTM solves this task, we extract and visualize gate activations across all 30 time steps for 8 individual hidden units in the first layer. The patterns that emerge are remarkably interpretable.</p>
+            <p>To see <em>how</em> the LSTM solves this task, we extracted gate activations across all 30 time steps for 8 hidden units in the first layer.</p>
 
             <figure class="benchmark-figure">
                 <img src="{{ site.baseurl }}/assets/projects/lstms/gate_activations.png" alt="Gate Activations Dynamics" class="benchmark-img">
-                <figcaption class="figure-caption">Figure 2: Gate activations across 30 time steps for 8 hidden units in the first LSTM layer. Top-left: Input gate—several units (e.g., Unit 1) learn to saturate near 1.0 over time, indicating persistent information storage. Top-right: Forget gate—most units maintain activations between 0.8-1.0, confirming the gradient highway stays open. Bottom-left: Output gate—diverse patterns with some units learning to selectively reveal information. Bottom-right: Cell candidate (tanh) values show the rich diversity of candidate information generated at each step.</figcaption>
+                <figcaption class="figure-caption">Figure 2: Per-unit gate activations over the 30-step sequence. Forget gates cluster near 0.8-1.0, keeping the gradient highway open. Input and output gates show unit-level specialization.</figcaption>
             </figure>
 
             <h3>Forget Gate Patterns</h3>
-            <p>The forget gate plot reveals the most critical insight: nearly all 8 visualized units maintain activations between 0.8 and 1.0 throughout the 30-step sequence. This is exactly the "Constant Error Carousel" that Hochreiter and Schmidhuber described—the gradient highway stays open, allowing error signals to flow backward unattenuated.</p>
+            <p>Nearly all 8 units hold forget gate activations between 0.8 and 1.0 across the full sequence. This is the Constant Error Carousel in action -- the network learns to keep the gradient highway open so that error signals from the classification head can reach the first time step.</p>
             <ul>
-                <li><strong>High activation</strong> ($f_t \approx 0.8-1.0$): The dominant pattern—preserve cell state content</li>
-                <li><strong>Occasional dips</strong>: Some units briefly drop their forget gate to clear and refresh specific memory slots</li>
+                <li><strong>High activation</strong> ($f_t \approx 0.8$-$1.0$): the dominant pattern, preserving cell state content</li>
+                <li><strong>Occasional dips</strong>: a few units briefly drop their forget gate, clearing specific memory slots</li>
             </ul>
 
             <h3>Input Gate Behavior</h3>
-            <p>The input gate shows more varied patterns across units:</p>
+            <p>More varied than the forget gate:</p>
             <ul>
-                <li>Several units (e.g., Unit 1, Unit 4) show activations that <em>increase over time</em>, rising from ~0.5 to near 1.0—suggesting they accumulate context as the sequence progresses</li>
-                <li>Other units remain moderate (0.3-0.6), selectively gating new information</li>
-                <li>This diversity indicates different units specialize in different roles</li>
+                <li>Some units (e.g., Unit 1, Unit 4) ramp from ~0.5 to ~1.0 over the sequence, accumulating context</li>
+                <li>Others stay moderate (0.3-0.6), selectively gating new information</li>
+                <li>Different units clearly specialize in different roles</li>
             </ul>
 
             <h3>Output Gate Modulation</h3>
-            <p>The output gate displays the richest diversity:</p>
+            <p>The most diverse gate:</p>
             <ul>
-                <li>Some units (e.g., Unit 1) learn to increase output gating over time, reaching near 1.0 by the sequence end—preparing to reveal stored information for the final classification</li>
-                <li>Other units oscillate, suggesting they contribute different features at different time steps</li>
-                <li>This selective readout mechanism is crucial for the many-to-one classification task</li>
+                <li>Some units increase output gating toward the end of the sequence, preparing to expose stored information for the final classification</li>
+                <li>Others oscillate, contributing different features at different time steps</li>
             </ul>
 
             <h2>The Cell State as Memory</h2>
 
             <h3>Constant Error Carousel</h3>
-            <p>The forget gate visualizations directly confirm Hochreiter and Schmidhuber's "Constant Error Carousel" hypothesis. With forget gates at 0.8-1.0, the cell state equation</p>
+            <p>The forget gate data confirms Hochreiter and Schmidhuber's hypothesis directly. With $f_t$ in the 0.8-1.0 range, the update</p>
             <div class="math-block">
                 $$ c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t $$
             </div>
-            <p>preserves the previous cell state almost entirely while selectively adding new information. Over 30 time steps with $f_t \approx 0.9$, the retained signal is $0.9^{30} \approx 0.04$—still enough to maintain a gradient pathway, unlike an RNN where multiplicative decay drives this value to near zero.</p>
+            <p>preserves most of the previous cell state while selectively adding new information. Even with $f_t \approx 0.9$, after 30 steps the retained fraction is $0.9^{30} \approx 0.04$ -- small, but enough to maintain a gradient pathway. In a vanilla RNN, the equivalent multiplicative decay drives this to effectively zero.</p>
 
             <h3>Overfitting Analysis</h3>
-            <p>The training curves reveal a classic deep learning phenomenon: the model reaches 100% training accuracy by epoch 30 but test accuracy plateaus at ~95%. The widening loss gap confirms overfitting. In a production setting, we would apply:</p>
+            <p>100% training accuracy by epoch 50, but test accuracy plateaus around 95% and slowly degrades. The widening loss gap (train: 0.0003, test: 0.3073 at epoch 100) is textbook overfitting on a small dataset. Fixes for production:</p>
             <ul>
-                <li>Early stopping (best model at epoch ~30)</li>
-                <li>Increased dropout (currently 0.3)</li>
-                <li>Data augmentation or larger datasets</li>
+                <li>Early stopping at epoch ~17 (peak test accuracy)</li>
+                <li>Higher dropout (currently 0.3)</li>
+                <li>More training data</li>
             </ul>
 
-            <h2>Gate Coordination Patterns</h2>
-
-            <h3>Copy Mechanism</h3>
-            <p>For the long-range dependency task, the gates learn a clean copy strategy:</p>
+            <h2>Gate Coordination: The Copy Strategy</h2>
+            <p>The gates learn a clean three-phase pattern for this task:</p>
             <ul>
-                <li>Input gate opens at the <em>first</em> time step to store relevant features in the cell state</li>
-                <li>Forget gate stays near 1.0 to preserve this information unchanged across 30 steps</li>
-                <li>Output gate increases at the <em>final</em> time step to reveal stored memory for classification</li>
+                <li>Input gate opens at the <em>first</em> time step to write the relevant features into the cell state</li>
+                <li>Forget gate stays near 1.0 to hold that information unchanged across 30 steps</li>
+                <li>Output gate opens at the <em>last</em> time step to reveal stored memory for classification</li>
             </ul>
-            <p>This is exactly the strategy a human designer would implement—but the network discovers it entirely through gradient descent.</p>
+            <p>This is the strategy you would design by hand -- but the network finds it through gradient descent alone.</p>
 
             <h2>LSTMs vs GRUs vs Transformers</h2>
 
             <h3>GRU Simplification</h3>
-            <p>Gated Recurrent Units (Cho et al., 2014) simplify LSTMs:</p>
-            <ul>
-                <li>Merge cell and hidden states into a single state vector</li>
-                <li>Combine forget and input gates into an "update gate"</li>
-                <li>Fewer parameters, often comparable performance on shorter sequences</li>
-            </ul>
+            <p>GRUs (Cho et al., 2014) collapse the LSTM's two states into one and merge the forget/input gates into a single update gate. Fewer parameters, often similar performance on shorter sequences.</p>
 
             <h3>Transformer Comparison</h3>
             <ul>
-                <li><strong>LSTM</strong>: Sequential processing, fixed-size memory, $O(1)$ per-step inference cost</li>
-                <li><strong>Transformer</strong>: Parallel processing, full attention over context, $O(n)$ inference cost per step</li>
+                <li><strong>LSTM</strong>: Sequential processing, fixed-size memory, $O(1)$ per-step inference</li>
+                <li><strong>Transformer</strong>: Parallel processing, full context attention, $O(n)$ per-step inference</li>
             </ul>
 
-            <p>LSTMs remain the architecture of choice for streaming and real-time applications where constant inference cost is critical.</p>
+            <p>LSTMs still make sense for streaming and real-time applications where constant per-step cost matters.</p>
 
             <h2>Conclusion</h2>
-            <p>We built LSTMs entirely from scratch in PyTorch—no external libraries, no pre-trained weights. Our 2-layer LSTM achieved ~100% training accuracy and ~95% test accuracy on a 30-step long-range dependency task, and the gate visualizations confirm the theoretical predictions: forget gates stay open to create gradient highways, input gates selectively store relevant information, and output gates modulate what gets revealed for classification.</p>
-
-            <p style="margin-top: 2rem; font-style: italic;">Thank you for following this 3-part "Build in Public" series on LSTMs. The full training logs, gate visualizations, and code are live on the GitHub repo. Stay connected on LinkedIn for future architectural tear-downs!</p>
+            <p>A from-scratch 2-layer LSTM with 204,290 parameters reaches 95.7% peak test accuracy on a 30-step dependency task, hitting 90%+ within 5 epochs. The gate visualizations line up with theory: forget gates hold open to create gradient highways, input gates selectively write relevant information, and output gates control what gets read out for classification. Full code, training logs, and visualizations are on the GitHub repo.</p>
 
         </article>
     </main>

@@ -246,101 +246,88 @@ permalink: /projects/mamba-ssm-application/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>In our previous installations, we established the mathematical foundations of State Space Models (Part 1) and translated those dynamical equations into a minimal, educational 1D SSM layer in pure PyTorch (Part 2). However, a single 1D sequence transformation mapping scalars to scalars remains insufficient for modeling language, where tokens are represented by deep $D_{model}$-dimensional embeddings. In Part 3, we bridge the gap between our basic 1D algorithmic core and modern architecture by wrapping our SSM into a full multi-channel "Mamba" block. Finally, we pit this custom architecture against a baseline PyTorch Transformer on a long-sequence task, demonstrating the promised theoretical scaling: quadratic performance degradation in Attention versus linear, memory-efficient scaling in State Space Models. The complete testing application is available in my <a href="https://github.com/soveshmohapatra/Mamba-SSM" target="_blank">GitHub repository <i class="fab fa-github"></i></a>.</p>
+                <p>Parts 1 and 2 built the math and a minimal 1D SSM layer. But a scalar-to-scalar model cannot process language -- tokens live in $D_{model}$-dimensional embedding space. In this final post, we wrap our 1D SSM into a multi-channel gated Mamba block, then benchmark it against a PyTorch Transformer on a selective copying task at sequence lengths from 256 to 2048. The results confirm the core claim: Attention memory scales as $O(L^2)$, while the SSM stays linear. Code is on <a href="https://github.com/soveshmohapatra/Mamba-SSM" target="_blank">GitHub <i class="fab fa-github"></i></a>.</p>
             </div>
 
             <h2>1. Introduction</h2>
-            <p>Transformers rule the Deep Learning era by brute-forcing global context routing via Self-Attention. However, every practitioner eventually hits the Attention memory wall. When a sequence length doubles, the computation requirement quadruples ($O(L^2)$ time and memory complexity).</p>
+            <p>Self-Attention scales as $O(L^2)$. Double the sequence, quadruple the memory. SSMs compress context into a recurrent hidden state $h$ and process sequences in $O(L)$ time (or $O(L \log L)$ via FFT).</p>
 
-            <p>State Space Models compress this contextual routing into a recurrent hidden state $h$. As established in Part 1 and Part 2, learning continuous representations and applying parallel discrete convolutions enables an SSM to execute sequence transformations in linear time ($O(L)$ or $O(L \log L)$ with FFT).</p>
-
-            <p>In this final post of the mini-series, we will scale our 1D layer to accept modern embedding representations, wrap it in the gated structure popularized by architectures like Mamba, and benchmark its empirical inference scaling against the incumbent Transformer class.</p>
+            <p>This post scales our 1D layer from Part 2 to handle $D_{model}$-dimensional embeddings, wraps it in Mamba's gated architecture, and runs a head-to-head benchmark against a Transformer.</p>
 
             <h2>2. Building the Mamba Block</h2>
-            <p>Our <code>Simple1DSSM</code> class from Part 2 operates strictly on sequences of scalar values. To process an input tensor $x \in \mathbb{R}^{B \times L \times D_{model}}$, we must project our embeddings and run the 1D SSM independently across derived channels.</p>
-
-            <p>Mamba-style architectures introduce two key upgrades to the basic SSM: expansion dimensions and multiplicative gating paths.</p>
+            <p>The <code>Simple1DSSM</code> from Part 2 processes scalar sequences. To handle an input tensor $x \in \mathbb{R}^{B \times L \times D_{model}}$, we project embeddings into an expanded space and run independent 1D SSMs per channel. Two upgrades over the bare SSM: dimension expansion and multiplicative gating.</p>
 
             <h3>2.1 Projections and Gating</h3>
-            <p>We split the incoming token vectors into two paths: an activation branch (the <em>gate</em>) and an SSM branch.</p>
+            <p>Input vectors split into two parallel paths: one feeds the SSM channels, the other produces a sigmoid gate.</p>
 
 <pre><code class="language-python">class MambaBlock(nn.Module):
     def __init__(self, d_model: int, expand: int = 2, d_state: int = 16):
         super().__init__()
         self.d_inner = d_model * expand
-        
+
         # 1. Project input for the SSM path
         self.in_proj = nn.Linear(d_model, self.d_inner)
-        
+
         # 2. Project input for the parallel Gate path
         self.gate_proj = nn.Linear(d_model, self.d_inner)
-        
+
         # 3. Independent 1D SSMs for every channel
         self.ssm_channels = nn.ModuleList([
             Simple1DSSM(d_state=d_state) for _ in range(self.d_inner)
         ])
-        
+
         # 4. Fold the high-dimensional representation back down
         self.out_proj = nn.Linear(self.d_inner, d_model)</code></pre>
 
-            <p>Expanding $D_{model}$ into $D_{inner}$ gives the independent 1D channels room to process complex, disentangled representational features.</p>
+            <p>The expansion from $D_{model}$ to $D_{inner} = D_{model} \times \text{expand}$ gives each independent SSM channel its own slice of the representation to work with.</p>
 
             <h3>2.2 The Forward Pass</h3>
-            <p>The forward execution runs the inputs through both projections, applies the sequence transformations, and mixes the outputs.</p>
+            <p>Both projections run in parallel. The SSM outputs are element-wise multiplied by the gate, then projected back to $D_{model}$.</p>
 
 <pre><code class="language-python">    def forward(self, x):
         # x shape: (batch_size, seq_len, d_model)
         x_proj = self.in_proj(x)
-        
+
         # The gating mechanism acts as a dynamic filter
         gate = torch.sigmoid(self.gate_proj(x))
-        
+
         # Run SSMs over each channel independently
         ssm_outputs = []
         for i, ssm in enumerate(self.ssm_channels):
             channel_x = x_proj[..., i] # Shape: (batch, seq_len)
             channel_y = ssm(channel_x)
             ssm_outputs.append(channel_y)
-            
+
         ssm_out = torch.stack(ssm_outputs, dim=-1)
-        
+
         # Element-wise gate modulation
-        y = ssm_out * gate 
-        
+        y = ssm_out * gate
+
         # Final output projection
         return self.out_proj(y)</code></pre>
 
-            <p>This <code>SSM $\times$ Gate</code> motif is crucial; it behaves similarly to a Gated Recurrent Unit (GRU) or LSTM gating mechanism but with significantly faster parallel sequence execution.</p>
+            <p>The <code>SSM * Gate</code> pattern is functionally similar to GRU/LSTM gating but benefits from the SSM's parallel convolution during training.</p>
 
             <h2>3. Benchmarking: SSM vs Transformer</h2>
-            <p>With our fully functional PyTorch Mamba Block compiled, we can confront the primary hypothesis of State Space Models: <strong>Linear Scaling</strong> and <strong>Long-Range Routing</strong>.</p>
+            <p>Setup: our <code>MambaBlock</code> vs. PyTorch's <code>nn.TransformerEncoderLayer</code>, matched on parameter count. The task is selective copying -- the model must predict the class of the first token after reading the entire sequence. We tested at $L \in \{256, 512, 1024, 2048\}$ with 10 training steps each.</p>
 
-            <p>We instantiated our <code>MambaBlock</code> alongside PyTorch's native <code>nn.TransformerEncoderLayer</code>. Both modules were constrained to matched parameter counts. To test their memory-routing capabilities, we mapped synthetic sequence tensors of varying lengths ($L \in \{256, 512, 1024, 2048\}$) through both models on a strict selective copying task: predicting the class of the very first token at the very end of the sequence.</p>
-
-            <p>We trained tiny proxy models for exactly 10 steps to observe how quickly each architecture degrades when stretched across long contexts.</p>
-
-            <h3>3.1 Empirical Accuracy Results</h3>
-            <p>Our quick local benchmark yielded the following accuracy metrics after 10 proxy training steps:</p>
+            <h3>3.1 Accuracy After 10 Steps</h3>
             <ul>
-                <li><strong>L=256</strong>: Mamba hits 50.8%, Transformer hits 35.9%.</li>
-                <li><strong>L=512</strong>: Mamba hits 46.1%, Transformer hits 43.8%.</li>
-                <li><strong>L=1024</strong>: Mamba hits 50.0%, Transformer hits 48.4%.</li>
-                <li><strong>L=2048</strong>: Mamba hits 56.2%, Transformer hits 45.3%.</li>
+                <li><strong>L=256</strong>: Mamba 50.8%, Transformer 35.9%</li>
+                <li><strong>L=512</strong>: Mamba 46.1%, Transformer 43.8%</li>
+                <li><strong>L=1024</strong>: Mamba 50.0%, Transformer 48.4%</li>
+                <li><strong>L=2048</strong>: Mamba 56.2%, Transformer 45.3%</li>
             </ul>
 
-            <p>Notice how Mamba consistently maintains its ability to route the state information across thousands of steps, even as the sequence stretches to 2048 tokens. The Transformer, unable to compress internal state efficiently and relying solely on global pairwise comparisons, struggles to maintain the signal over distance given such limited training capacity.</p>
+            <p>Mamba holds steady across all sequence lengths. The Transformer, relying on pairwise comparisons across the full context, loses signal as $L$ grows -- especially given so few training steps to learn the routing.</p>
 
             <h3>3.2 The $O(L^2)$ Memory Wall</h3>
-            <p>Beyond raw accuracy, the most staggering differentiation appears in the memory required to maintain the computational graph. Expanding a Transformer sequence from 2048 to 4096 strictly quadruples the memory requirements ($O(L^2)$) due to the exploding attention matrix. By contrast, the Mamba Block's global sequence convolution scales purely linearly ($O(L)$), circumventing quadratic collapse and allowing it to process massively larger contexts on the exact same hardware.</p>
+            <p>The sharper difference is in memory. Going from $L=2048$ to $L=4096$ quadruples the Transformer's attention matrix memory ($O(L^2)$). The Mamba block's convolution kernel grows linearly ($O(L)$), so it can handle much longer contexts on the same hardware.</p>
 
             <h2>4. Conclusion</h2>
-            <p>Over the course of this "Build in Public" series, we've dragged State Space Models out of the abstract realm of classical Control Theory and materialized them in modern deep learning code.</p>
+            <p>Across these three posts, we went from continuous-time ODEs to a working multi-channel Mamba block benchmarked against a Transformer. The key results: ZOH discretization gives us $O(L)$ training via convolution and $O(1)$ memory at inference via recurrence. Wrapping that in a GLU-style gated block produces a model that holds up against Attention on long-range tasks while scaling linearly.</p>
 
-            <p>We've observed that mapping continuous dynamics into discrete matrices via Zero-Order Hold opens the door to $O(L)$ sequential convolutions for rapid training, while guaranteeing $O(1)$ memory requirements for autoregressive recurrent generation. By wrapping that basic math in a multi-channel GLU-style block, we replicated the core architecture powering the next generation of foundational models like Mamba.</p>
-
-            <p>While Transformers currently remain the undisputed kings of massive-scale pretraining due to immense community-driven optimization momentum, architectures combining the strengths of Attention with the efficiency of State Space Models are rapidly cementing themselves as the definitive standard for processing massive context windows and genomic sequences.</p>
-
-            <p>Thank you for following along with this deconstruction series!</p>
+            <p>Transformers still dominate large-scale pretraining thanks to years of engineering optimization, but hybrid architectures mixing Attention and SSM layers are gaining ground -- particularly for workloads where context length is the bottleneck.</p>
 
         </article>
     </main>

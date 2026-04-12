@@ -97,7 +97,7 @@ permalink: /projects/gnns-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>We evaluate the GCN and GAT architectures from Parts 1--2 on the classic Zachary's Karate Club benchmark. Using only 4 labeled nodes out of 34 (semi-supervised), both models achieve <strong>100% node classification accuracy</strong>. We analyze training dynamics, convergence behavior, and what the graph visualizations reveal about how message passing propagates labels through the network.</p>
+                <p>We evaluate the GCN and GAT implementations from Parts 1--2 on Zachary's Karate Club. Using only 4 labeled nodes out of 34, both models reach <strong>100% node classification accuracy</strong>. We compare convergence behavior and examine why message passing propagates labels so effectively through this graph.</p>
             </div>
 
             <h2>The Benchmark: Zachary's Karate Club</h2>
@@ -128,7 +128,7 @@ permalink: /projects/gnns-benchmark/
                 <li><strong>Task</strong>: Predict which faction each member joined</li>
             </ul>
 
-            <p>The challenge: can 4 labels, propagated through the graph structure, correctly classify all 34 nodes?</p>
+            <p>The question is whether 4 labels, propagated through the graph, can correctly classify all 34 nodes.</p>
 
             <h2>Experimental Configuration</h2>
 
@@ -156,13 +156,13 @@ permalink: /projects/gnns-benchmark/
             <p>Both models achieve perfect separation of the two factions using only 4 labeled training nodes. GCN: <strong>100.00%</strong>. GAT: <strong>100.00%</strong>. Zero misclassified nodes.</p>
 
             <h3>Training Dynamics</h3>
-            <p>The convergence behavior reveals important differences:</p>
+            <p>The two models converge differently:</p>
 
             <p><strong>GCN converges faster.</strong> At epoch 1, GCN already classifies 79.4% of nodes correctly. The symmetric normalization provides an immediate structural prior: nodes that share many neighbors with a labeled node receive a strong signal from the very first forward pass. By epoch 50, both loss and accuracy have essentially plateaued.</p>
 
             <p><strong>GAT starts slower but has lower initial loss.</strong> GAT's accuracy at epoch 1 is only 64.7%, but its loss (0.648) is lower than GCN's (0.700). This apparent contradiction arises because GAT's attention weights are initially near-uniform, producing well-calibrated but indecisive predictions. As attention sharpens, accuracy jumps rapidly.</p>
 
-            <p><strong>GAT's higher final loss.</strong> GAT's loss at epoch 200 (0.061) is 20$\times$ higher than GCN's (0.003). This is not a sign of worse performance -- both achieve 100% accuracy. The difference stems from GAT's stronger dropout (0.6 vs. 0.5) and the stochasticity of attention dropout, which prevents the loss from collapsing to near-zero during training mode.</p>
+            <p><strong>GAT's higher final loss.</strong> GAT's loss at epoch 200 (0.061) is 20$\times$ higher than GCN's (0.003), yet both hit 100% accuracy. The gap comes from GAT's stronger dropout (0.6 vs. 0.5) and attention dropout stochasticity, which keep the training-mode loss from collapsing to near-zero.</p>
 
             <h2>Why Does Semi-Supervised Learning Work So Well?</h2>
 
@@ -192,20 +192,20 @@ permalink: /projects/gnns-benchmark/
             </ul>
 
             <h2>Conclusion</h2>
-            <p>Building GCN and GAT from scratch in pure PyTorch reveals that graph neural networks are, at their core, remarkably simple:</p>
+            <p>Building GCN and GAT from scratch in pure PyTorch shows that graph neural networks reduce to a short loop:</p>
             <ol>
                 <li><strong>Normalize</strong> the adjacency matrix (GCN) or compute attention (GAT)</li>
                 <li><strong>Multiply</strong> by projected features</li>
                 <li><strong>Repeat</strong> for $L$ layers</li>
             </ol>
 
-            <p>On Zachary's Karate Club, this procedure achieves perfect accuracy with only 4 labeled nodes -- a testament to the power of exploiting graph structure in semi-supervised learning.</p>
+            <p>On Zachary's Karate Club, this procedure achieves perfect accuracy with only 4 labeled nodes.</p>
 
             <p>The key takeaways:</p>
             <ul>
                 <li>Graph structure alone carries significant information about node labels in homophilous networks</li>
                 <li>GCN's fixed normalization converges faster; GAT's learned attention provides flexibility for heterogeneous graphs</li>
-                <li>Semi-supervised learning on graphs is remarkably data-efficient: labeling less than 12% of nodes sufficed for perfect classification</li>
+                <li>Semi-supervised learning on graphs is extremely data-efficient here: labeling less than 12% of nodes sufficed for perfect classification</li>
             </ul>
 
         </article>

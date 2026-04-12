@@ -85,8 +85,8 @@ permalink: /projects/transformers-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>Welcome to Part 2 of our series on Transformers. In Part 1, we outlined the mathematical foundations of Self-Attention and Positional Encodings. Now, it is time to turn those equations into running code.</p>
-                <p>Rather than relying on the high-level <code>nn.Transformer</code> module, we are building the entire sequence-to-sequence model from scratch in PyTorch. This requires precise management of tensor dimensions, multi-head reshapes, and causality masks.</p>
+                <p><a href="{{ site.baseurl }}/projects/transformers-theory/">Part 1</a> laid out the math of Self-Attention and Positional Encodings. Now we turn those equations into running code.</p>
+                <p>We skip <code>nn.Transformer</code> and build the full sequence-to-sequence model from scratch in PyTorch -- managing tensor dimensions, multi-head reshapes, and causality masks by hand.</p>
             </div>
 
             <h2>Implementing Scaled Dot-Product Attention</h2>
@@ -134,8 +134,8 @@ permalink: /projects/transformers-live-code/
                 <pre><code class="language-python">tgt_lookahead_mask = torch.tril(torch.ones((tgt_len, tgt_len))).bool()</code></pre>
             </div>
 
-            <h2>Up Next</h2>
-            <p>With the code complete, we now have a working Transformer. But how do we know it learns? In <strong>Part 3</strong>, we will set up a sequence-to-sequence training loop, visualize the loss curve, and extract the internal cross-attention tensors to visualize how the model routes information.</p>
+            <h2>What's Next</h2>
+            <p>The model compiles and runs, but does it actually learn? <a href="{{ site.baseurl }}/projects/transformers-benchmark/">Part 3</a> trains it on a sequence-reversal task and cracks open the cross-attention tensors to see how the model routes information.</p>
 
         </article>
     </main>

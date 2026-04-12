@@ -207,13 +207,12 @@ permalink: /projects/neural-odes-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>What if a neural network had no fixed depth? What if, instead of stacking a finite number of layers, we described the transformation of data as a <em>continuous</em> process governed by a differential equation?</p>
-                <p>This is the central idea of <strong>Neural Ordinary Differential Equations</strong> (Neural ODEs), introduced by Chen et al. (NeurIPS 2018). They replace discrete residual blocks with a continuous dynamical system:</p>
+                <p>Standard neural networks have a fixed depth: you stack $L$ layers and that's it. <strong>Neural Ordinary Differential Equations</strong> (Chen et al., NeurIPS 2018) replace that discrete stack with a continuous dynamical system:</p>
                 <div class="math-block">
                     $$ \frac{d\mathbf{y}}{dt} = f(\mathbf{y}(t),\, t;\, \boldsymbol{\theta}), \qquad \mathbf{y}(0) = \mathbf{x}, $$
                 </div>
-                <p>where $f$ is a neural network parameterized by $\boldsymbol{\theta}$, and the "output" of the network is the state at $t=1$: $\hat{\mathbf{y}} = \mathbf{y}(1)$.</p>
-                <p>In this first part of a three-part series, we develop the mathematical foundations: initial value problems, numerical solvers, and the adjoint method for memory-efficient training.</p>
+                <p>where $f$ is a neural network parameterized by $\boldsymbol{\theta}$, and the "output" is the state at $t=1$: $\hat{\mathbf{y}} = \mathbf{y}(1)$.</p>
+                <p>This post covers the mathematical foundations: initial value problems, Euler and RK4 solvers, and the adjoint method for memory-efficient training.</p>
             </div>
 
             <h2>ODEs and Initial Value Problems</h2>
@@ -233,7 +232,7 @@ permalink: /projects/neural-odes-theory/
                 <li>$\mathbf{y}(T)$ is the output, with $T$ typically set to 1.</li>
             </ul>
 
-            <p>A critical property of ODE solutions is that <strong>trajectories cannot cross</strong>. In $\mathbb{R}^d$, two solution curves starting at different initial conditions will never intersect. This has deep implications for what Neural ODEs can and cannot represent -- and is the reason why augmenting the state dimension is essential for complex tasks.</p>
+            <p>One property worth flagging now: <strong>trajectories cannot cross</strong>. In $\mathbb{R}^d$, two solution curves starting at different initial conditions will never intersect. This constrains what Neural ODEs can represent and is why augmenting the state dimension matters for harder tasks.</p>
 
             <h2>Euler and Runge-Kutta Methods</h2>
             <p>Since we rarely have closed-form solutions, we solve the IVP numerically using <em>fixed-step</em> methods.</p>
@@ -268,7 +267,7 @@ permalink: /projects/neural-odes-theory/
                 \end{align}$$
             </div>
 
-            <p>The global error is $O(\Delta t^4)$ -- dramatically better accuracy for the same step count, at the cost of four function evaluations per step instead of one.</p>
+            <p>The global error is $O(\Delta t^4)$ -- much better accuracy for the same step count, at the cost of four function evaluations per step instead of one.</p>
 
             <h3>Trade-off</h3>
             <p>For Neural ODEs, each "function evaluation" means a forward pass through the dynamics network $f$. So:</p>
@@ -279,7 +278,7 @@ permalink: /projects/neural-odes-theory/
             <p>Whether the accuracy improvement justifies the $4\times$ compute cost depends on the problem.</p>
 
             <h2>From ResNets to Continuous Depth</h2>
-            <p>The connection between residual networks and ODEs can be made precise.</p>
+            <p>The connection between residual networks and ODEs is exact, not just an analogy.</p>
 
             <p>A standard ResNet computes:</p>
 
@@ -293,13 +292,13 @@ permalink: /projects/neural-odes-theory/
                 $$ \mathbf{h}_{l+1} - \mathbf{h}_l = \frac{1}{L}\, f\!\left(\frac{l}{L},\, \mathbf{h}_l;\, \boldsymbol{\theta}\right) \quad \xrightarrow{L \to \infty} \quad \frac{d\mathbf{h}}{dt} = f(t,\, \mathbf{h};\, \boldsymbol{\theta}). $$
             </div>
 
-            <p>This is the Neural ODE. The discrete layer index $l$ becomes continuous time $t$. Separate per-layer parameters $\boldsymbol{\theta}_l$ collapse into a single shared $\boldsymbol{\theta}$.</p>
+            <p>That's the Neural ODE. The discrete layer index $l$ becomes continuous time $t$, and separate per-layer parameters $\boldsymbol{\theta}_l$ collapse into a single shared $\boldsymbol{\theta}$.</p>
 
             <p><strong>Consequences:</strong></p>
             <ol>
-                <li><strong>Parameter efficiency:</strong> One network $f$ replaces $L$ separate blocks. In our experiments, this gives a $19.3\times$ parameter reduction.</li>
-                <li><strong>Adaptive depth:</strong> We can use fewer or more solver steps at test time without retraining.</li>
-                <li><strong>Invertibility:</strong> ODE flows are inherently invertible (just integrate backward in time), enabling normalizing flows.</li>
+                <li><strong>Parameter efficiency:</strong> One network $f$ replaces $L$ separate blocks. In our experiments (Part 3), this gives a $19.3\times$ parameter reduction.</li>
+                <li><strong>Adaptive depth:</strong> You can use fewer or more solver steps at test time without retraining.</li>
+                <li><strong>Invertibility:</strong> ODE flows are invertible (integrate backward in time), which enables normalizing flows.</li>
             </ol>
 
             <h2>The Adjoint Method</h2>
@@ -327,7 +326,7 @@ permalink: /projects/neural-odes-theory/
                 $$ \frac{\partial \mathcal{L}}{\partial \boldsymbol{\theta}} = -\int_T^0 \mathbf{a}(t)^\top \frac{\partial f}{\partial \boldsymbol{\theta}} \, dt. $$
             </div>
 
-            <p><strong>Memory cost:</strong> $O(1)$ in depth -- we only need the current state, not the full trajectory. This is the key advantage that makes Neural ODEs practical for very deep (many-step) integration.</p>
+            <p><strong>Memory cost:</strong> $O(1)$ in depth -- we only need the current state, not the full trajectory. This is what makes Neural ODEs practical when the solver takes many steps.</p>
 
             <p><strong>Compute cost:</strong> We must re-solve the forward ODE (or store checkpoints) to evaluate $\frac{\partial f}{\partial \mathbf{y}}$ at each backward step. This trades memory for computation.</p>
 

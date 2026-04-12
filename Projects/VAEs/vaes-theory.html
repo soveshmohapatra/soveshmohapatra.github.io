@@ -207,8 +207,8 @@ permalink: /projects/vaes-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>Variational Autoencoders occupy a unique position in deep learning: they sit at the intersection of neural networks and probabilistic inference. Unlike standard autoencoders, which learn a deterministic compression, VAEs learn a <em>distribution</em> over latent representations---and this seemingly small change unlocks the ability to generate entirely new data.</p>
-                <p>In Part 1 of this series, we derive the mathematical foundations that make VAEs work: latent variable models, the Evidence Lower Bound (ELBO), KL divergence, and the reparameterization trick.</p>
+                <p>Standard autoencoders learn a deterministic compression of data. VAEs learn a <em>distribution</em> over latent representations instead, which lets them generate new data by sampling from that distribution.</p>
+                <p>This post derives the math that makes VAEs work: latent variable models, the Evidence Lower Bound (ELBO), KL divergence, and the reparameterization trick.</p>
             </div>
 
             <h2>Latent Variable Models</h2>
@@ -269,7 +269,7 @@ permalink: /projects/vaes-theory/
 
             <p>Now $\mathbf{z}$ is differentiable with respect to $\boldsymbol{\mu}$ and $\boldsymbol{\sigma}$ (and hence $\phi$), while $\boldsymbol{\epsilon}$ is treated as a fixed input. The stochasticity is "externalized," and standard backpropagation applies.</p>
 
-            <p>This single trick is what made VAEs practical. Without it, training would require high-variance score function estimators (REINFORCE), which converge far too slowly for deep networks.</p>
+            <p>This trick is what made VAEs practical. Without it, training would require high-variance score function estimators (REINFORCE), which converge too slowly for deep networks.</p>
 
             <h2>Putting It Together</h2>
             <p>The full VAE training procedure:</p>
@@ -282,7 +282,7 @@ permalink: /projects/vaes-theory/
             </ol>
 
             <h2>Conclusion</h2>
-            <p>The mathematical machinery behind VAEs---variational inference, the ELBO, and the reparameterization trick---transforms an intractable generative modeling problem into a tractable optimization problem. In <strong>Part 2</strong>, we translate every equation into working PyTorch code.</p>
+            <p>Variational inference, the ELBO, and the reparameterization trick together turn an intractable integration problem into a standard optimization problem. Part 2 translates each of these equations into PyTorch.</p>
 
         </article>
     </main>

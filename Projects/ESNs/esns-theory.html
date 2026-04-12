@@ -205,41 +205,37 @@ permalink: /projects/esns-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>If you have ever trained an LSTM or standard Recurrent Neural Network (RNN) on a long time series, you know the pain of <strong>Backpropagation Through Time (BPTT)</strong>. Gradients vanish exponentially, training takes forever, and the network struggles to capture truly long-term dependencies.</p>
-                <p>But what if you didn't have to backpropagate through time at all? What if you could train an RNN in literally milliseconds using just a single line of closed-form linear algebra?</p>
-                <p>Welcome to the paradigm of <strong>Reservoir Computing</strong>, and its most famous realization: the <strong>Echo State Network (ESN)</strong>. In this new 3-part "Build in Public" series, we will deconstruct ESNs from scratch in pure PyTorch, culminating in a chaotic time series forecasting benchmark that destroys LSTMs in training speed.</p>
+                <p>If you have trained an LSTM or standard RNN on a long time series, you know the problem with <strong>Backpropagation Through Time (BPTT)</strong>: gradients vanish exponentially, training is slow, and long-term dependencies are hard to learn.</p>
+                <p>What if you could skip backpropagation entirely and train an RNN in milliseconds with a single closed-form solve? That is the idea behind <strong>Reservoir Computing</strong>, and its best-known instantiation: the <strong>Echo State Network (ESN)</strong>. This series builds one from scratch in PyTorch and benchmarks it against an LSTM on chaotic time series forecasting.</p>
             </div>
 
             <h2>The Trappings of BPTT</h2>
-            <p>In a standard RNN, every weight matrix—input weights $W_{in}$, hidden weights $W_{rec}$, and output weights $W_{out}$—is learned via gradient descent. To find the gradient at time $t=0$, the loss from $t=1000$ must be multiplied by $W_{rec}$ one thousand times. If the eigenvalues of $W_{rec}$ are slightly less than 1, the gradient vanishes to zero. If they are slightly greater than 1, the gradient explodes to infinity.</p>
+            <p>In a standard RNN, every weight matrix--input weights $W_{in}$, hidden weights $W_{rec}$, and output weights $W_{out}$--is learned via gradient descent. Computing the gradient at time $t=0$ requires multiplying through $W_{rec}$ at every intervening step. Over 1,000 timesteps, eigenvalues of $W_{rec}$ slightly below 1 drive the gradient to zero; slightly above 1, and it explodes.</p>
 
             <h2>Enter the Reservoir</h2>
-            <p>Echo State Networks take a radically different approach. Instead of training $W_{in}$ and $W_{rec}$, we simply randomly generate them, make them extremely large (e.g., thousands of neurons) and sparse, and <strong>freeze them completely</strong>. This giant, frozen, random RNN is called the <strong>Reservoir</strong>.</p>
-            <p>We feed our input sequence into this reservoir, and simply record the activation states of the network over time. Because the network is huge and randomly connected, it acts as a massive, non-linear temporal expansion of the input signal.</p>
+            <p>ESNs sidestep this entirely. Instead of training $W_{in}$ and $W_{rec}$, we randomly initialize them--typically large (hundreds to thousands of neurons) and sparse--and <strong>freeze them</strong>. This frozen random RNN is the <strong>Reservoir</strong>.</p>
+            <p>We feed the input sequence through the reservoir and record its activation states over time. The large, random connectivity produces a high-dimensional, non-linear temporal expansion of the input signal.</p>
 
             <h2>The Echo State Property & Spectral Radius</h2>
-            <p>The magic of an ESN relies entirely on the <strong>Echo State Property (ESP)</strong>. The ESP guarantees that the effect of a previous input state gradually decays over time—meaning the network won't blow up or oscillate infinitely.</p>
-            <p>To ensure the ESP, we only need to enforce a single mathematical rule when creating our random reservoir matrix $W_{rec}$: its <strong>Spectral Radius</strong> (the maximum absolute value of its eigenvalues, denoted $\rho$) must be strictly less than 1.</p>
+            <p>The whole approach depends on the <strong>Echo State Property (ESP)</strong>: the requirement that the influence of past inputs decays over time, so the reservoir neither blows up nor rings indefinitely.</p>
+            <p>Enforcing the ESP comes down to one constraint on the reservoir matrix $W_{rec}$: its <strong>Spectral Radius</strong> (the largest absolute eigenvalue, $\rho$) must be strictly less than 1.</p>
 
             <div class="math-block">
                 $$ \rho(W_{rec}) < 1 $$
             </div>
 
-            <p>By scaling our random matrix so that $\rho = 0.9$, we mathematically guarantee that the reservoir behaves as a stable, fading-memory system.</p>
+            <p>Scaling the random matrix to $\rho = 0.9$ guarantees a stable, fading-memory system.</p>
 
             <h2>Closed-Form Readout</h2>
-            <p>If we don't use backpropagation, how do we train the network?</p>
-            <p>We only train the very last layer: $W_{out}$. Because the reservoir states ($X$) are fixed and harvested in a single forward pass, predicting the target sequence ($Y$) reduces to a simple linear regression problem: $Y \approx W_{out} X$.</p>
-            <p>Instead of gradient descent, we use <strong>Ridge Regression (Tikhonov Regularization)</strong> to solve for $W_{out}$ exactly, in one shot, using the closed-form normal equations:</p>
+            <p>If we don't backpropagate, how does training work?</p>
+            <p>Only the final layer $W_{out}$ is learned. The reservoir states ($X$) are fixed after a single forward pass, so predicting the target ($Y$) reduces to linear regression: $Y \approx W_{out} X$.</p>
+            <p>We solve for $W_{out}$ in one shot using <strong>Ridge Regression (Tikhonov Regularization)</strong>:</p>
 
             <div class="math-block">
                 $$ W_{out} = Y X^T (X X^T + \lambda \mathbf{I})^{-1} $$
             </div>
 
-            <h2>Next Steps: From Math to Code</h2>
-            <p>We have just established a framework that hallucinates a massive recurrent structure, mathematically guarantees its stability via the spectral radius, and trains its readout linearly.</p>
-            <p>In <strong>Part 2</strong>, we will implement this entire architecture in pure PyTorch—including the exact algorithm to randomly initialize the reservoir and scale its eigenvalues.</p>
-            <p><em>Stay tuned for the code drop as we build a Reservoir Computer from scratch!</em></p>
+            <p>No epochs, no learning rate schedule--just a matrix solve.</p>
 
         </article>
     </main>

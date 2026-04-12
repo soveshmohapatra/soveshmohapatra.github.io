@@ -230,28 +230,22 @@ permalink: /projects/lnns-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>We’ve explored the continuous mathematics (Part 1) and written a custom Liquid Time-Constant (LTC)
-                    layer in pure PyTorch (Part 2). Now it is time to prove why Liquid Neural Networks matter.</p>
-                <p>The defining feature of an LNN is out-of-distribution robustness and extreme parameter efficiency. In
-                    this finale, we will benchmark our custom Liquid layer against a standard PyTorch LSTM on a chaotic,
-                    noisy time-series prediction task.</p>
+                <p>Parts 1 and 2 covered the math and a working PyTorch implementation. Here we put our 105-parameter
+                    Liquid layer up against a 1,233-parameter LSTM on a noisy time-series prediction task to see where
+                    the parameter efficiency claim actually holds.</p>
             </div>
 
             <h2>The Benchmark Task</h2>
-            <p>We generated a chaotic, noisy time-series trajectory using a summation of various sine distributions
-                offset with standard Gaussian noise. We then trained both models to predict the next time-step given the
-                noisy current time-step.</p>
+            <p>We generated a 300-step chaotic trajectory from a sum of sine waves plus Gaussian noise. Both models
+                were trained to predict the next time-step from the current noisy input.</p>
 
             <h2>Model Architectures</h2>
-            <p>We pitted a standard PyTorch <code>nn.LSTM</code> against our custom <code>LiquidLayer</code>. To
-                demonstrate extreme parameter efficiency, we severely constrained our LNN, allowing it only 105
-                learnable parameters. The standard LSTM, even with a small hidden dimension, required 1,233
-                parameters—over 10$\times$ the size of our LNN.</p>
+            <p>The LSTM uses a standard PyTorch <code>nn.LSTM</code> with a small hidden dimension, totaling 1,233
+                parameters. Our <code>LiquidLayer</code> has 105 parameters--roughly 12x smaller.</p>
 
-            <h2>Results: Efficiency vs Generalization</h2>
-            <p>To ensure we aren't just measuring memorization, we split the 300-step generated trajectory into a
-                training set (first 200 steps) and a completely unseen test set (final 100 steps). Over 1000 epochs of
-                training on the sequence dataset:</p>
+            <h2>Results</h2>
+            <p>We split the trajectory into 200 training steps and 100 held-out test steps, then trained for 1000
+                epochs.</p>
 
             <ul>
                 <li><strong>LSTM (1,233 params):</strong>
@@ -259,8 +253,7 @@ permalink: /projects/lnns-benchmark/
                         <li>Train MSE: 0.0007</li>
                         <li>Test MSE: 0.0047</li>
                     </ul>
-                    <em>The LSTM shows classic signs of overfitting on the training data, with a test loss nearly 7
-                        times higher than its train loss.</em>
+                    Test loss is ~7x the train loss. The LSTM memorized the training data.
                 </li>
 
                 <li><strong>Liquid Network (105 params):</strong>
@@ -268,47 +261,33 @@ permalink: /projects/lnns-benchmark/
                         <li>Train MSE: 0.0179</li>
                         <li>Test MSE: 0.0204</li>
                     </ul>
-                    <em>The LNN demonstrates spectacular generalization. Despite having less than 10% of the parameters,
-                        its test performance is nearly identical to its training performance.</em>
+                    The train/test gap is ~14%. With less than 10% of the parameters, the LNN generalizes to unseen
+                    data almost as well as it fits the training set.
                 </li>
             </ul>
 
-            <p>While the massive LSTM precisely memorized the training trajectory at the cost of generalization, our
-                Liquid layer successfully modeled the underlying continuous dynamics themselves. In a real-world edge
-                deployment scenario where robustness to unseen data and memory limits are strictly constrained, the LNN
-                provides a profound mathematical alternative to fixed recurrent weights.</p>
+            <p>The LSTM fits the training trajectory tightly but pays for it on held-out data. The Liquid layer
+                trades some raw training accuracy for a model that actually captures the underlying dynamics. On
+                edge devices where memory is limited and robustness to distribution shift matters, that trade-off
+                is worth it.</p>
 
             <h2>Visualizing the "Liquid" Behavior</h2>
-            <p>If we plot the underlying time-constant $\tau_{sys}$ alongside the input sequence during inference, we
-                can see exactly why the model is "liquid." During relatively smooth portions of the time series,
-                $\tau_{sys}$ remains high, allowing the network state to integrate information slowly and stably. </p>
-
-            <p>However, right when a significant, discontinuous jump or chaotic noise spike occurs in the dataset,
-                $\tau_{sys}$ plummets toward zero. The network rapidly drops its old memory, shifting its internal
-                dynamics to immediately respond to the sudden change. The differential equations governing the network
-                actively restructure themselves based on the input!</p>
-
-            <p>We have included a plot of our generated benchmark in the repository that visually compares the learning
-                trajectory. </p>
+            <p>Plotting $\tau_{sys}$ alongside the input during inference shows the mechanism directly. On smooth
+                regions, $\tau_{sys}$ stays high--the network integrates slowly and retains state. At a
+                discontinuity or noise spike, $\tau_{sys}$ drops toward zero, flushing old memory so the network
+                can respond to the new regime immediately.</p>
 
             <div class="figure-container">
                 <img src="/assets/projects/lnns/lnn_vs_lstm_benchmark.png"
-                    alt="Training loss comparison over 1000 epochs. Our 105-parameter Liquid layer learns the core sequence dynamics comparably to a 1,233-parameter LSTM.">
-                <p class="figure-caption">Training loss comparison over 1000 epochs. Our 105-parameter Liquid layer
-                    learns the core sequence dynamics comparably to a 1,233-parameter LSTM.</p>
+                    alt="Loss curves for the 105-parameter LNN vs. the 1,233-parameter LSTM over 1000 epochs.">
+                <p class="figure-caption">Loss curves over 1000 epochs: 105-parameter LNN vs. 1,233-parameter LSTM.</p>
             </div>
 
             <h2>Conclusion</h2>
-            <p>The era of massive, heavily-parameterized, static-weight recursive matrices may be facing tough
-                competition in edge-deployment environments.</p>
-
-            <p>Liquid Neural Networks and Liquid Time-Constant (LTC) models prove that if we rethink the mathematical
-                structure of a neuron—shifting from discrete static weight transitions to continuous, state-dependent
-                differential equations—we can extract more intelligence, adaptability, and robustness out of
-                significantly fewer parameters.</p>
-
-            <p>By building the LTC step from scratch in PyTorch in Part 2, and benchmarking it here in Part 3, we have
-                seen firsthand how continuous mathematics can run elegantly on discrete hardware.</p>
+            <p>LTC networks replace static weight matrices with continuous, state-dependent differential equations.
+                The result is a model that generalizes better with far fewer parameters. For edge deployment where
+                memory and robustness are hard constraints, that is not a theoretical nicety--it is a practical
+                advantage.</p>
 
         </article>
     </main>

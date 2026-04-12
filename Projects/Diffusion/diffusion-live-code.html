@@ -220,11 +220,9 @@ permalink: /projects/diffusion-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we established the mathematical objective of a Denoising Diffusion Probabilistic Model
-                    (DDPM): forward-corrupt an image with a specific noise profile $\beta_t$, and train a neural network
-                    to predict the exact noise vector $\epsilon$ that was added at timestep $t$.</p>
-                <p>Today, we take that math and translate it into a pure PyTorch implementation. We will build an
-                    unconditional DDPM that learns to generate handwritten MNIST digits from scratch.</p>
+                <p>Part 1 established the DDPM objective: corrupt an image with noise schedule $\beta_t$, train a
+                    network to predict the noise $\epsilon$ added at timestep $t$. Here we translate that into
+                    PyTorch -- an unconditional DDPM that generates MNIST digits from scratch.</p>
                 <p style="margin-top: 1rem; font-weight: 500; color: var(--accent-light);">
                     <i class="fab fa-github"></i>
                     <a href="https://github.com/soveshmohapatra/Diffusion-Models-From-Scratch" target="_blank"
@@ -233,27 +231,26 @@ permalink: /projects/diffusion-live-code/
             </div>
 
             <h2>The Noise Schedule</h2>
-            <p>First, we need a scheduler to precompute the coefficients for the forward and reverse processes over
-                $T=1000$ timesteps.</p>
+            <p>We precompute the forward/reverse coefficients for $T=1000$ timesteps. Linear schedule from
+                $\beta = 10^{-4}$ to $\beta = 0.02$.</p>
 
             <pre><code class="language-python">class LinearNoiseSchedule:
     def __init__(self, num_timesteps=1000, beta_start=1e-4, beta_end=2e-2):
         self.betas = torch.linspace(beta_start, beta_end, num_timesteps)
         self.alphas = 1.0 - self.betas
         self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
-        
+
         # We need these components for the forward process (q_sample)
         self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
         self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - self.alphas_cumprod)</code></pre>
 
             <h2>The Network: A Time-Conditioned UNet</h2>
-            <p>A standard UNet maps an input image to an output image. Our UNet must map a noisy image $x_t$ <strong>and
-                    the current timestep $t$</strong> to a predicted noise tensor $\epsilon_\theta$. The network needs
-                to know $t$ because the noise scale varies drastically between $t=1$ and $t=1000$.</p>
+            <p>A standard UNet maps image to image. Ours takes a noisy image $x_t$ <strong>and the timestep
+                    $t$</strong>, and outputs predicted noise $\epsilon_\theta$. The network needs $t$ because the
+                noise scale changes drastically between $t=1$ and $t=1000$.</p>
 
-            <p>We inject $t$ into the network using a <strong>Sinusoidal Position Embedding</strong>—the exact same
-                mechanism used in Transformers. We map the scalar $t$ into a high-dimensional continuous representation,
-                run it through an MLP, and add it to the feature maps at the bottleneck of the UNet.</p>
+            <p>We encode $t$ with a <strong>Sinusoidal Position Embedding</strong> (same idea as in Transformers),
+                project it through an MLP, and add it to the bottleneck feature maps.</p>
 
             <pre><code class="language-python">class SimpleUNet(nn.Module):
     def __init__(self):
@@ -264,22 +261,22 @@ permalink: /projects/diffusion-live-code/
             nn.GELU()
         )
         # Standard Down/Up Conv blocks...
-        
+
     def forward(self, x, time):
         # Compute time embedding
         t_emb = self.time_mlp(time)[:, :, None, None]
-        
+
         # Standard encoder passes ...
         x = self.bottleneck(x)
-        
+
         # Inject time conditioning
         x = x + t_emb
-        
+
         # Standard decoder passes with skip connections ...
         return self.output(x)</code></pre>
 
             <h2>The Training Loop</h2>
-            <p>The training algorithm (Ho et al., Algorithm 1) is stunningly simple to implement in PyTorch:</p>
+            <p>Ho et al. Algorithm 1, in PyTorch:</p>
 
             <pre><code class="language-python"># For each batch of clean images x_0:
 optimizer.zero_grad()
@@ -303,20 +300,13 @@ loss = F.mse_loss(predicted_noise, noise)
 loss.backward()
 optimizer.step()</code></pre>
 
-            <p>That is the entire forward training process. The network learns to pull out structure from noise at every
-                possible noise level.</p>
+            <p>That is the whole thing. The network learns to separate structure from noise across all 1,000
+                corruption levels.</p>
 
             <h2>The Sampling Loop (Reverse Process)</h2>
-            <p>Once trained, we generate new data by starting from pure Gaussian noise $\mathcal{N}(0, \mathbf{I})$ and
-                running the reverse process parameterized by our UNet. At each step from $T$ down to 0, we subtract a
-                scaled fraction of the network's predicted noise, and add back a small amount of Langevin noise to
-                prevent collapse.</p>
-
-            <h2>Next Steps: Visualizing the Generation</h2>
-            <p>We now have a complete mathematical theory and a pure PyTorch implementation. In <strong>Part 3</strong>,
-                we will run this network on the MNIST dataset and visualize the results. We will see the exact grid of
-                pure static slowly resolving into clear, recognizable digits as the model steps backward through time.
-            </p>
+            <p>Generation starts from pure Gaussian noise $\mathcal{N}(0, \mathbf{I})$. At each step from $T$ down
+                to 0, we subtract a scaled fraction of the predicted noise and add a small amount of Langevin noise
+                to prevent mode collapse. Part 3 shows what comes out.</p>
 
         </article>
     </main>

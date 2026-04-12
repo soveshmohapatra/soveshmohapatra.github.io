@@ -207,12 +207,11 @@ permalink: /projects/autoencoders-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we derived the mathematics of compression---the information bottleneck, MSE reconstruction loss, and the manifold hypothesis. In Part 2, we built four autoencoder variants from scratch in pure PyTorch: Vanilla, Denoising, Sparse, and Convolutional.</p>
-                <p>Today, we put all four to the test. We train on a 5,000-image MNIST subset, measure reconstruction quality, visualize the 2D latent space, and demonstrate denoising. The goal is not state-of-the-art performance but understanding: what does the bottleneck actually learn?</p>
+                <p>Part 1 covered the math; Part 2 built four autoencoder variants in PyTorch. Now we train all four on a 5,000-image MNIST subset, measure reconstruction loss, visualize the 2D latent space, and test denoising. The point is not SOTA numbers---it is understanding what the bottleneck actually learns.</p>
             </div>
 
             <h2>Experimental Setup</h2>
-            <p>To make the experiment reproducible on any standard CPU in under 2 minutes, we configured:</p>
+            <p>Everything runs on a standard CPU in under 2 minutes:</p>
             <ul>
                 <li><strong>Dataset</strong>: 5,000 randomly sampled MNIST training images</li>
                 <li><strong>Epochs</strong>: 30</li>
@@ -261,62 +260,58 @@ permalink: /projects/autoencoders-benchmark/
                 </tbody>
             </table>
 
-            <h3>Analysis of the Loss Numbers</h3>
-            <p>Several patterns emerge from the results:</p>
+            <h3>Analysis</h3>
             <ol>
-                <li><strong>Bottleneck width matters</strong>: Vanilla $d=2$ (0.0401) vs. vanilla $d=32$ (0.0125) --- a 16$\times$ wider bottleneck reduces reconstruction error by 3.2$\times$. This confirms that MNIST digits have more than 2 intrinsic dimensions of variation, but 32 dimensions capture most of the structure.</li>
-                <li><strong>Denoising costs extra</strong>: The denoising autoencoder (0.0191) has higher loss than vanilla (0.0125) because it trains on corrupted inputs. The network must simultaneously denoise <em>and</em> reconstruct, which is a harder task. However, this extra difficulty produces more robust representations.</li>
-                <li><strong>Sparsity is nearly free</strong>: Sparse (0.0130) vs. vanilla (0.0125) --- the L1 penalty ($\lambda = 10^{-3}$) barely increases reconstruction error while enforcing a structured, sparse latent code.</li>
-                <li><strong>Convolutions win</strong>: The convolutional autoencoder (0.0083) achieves the lowest loss by a significant margin---34% lower than vanilla $d=32$. Preserving spatial structure via Conv2d/ConvTranspose2d gives the network a massive advantage on image data.</li>
+                <li><strong>Bottleneck width matters</strong>: Vanilla $d=2$ (0.0401) vs. $d=32$ (0.0125)---a 16$\times$ wider bottleneck cuts reconstruction error by 3.2$\times$. MNIST digits clearly have more than 2 intrinsic dimensions, but 32 captures most of the structure.</li>
+                <li><strong>Denoising costs extra</strong>: 0.0191 vs. vanilla's 0.0125. Training on corrupted inputs is a harder task, but it produces more robust representations.</li>
+                <li><strong>Sparsity is nearly free</strong>: 0.0130 vs. 0.0125---the L1 penalty ($\lambda = 10^{-3}$) barely hurts reconstruction while enforcing a structured latent code.</li>
+                <li><strong>Convolutions win</strong>: 0.0083, 34% lower than vanilla $d=32$. Preserving spatial structure via Conv2d/ConvTranspose2d is a large advantage on image data.</li>
             </ol>
 
             <h2>2D Latent Space Visualization</h2>
-            <p>The most revealing visualization is the 2D latent space of the vanilla autoencoder trained with $d=2$. By encoding all 10,000 MNIST test images and plotting them as a scatter plot colored by digit class, we can directly observe the structure the bottleneck has learned.</p>
+            <p>We encode all 10,000 MNIST test images with the vanilla $d=2$ autoencoder and plot them as a scatter, colored by digit class.</p>
 
-            <h3>What the Scatter Plot Reveals</h3>
+            <h3>What the Scatter Plot Shows</h3>
             <ul>
-                <li><strong>Unsupervised clustering</strong>: The network was never given digit labels, yet it organizes the 10 classes into clearly separated regions. The bottleneck pressure alone forces semantically similar inputs to cluster together.</li>
-                <li><strong>Similarity structure</strong>: Visually similar digits are placed near each other in latent space. The digits 4 and 9 (which share a vertical stroke and a loop/angle at the top) cluster near each other, as do 3 and 5 (similar upper curves). The digit 1 (a simple vertical stroke) occupies its own distinct region.</li>
-                <li><strong>Continuity</strong>: Traversing a straight line between two digit clusters in latent space produces smooth interpolations---the decoder generates images that gradually morph from one digit to another. This confirms that the latent space is smooth, not fragmented.</li>
-                <li><strong>Manifold structure</strong>: The fact that 10,000 images organize into a structured 2D landscape confirms the manifold hypothesis: the "true" dimensionality of handwritten digits is far lower than 784.</li>
+                <li><strong>Unsupervised clustering</strong>: The network never saw digit labels, yet it separates the 10 classes into distinct regions. Compression pressure alone forces semantic grouping.</li>
+                <li><strong>Similarity structure</strong>: Visually similar digits land near each other---4 and 9 (shared vertical stroke, loop/angle at top), 3 and 5 (similar upper curves). The digit 1, a simple vertical stroke, sits in its own region.</li>
+                <li><strong>Continuity</strong>: Walking a straight line between two clusters in latent space produces smooth interpolations. The decoder generates images that gradually morph from one digit to another.</li>
+                <li><strong>Manifold confirmation</strong>: 10,000 images organizing into a structured 2D landscape directly supports the manifold hypothesis---the intrinsic dimensionality of handwritten digits is far below 784.</li>
             </ul>
 
             <h2>Denoising Quality</h2>
-            <p>The denoising autoencoder demonstrates a striking capability: given heavily corrupted inputs (Gaussian noise, $\sigma = 0.3$), it recovers clean, recognizable digits.</p>
+            <p>Given heavily corrupted inputs (Gaussian noise, $\sigma = 0.3$), the denoising autoencoder recovers clean, recognizable digits.</p>
 
             <h3>Why Denoising Works</h3>
-            <p>The bottleneck acts as a noise filter. Noise is high-frequency, random, and uncorrelated---it cannot be efficiently encoded in a 32-dimensional latent space. The true signal (digit structure) is low-frequency, patterned, and compressible. By forcing the noisy input through the bottleneck, only the compressible signal survives.</p>
+            <p>The bottleneck acts as a noise filter. Noise is high-frequency, random, and uncorrelated---it cannot be efficiently packed into 32 dimensions. Digit structure is low-frequency, patterned, and compressible. Forcing noisy inputs through the bottleneck strips out whatever is not compressible.</p>
 
-            <p>This is precisely the mechanism described by Vincent et al. (2008): the denoising autoencoder learns to project corrupted inputs back onto the data manifold. The reconstruction is not a denoised version of the specific noisy input---it is the nearest point on the learned manifold.</p>
+            <p>Vincent et al. (2008) formalized this: the denoising autoencoder learns to project corrupted inputs back onto the data manifold. The output is not a denoised version of the specific noisy input---it is the nearest point on the learned manifold.</p>
 
             <h2>Reconstruction Comparison</h2>
             <p>Comparing reconstructions across all four variants reveals the qualitative differences in what each architecture captures.</p>
 
             <h3>Observations</h3>
             <ul>
-                <li><strong>Vanilla</strong>: Produces slightly blurred reconstructions. Fine details (thin strokes, sharp corners) are softened. This is characteristic of MSE-trained autoencoders, which average over uncertainty in pixel values.</li>
-                <li><strong>Denoising</strong>: Similar quality to vanilla despite training on corrupted inputs. The regularization from noise does not significantly hurt reconstruction quality at $d=32$, while making the representation more robust.</li>
-                <li><strong>Sparse</strong>: Nearly identical to vanilla. The L1 penalty ($\lambda = 10^{-3}$) is mild enough that reconstruction quality is preserved. The difference is in the latent code: sparse activations rather than dense ones.</li>
-                <li><strong>Convolutional</strong>: The sharpest reconstructions by far. Thin strokes remain thin, curves remain smooth, and fine details are better preserved. The Conv2d/ConvTranspose2d architecture encodes spatial relationships directly, avoiding the information loss from flattening.</li>
+                <li><strong>Vanilla</strong>: Slightly blurred. Thin strokes and sharp corners get softened---typical of MSE-trained autoencoders, which average over pixel uncertainty.</li>
+                <li><strong>Denoising</strong>: Similar quality to vanilla despite training on corrupted inputs. At $d=32$, the noise regularization does not visibly hurt reconstruction.</li>
+                <li><strong>Sparse</strong>: Nearly identical to vanilla. The L1 penalty at $\lambda = 10^{-3}$ is mild enough to preserve quality; the difference is in the latent code (sparse activations vs. dense).</li>
+                <li><strong>Convolutional</strong>: Sharpest reconstructions. Thin strokes stay thin, curves stay smooth. Conv2d/ConvTranspose2d encodes spatial relationships directly, avoiding the information loss of flattening.</li>
             </ul>
 
-            <h2>Connections to Modern Architectures</h2>
-            <p>Autoencoders may be decades old, but their core ideas permeate modern deep learning:</p>
+            <h2>Where These Ideas Show Up Now</h2>
             <ol>
-                <li><strong>Variational Autoencoders (VAEs)</strong>: Replace the deterministic bottleneck with a probabilistic one---the encoder outputs a mean and variance, and the latent code is sampled from a Gaussian. This enables generation of new samples by sampling from the latent space.</li>
-                <li><strong>Diffusion Models</strong>: The denoising autoencoder's principle---learn to reverse corruption---is the foundation of denoising diffusion probabilistic models (DDPMs). Modern diffusion models like Stable Diffusion apply this iteratively across multiple noise levels.</li>
-                <li><strong>Sparse Autoencoders in Mechanistic Interpretability</strong>: Recent work by Anthropic and others uses sparse autoencoders to decompose the internal representations of large language models into interpretable features. The same L1-penalized bottleneck we implemented is being used to understand what Transformer neurons encode.</li>
-                <li><strong>Latent Diffusion</strong>: Stable Diffusion uses a convolutional autoencoder (specifically, a VQ-VAE) to compress images into a latent space, then runs the diffusion process in that compressed space. The autoencoder's job is exactly what we studied: compress images into a compact, meaningful representation.</li>
+                <li><strong>Variational Autoencoders (VAEs)</strong>: Replace the deterministic bottleneck with a probabilistic one---the encoder outputs mean and variance, the latent code is sampled from a Gaussian. This enables generating new samples by sampling the latent space.</li>
+                <li><strong>Diffusion Models</strong>: The denoising principle---learn to reverse corruption---is the foundation of DDPMs. Stable Diffusion applies it iteratively across multiple noise levels.</li>
+                <li><strong>Sparse Autoencoders for Interpretability</strong>: Anthropic and others use sparse autoencoders to decompose LLM internal representations into interpretable features. Same L1-penalized bottleneck, applied to understanding what Transformer neurons encode.</li>
+                <li><strong>Latent Diffusion</strong>: Stable Diffusion compresses images into a latent space via a convolutional autoencoder (VQ-VAE), then runs diffusion in that compressed space. The autoencoder's job is exactly what we studied here.</li>
             </ol>
 
             <h2>Conclusion</h2>
-            <p>We derived the math, built the code, and validated the results. Four autoencoder variants, trained from scratch on 5,000 MNIST images, demonstrate the fundamental principle: forcing data through a bottleneck reveals its structure.</p>
+            <p>Four autoencoder variants, trained from scratch on 5,000 MNIST images, confirm the core principle: forcing data through a bottleneck reveals its structure.</p>
 
-            <p>The convolutional autoencoder achieved the best reconstruction (MSE = 0.0083) by preserving spatial structure. The 2D latent space scatter showed unsupervised digit clustering. The denoising autoencoder successfully stripped heavy Gaussian noise from corrupted inputs. And the sparse autoencoder maintained reconstruction quality while enforcing a structured latent code.</p>
+            <p>The convolutional variant hit the lowest reconstruction loss (0.0083) by preserving spatial structure. The 2D latent space showed unsupervised digit clustering. The denoising variant stripped heavy Gaussian noise from corrupted inputs. The sparse variant maintained reconstruction quality (0.0130) while enforcing structured activations.</p>
 
-            <p>These are not just historical curiosities. The information bottleneck, the manifold hypothesis, and the reconstruction objective are alive in every modern generative model. Understanding autoencoders from first principles is understanding the foundation of representation learning.</p>
-
-            <p><em>Thank you for following this 3-part "Build in Public" series on Autoencoders. The full code, training logs, and visualizations are live on the GitHub repo. Run the 2-minute training script yourself to watch the bottleneck organize digits in real time!</em></p>
+            <p>The information bottleneck, the manifold hypothesis, and the reconstruction objective are not historical curiosities---they are the foundation of every modern generative model. Full code and training logs are on GitHub.</p>
 
         </article>
     </main>

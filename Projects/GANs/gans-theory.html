@@ -207,68 +207,66 @@ permalink: /projects/gans-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In 2014, Ian Goodfellow introduced a radical idea: instead of training a single network to generate data, train <em>two</em> networks that compete against each other. A Generator that tries to produce fake data, and a Discriminator that tries to distinguish real from fake. This adversarial game, formalized as a minimax optimization, launched the field of Generative Adversarial Networks (GANs) and fundamentally reshaped generative modeling.</p>
-                <p>In Part 1 of this mini-series, we will deconstruct the mathematical core of GANs: the minimax objective, Jensen-Shannon divergence, the proof of the optimal discriminator, and why training GANs is equivalent to searching for a Nash equilibrium.</p>
+                <p>Goodfellow et al. (2014) proposed training two networks against each other: a Generator that produces fake data, and a Discriminator that tries to tell real from fake. The resulting minimax optimization --- Generative Adversarial Networks --- became one of the most influential frameworks in generative modeling.</p>
+                <p>This post covers the mathematical core: the minimax objective, Jensen-Shannon divergence, the closed-form optimal discriminator, and the Nash equilibrium interpretation.</p>
             </div>
 
             <h2>The Minimax Game</h2>
-            <p>The GAN framework consists of two players:</p>
+            <p>The GAN framework has two players:</p>
             <ul>
-                <li><strong>Generator $G$</strong>: Takes a random noise vector $z \sim p_z(z)$ and maps it to the data space. Its goal is to produce samples that are indistinguishable from real data.</li>
-                <li><strong>Discriminator $D$</strong>: Takes a data sample $x$ and outputs a probability $D(x) \in [0, 1]$ that $x$ came from the real data distribution rather than from $G$.</li>
+                <li><strong>Generator $G$</strong>: Maps a noise vector $z \sim p_z(z)$ into the data space. It tries to produce samples the Discriminator cannot distinguish from real data.</li>
+                <li><strong>Discriminator $D$</strong>: Takes a sample $x$ and outputs $D(x) \in [0, 1]$, the probability that $x$ is real rather than generated.</li>
             </ul>
 
-            <p>The two networks play a minimax game with the value function:</p>
+            <p>They optimize a shared value function:</p>
 
             <div class="math-block">
                 $$ \min_G \max_D \; V(D, G) = \mathbb{E}_{x \sim p_{\text{data}}(x)}[\log D(x)] + \mathbb{E}_{z \sim p_z(z)}[\log(1 - D(G(z)))] $$
             </div>
 
-            <p>The Discriminator wants to <em>maximize</em> this objective: assign high probability to real data ($D(x) \to 1$) and low probability to fake data ($D(G(z)) \to 0$). The Generator wants to <em>minimize</em> it: make $D(G(z)) \to 1$ so that $\log(1 - D(G(z))) \to -\infty$.</p>
+            <p>$D$ maximizes this: push $D(x) \to 1$ for real data and $D(G(z)) \to 0$ for fakes. $G$ minimizes it: push $D(G(z)) \to 1$ so that $\log(1 - D(G(z))) \to -\infty$.</p>
 
             <h2>Jensen-Shannon Divergence</h2>
-            <p>Why does this particular objective work? It turns out that the minimax game implicitly minimizes the <em>Jensen-Shannon divergence</em> between the real data distribution $p_{\text{data}}$ and the generated distribution $p_g$.</p>
-
-            <p>The JSD is defined as:</p>
+            <p>The minimax game implicitly minimizes the <em>Jensen-Shannon divergence</em> between the real distribution $p_{\text{data}}$ and the generated distribution $p_g$:</p>
 
             <div class="math-block">
                 $$ \text{JSD}(p_{\text{data}} \| p_g) = \frac{1}{2} D_{\text{KL}}\left(p_{\text{data}} \;\middle\|\; \frac{p_{\text{data}} + p_g}{2}\right) + \frac{1}{2} D_{\text{KL}}\left(p_g \;\middle\|\; \frac{p_{\text{data}} + p_g}{2}\right) $$
             </div>
 
-            <p>Unlike the KL divergence, JSD is symmetric and bounded: $0 \leq \text{JSD} \leq \log 2$. When $p_g = p_{\text{data}}$, $\text{JSD} = 0$, and the Generator has perfectly learned the data distribution.</p>
+            <p>JSD has two useful properties that KL divergence lacks: it is symmetric, and it is bounded ($0 \leq \text{JSD} \leq \log 2$). $\text{JSD} = 0$ iff $p_g = p_{\text{data}}$.</p>
 
             <h2>The Optimal Discriminator</h2>
-            <p>For a fixed Generator $G$, the optimal Discriminator $D^*$ can be derived analytically. Taking the functional derivative of $V(D, G)$ with respect to $D(x)$ and setting it to zero:</p>
+            <p>For a fixed $G$, the optimal $D^*$ has a closed form. Take the functional derivative of $V(D, G)$ with respect to $D(x)$ and set it to zero:</p>
 
             <div class="math-block">
                 $$ D^*(x) = \frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_g(x)} $$
             </div>
 
-            <p>This is an elegant result. At optimality, the Discriminator outputs the <em>density ratio</em> between the real and generated distributions. When $p_g = p_{\text{data}}$, we get $D^*(x) = \frac{1}{2}$ everywhere --- the Discriminator is reduced to random guessing.</p>
+            <p>So the optimal discriminator outputs the density ratio between the two distributions. When $p_g = p_{\text{data}}$, $D^*(x) = \frac{1}{2}$ everywhere --- the discriminator is reduced to a coin flip.</p>
 
-            <p>Substituting $D^*$ back into the value function yields:</p>
+            <p>Substituting $D^*$ back into the value function:</p>
 
             <div class="math-block">
                 $$ V(D^*, G) = -\log 4 + 2 \cdot \text{JSD}(p_{\text{data}} \| p_g) $$
             </div>
 
-            <p>This proves that training the Generator against the optimal Discriminator is equivalent to minimizing the JSD between $p_{\text{data}}$ and $p_g$.</p>
+            <p>This confirms that training $G$ against the optimal $D$ is equivalent to minimizing the JSD between $p_{\text{data}}$ and $p_g$.</p>
 
             <h2>Training Dynamics and Nash Equilibrium</h2>
-            <p>GAN training alternates between updating $D$ and updating $G$. In game theory, the solution to a minimax game is a <em>Nash equilibrium</em> --- a state where neither player can improve by unilaterally changing their strategy.</p>
+            <p>Training alternates between updating $D$ and $G$. In game-theoretic terms, the solution is a <em>Nash equilibrium</em> --- neither player can improve by unilaterally changing strategy.</p>
 
-            <p>For GANs, the Nash equilibrium occurs when $p_g = p_{\text{data}}$ and $D(x) = \frac{1}{2}$ for all $x$. However, reaching this equilibrium is notoriously difficult in practice:</p>
+            <p>The equilibrium is $p_g = p_{\text{data}}$, $D(x) = \frac{1}{2}$ everywhere. In practice, reaching it is hard:</p>
 
             <ul>
-                <li><strong>Mode collapse</strong>: The Generator learns to produce only a few high-confidence samples rather than covering the full data distribution.</li>
-                <li><strong>Training instability</strong>: If the Discriminator becomes too strong too quickly, the Generator receives vanishing gradients ($\log(1 - D(G(z))) \to 0$) and cannot learn.</li>
-                <li><strong>Oscillation</strong>: The two networks may chase each other around the equilibrium without converging.</li>
+                <li><strong>Mode collapse</strong>: $G$ learns to produce only a few samples that reliably fool $D$, ignoring the rest of the distribution.</li>
+                <li><strong>Vanishing gradients</strong>: If $D$ gets too strong too fast, $G$ receives near-zero gradients ($\log(1 - D(G(z))) \to 0$) and stalls.</li>
+                <li><strong>Oscillation</strong>: The two networks chase each other around the equilibrium without settling.</li>
             </ul>
 
-            <p>In practice, Goodfellow proposed a modification: instead of minimizing $\log(1 - D(G(z)))$, the Generator maximizes $\log(D(G(z)))$. This provides stronger gradients early in training when $D(G(z)) \approx 0$.</p>
+            <p>A practical fix from the original paper: instead of having $G$ minimize $\log(1 - D(G(z)))$, have it maximize $\log(D(G(z)))$. This gives stronger gradients early on when $D(G(z)) \approx 0$.</p>
 
             <h2>Up Next</h2>
-            <p>With the mathematical foundations laid, we understand <em>what</em> a GAN is optimizing and <em>why</em> it works. In <strong>Part 2</strong>, we will implement these ideas in pure PyTorch --- building both a Vanilla GAN and a Deep Convolutional GAN (DCGAN) from scratch, with careful attention to the architectural choices that make training stable.</p>
+            <p>In <strong>Part 2</strong>, we implement these ideas in PyTorch --- a Vanilla GAN with fully-connected layers and a DCGAN with convolutional structure, paying close attention to the architectural details that determine whether training converges or falls apart.</p>
 
         </article>
     </main>

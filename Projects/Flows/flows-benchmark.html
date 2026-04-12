@@ -81,8 +81,8 @@ permalink: /projects/flows-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we derived the change of variables formula and the Jacobian determinant tricks that make normalizing flows computationally tractable. In Part 2, we implemented PlanarFlow, AffineCouplingLayer, BatchNormFlow, and RealNVP from scratch in pure PyTorch.</p>
-                <p>Now, we train both architectures on 2D density estimation benchmarks and analyze the results. We evaluate on two classic datasets -- Two Moons and Two Circles -- that are simple enough to visualize but complex enough to test a flow's ability to model multi-modal and non-convex distributions.</p>
+                <p>Part 1 covered the math. Part 2 built the code. Now we train both architectures on 2D density estimation and see what they actually learn.</p>
+                <p>We use two datasets -- Two Moons and Two Circles -- simple enough to visualize as heatmaps but complex enough to test multi-modal and non-convex density modeling.</p>
             </div>
 
             <h2>Experimental Setup</h2>
@@ -90,8 +90,8 @@ permalink: /projects/flows-benchmark/
             <h3>Datasets</h3>
             <p>Both datasets contain 4,000 points in $\mathbb{R}^2$, generated with Gaussian noise ($\sigma = 0.06$) and normalized to zero mean and unit variance:</p>
             <ul>
-                <li><strong>Two Moons</strong>: Two interleaving half-circles, creating a non-convex, multi-modal density with a narrow gap between the crescents.</li>
-                <li><strong>Two Circles</strong>: Two concentric circles with radius ratio 0.4, testing the flow's ability to model rotationally symmetric but disconnected distributions.</li>
+                <li><strong>Two Moons</strong>: Two interleaving half-circles with a narrow gap between them -- non-convex and multi-modal.</li>
+                <li><strong>Two Circles</strong>: Two concentric circles (radius ratio 0.4) -- rotationally symmetric but disconnected.</li>
             </ul>
 
             <h3>Models</h3>
@@ -123,7 +123,7 @@ permalink: /projects/flows-benchmark/
             </table>
 
             <h3>Quantitative Analysis</h3>
-            <p>RealNVP achieves dramatically better likelihoods across both datasets:</p>
+            <p>RealNVP outperforms the planar flow on both datasets:</p>
             <ul>
                 <li>On Two Moons, RealNVP's NLL of 1.34 is <strong>54% lower</strong> than the planar flow's 2.92.</li>
                 <li>On Two Circles, RealNVP scores 2.09 versus the planar flow's 2.85 -- a <strong>27% improvement</strong>.</li>
@@ -131,22 +131,22 @@ permalink: /projects/flows-benchmark/
                 <li>Interestingly, the planar flow performs similarly on both tasks (2.92 vs 2.85), suggesting it has already hit its expressiveness ceiling.</li>
             </ul>
 
-            <h3>Qualitative Analysis: Density Heatmaps</h3>
-            <p>The log-likelihood heatmaps reveal the starkest differences. RealNVP's learned density concentrates sharply on the two crescent ridges of the Two Moons dataset, with near-zero probability mass in the gap between them. The planar flow produces a smoother, more diffuse density that fails to fully separate the two modes.</p>
+            <h3>Density Heatmaps</h3>
+            <p>The log-likelihood heatmaps show the difference clearly. RealNVP concentrates density on the two crescent ridges of Two Moons, with near-zero mass in the gap between them. The planar flow produces a smoother, more diffuse density that does not fully separate the two modes.</p>
 
-            <p>On Two Circles, RealNVP traces the two ring structures but with some smearing between the inner and outer circles. The planar flow blurs the rings into a single broad mode centered at the origin.</p>
+            <p>On Two Circles, RealNVP traces both ring structures but with some smearing between inner and outer circles. The planar flow collapses both rings into a single broad mode at the origin.</p>
 
-            <h3>Qualitative Analysis: Transformation Visualization</h3>
+            <h3>Transformation Visualization</h3>
             <p>The transformation plots track 1,000 points from the base Gaussian through the inverse mapping into data space, color-coded by their angle in base space.</p>
 
-            <p>For RealNVP on Two Moons, the transformation reveals how the coupling layers progressively:</p>
+            <p>For RealNVP on Two Moons, the coupling layers progressively:</p>
             <ol>
                 <li>Stretch the Gaussian cloud along one axis (early layers).</li>
                 <li>Bend and fold the distribution into a crescent shape (middle layers).</li>
-                <li>Fine-tune the density ridges and sharpen the gap between moons (final layers).</li>
+                <li>Sharpen the density ridges and widen the gap between moons (final layers).</li>
             </ol>
 
-            <p>This progressive refinement is the hallmark of deep normalizing flows: each layer makes a small, invertible adjustment, and the composition builds up a complex overall transformation.</p>
+            <p>Each layer makes a small invertible adjustment; the composition builds up the full transformation.</p>
 
             <h2>Connections to Other Generative Models</h2>
 
@@ -154,23 +154,22 @@ permalink: /projects/flows-benchmark/
             <p>VAEs optimize the Evidence Lower Bound (ELBO), which is only a lower bound on the true log-likelihood. Normalizing flows <em>can be used within VAEs</em> to make the approximate posterior more flexible (as proposed by Rezende and Mohamed 2015), or they can replace VAEs entirely as standalone density estimators with exact likelihood.</p>
 
             <h3>Flows vs. GANs</h3>
-            <p>GANs define an implicit generative model with no tractable density. You can sample, but you cannot evaluate probabilities. This makes GANs powerful for sample quality but useless for anomaly detection, compression, or any task requiring density evaluation. Flows provide both sampling and density evaluation.</p>
+            <p>GANs define an implicit generative model with no tractable density. You can sample but cannot evaluate probabilities, which rules them out for anomaly detection, compression, or anything requiring density evaluation. Flows give you both.</p>
 
             <h3>Flows vs. Diffusion Models</h3>
             <p>Diffusion models (DDPMs) optimize a variational bound similar to VAEs and require iterative denoising over hundreds or thousands of steps to generate a single sample. Normalizing flows generate samples in a single pass through the inverse mapping. However, diffusion models are generally more expressive for high-dimensional data (images) because they are not constrained to invertible architectures.</p>
 
             <h3>The Invertibility Trade-Off</h3>
-            <p>The fundamental constraint of normalizing flows is architectural: every layer must be invertible with a tractable Jacobian determinant. This limits the design space compared to unconstrained neural networks. Affine coupling layers achieve this elegantly by making half the dimensions a deterministic function of the other half, but this still restricts the class of learnable transformations.</p>
+            <p>The fundamental constraint is architectural: every layer must be invertible with a tractable Jacobian determinant, which limits the design space relative to unconstrained networks. Affine coupling layers handle this by making half the dimensions a deterministic function of the other half, but even so, the class of learnable transformations remains restricted.</p>
 
             <h2>Summary</h2>
-            <p>In this three-part series, we built normalizing flows from first principles:</p>
             <ol>
-                <li><strong>Part 1</strong>: Derived the change of variables formula, the rank-1 determinant trick for planar flows, and the triangular Jacobian for coupling layers.</li>
-                <li><strong>Part 2</strong>: Implemented PlanarFlow (with invertibility constraint), AffineCouplingLayer (with scale clamping), BatchNormFlow, and RealNVP (8 layers, alternating masks) in pure PyTorch.</li>
-                <li><strong>Part 3</strong>: Trained both architectures on 2D density estimation, achieving NLL of 1.34 (RealNVP) vs 2.92 (Planar) on Two Moons. Visualized density heatmaps and the progressive Gaussian-to-data transformation.</li>
+                <li><strong>Part 1</strong>: Change of variables formula, rank-1 determinant trick for planar flows, triangular Jacobian for coupling layers.</li>
+                <li><strong>Part 2</strong>: PlanarFlow, AffineCouplingLayer, BatchNormFlow, and RealNVP (8 layers, alternating masks) in pure PyTorch.</li>
+                <li><strong>Part 3</strong>: RealNVP hits NLL 1.34 on Two Moons vs. 2.92 for the planar flow. The 450x parameter gap shows up exactly where you would expect -- in how sharply the model can carve out multi-modal structure.</li>
             </ol>
 
-            <p>Normalizing flows demonstrate that exact likelihood computation is achievable in deep generative models. While modern practice has shifted toward diffusion models for image generation, the mathematical principles of normalizing flows -- invertibility, Jacobian computation, and the change of variables formula -- remain foundational to understanding the full landscape of generative AI.</p>
+            <p>Flows prove that exact likelihood computation is feasible in deep generative models. Diffusion models have largely taken over for image generation, but the core principles here -- invertibility, Jacobian computation, change of variables -- underpin a lot of what came after.</p>
 
         </article>
     </main>

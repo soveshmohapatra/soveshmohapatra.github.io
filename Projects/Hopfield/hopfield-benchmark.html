@@ -97,11 +97,11 @@ permalink: /projects/hopfield-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>In the final installment of this three-part series, we present empirical results from our from-scratch Hopfield Network implementations. We measure classical retrieval accuracy under corruption, map the storage capacity curve, demonstrate the modern network's exponential capacity advantage, and provide a numerical proof that the modern Hopfield update is identical to softmax attention. All results are from actual benchmark runs.</p>
+                <p>Empirical results from the from-scratch implementations in Part 2. We measure classical retrieval accuracy under corruption, map the storage capacity curve, test the modern network's exponential capacity, and verify numerically that the modern Hopfield update matches softmax attention.</p>
             </div>
 
             <h2>Experimental Setup</h2>
-            <p>All experiments use PyTorch 2.5.1 on CPU with fixed random seed (42) for reproducibility. We test:</p>
+            <p>PyTorch 2.5.1, CPU, seed 42. Five experiments:</p>
             <ol>
                 <li><strong>Classical retrieval</strong>: 7 patterns in 100 neurons, 25% bit corruption</li>
                 <li><strong>Classical capacity</strong>: 1--30 patterns in 100 neurons, 20% corruption, 5 trials each</li>
@@ -110,22 +110,21 @@ permalink: /projects/hopfield-benchmark/
                 <li><strong>Attention equivalence</strong>: Hopfield update vs. manual softmax attention</li>
             </ol>
 
-            <p>Total runtime: approximately 10 seconds.</p>
+            <p>Total runtime: ~10 seconds.</p>
 
             <h2>Classical Hopfield: Retrieval Accuracy</h2>
-            <p>We stored 7 random binary patterns in a 100-neuron network and corrupted each by flipping 25 of 100 bits.</p>
+            <p>7 random binary patterns stored in a 100-neuron network, each corrupted by flipping 25 of 100 bits.</p>
 
-            <p><strong>Key observations:</strong></p>
             <ul>
                 <li><strong>Perfect retrieval</strong>: All 7 patterns recovered exactly, zero bit errors.</li>
-                <li><strong>Fast convergence</strong>: 2--3 asynchronous sweeps suffice. The network reaches a fixed point rapidly.</li>
-                <li><strong>Energy descent</strong>: Energy drops by roughly 4$\times$ from the corrupted state to the stored pattern (from approximately $-11$ to $-48$), confirming that stored patterns sit in deep energy minima.</li>
+                <li><strong>Convergence</strong>: 2--3 asynchronous sweeps to reach a fixed point.</li>
+                <li><strong>Energy descent</strong>: Energy drops ~4x from the corrupted state to the stored pattern (roughly $-11$ to $-48$).</li>
             </ul>
 
-            <p>With only 7 patterns in 100 neurons ($P/N = 0.07$), we are well below the capacity limit. The signal-to-noise ratio in the local field is high enough for error-free retrieval.</p>
+            <p>At $P/N = 0.07$, we are well below capacity. The signal-to-noise ratio in the local field is high enough for error-free retrieval.</p>
 
             <h2>Classical Hopfield: Storage Capacity</h2>
-            <p>We systematically increased the number of stored patterns from 1 to 30, using 20% corruption and averaging over 5 trials per count.</p>
+            <p>Pattern count swept from 1 to 30, 20% corruption, 5 trials per count.</p>
 
             <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
                 <thead>
@@ -146,17 +145,17 @@ permalink: /projects/hopfield-benchmark/
             </table>
 
             <h3>Analysis</h3>
-            <p>The capacity at 95% accuracy is approximately <strong>13 patterns</strong>, giving a ratio of $P/N = 0.130$. This aligns closely with the theoretical bound of $\sim 0.14N$.</p>
+            <p>The 95% accuracy threshold falls at <strong>13 patterns</strong>, or $P/N = 0.130$---close to the theoretical $\sim 0.14N$ bound.</p>
 
-            <p>The degradation is smooth, not catastrophic. At 30 patterns, the network still recovers about 71% of bits correctly---it is not random ($\approx 50\%$), suggesting partial retrieval even beyond capacity.</p>
+            <p>Degradation is smooth, not catastrophic. At 30 patterns the network still recovers ~71% of bits, well above the 50% random baseline. Partial retrieval persists beyond capacity.</p>
 
             <h2>Modern Hopfield: Continuous Retrieval</h2>
-            <p>We stored 20 random continuous patterns in 64 dimensions and tested retrieval with 30% additive Gaussian noise.</p>
+            <p>20 random continuous patterns in 64 dimensions, retrieval with 30% additive Gaussian noise.</p>
 
-            <p>All 10 tested queries correctly retrieved the target pattern with cosine similarity 1.0000 (four decimal places). The modern Hopfield network using iterative softmax updates with $\beta = 1.0$ achieves perfect pattern discrimination even with substantial noise.</p>
+            <p>All 10 tested queries returned the correct pattern at cosine similarity 1.0000. With $\beta = 1.0$ and iterative softmax updates, the modern network discriminates patterns cleanly even under substantial noise.</p>
 
             <h2>Modern Hopfield: Exponential Capacity</h2>
-            <p>The most striking result: we tested the modern network's capacity by storing up to 500 patterns in 64 dimensions.</p>
+            <p>We pushed the modern network to 500 patterns in 64 dimensions.</p>
 
             <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
                 <thead>
@@ -176,19 +175,19 @@ permalink: /projects/hopfield-benchmark/
                 </tbody>
             </table>
 
-            <p><strong>100% accuracy at every tested pattern count</strong>, up to 500 patterns in 64 dimensions.</p>
+            <p>100% accuracy at every count, all the way to 500.</p>
 
-            <p>Compare with the classical network: 100 neurons can reliably store ~13 patterns. The modern network in 64 dimensions stores at least 500 patterns with no degradation. The theoretical capacity is exponential: $P_{\max} \sim \exp(d/2) = \exp(32) \approx 10^{13}$.</p>
+            <p>For comparison: the classical network with 100 neurons tops out around 13 patterns. The modern network in 64 dimensions stores at least 500 with no degradation. Theoretical capacity: $P_{\max} \sim \exp(d/2) = \exp(32) \approx 10^{13}$.</p>
 
             <h3>Why Exponential?</h3>
-            <p>The log-sum-exp energy creates <strong>exponentially many well-separated minima</strong> in $\mathbb{R}^d$. Intuitively:</p>
+            <p>The log-sum-exp energy supports exponentially many well-separated minima in $\mathbb{R}^d$:</p>
             <ul>
-                <li>The classical quadratic energy has minima at the <em>corners</em> of the weight matrix's eigenspace---a linear number of directions.</li>
-                <li>The modern log-sum-exp energy has minima near each stored pattern, and the softmax sharpening at high $\beta$ creates exponentially narrow basins of attraction.</li>
+                <li>The classical quadratic energy has minima at corners of the weight matrix's eigenspace---a linear number of directions.</li>
+                <li>The log-sum-exp energy places minima near each stored pattern, and softmax sharpening at high $\beta$ creates exponentially narrow basins of attraction.</li>
             </ul>
 
             <h2>Attention Equivalence: Numerical Proof</h2>
-            <p>We computed both the Hopfield single-step update and standard softmax attention with identical inputs:</p>
+            <p>Hopfield single-step update vs. standard softmax attention, same inputs:</p>
             <ul>
                 <li>Stored patterns: 20 random vectors in $\mathbb{R}^{64}$</li>
                 <li>$K = V = \Xi$ (pattern matrix), $Q = \mathbf{x}$ (random query)</li>
@@ -210,14 +209,14 @@ permalink: /projects/hopfield-benchmark/
                 </tbody>
             </table>
 
-            <p>The two computations produce <strong>numerically identical</strong> results. The tiny deviation in cosine similarity from 1.0 is within floating-point precision ($\sim 10^{-7}$).</p>
+            <p>Numerically identical. The cosine similarity deviation from 1.0 is within float32 precision ($\sim 10^{-7}$).</p>
 
-            <h3>What This Means</h3>
+            <h3>Implications</h3>
             <ol>
-                <li><strong>Transformers are energy-based models</strong>. Each attention head minimizes a modern Hopfield energy function. The key-value pairs are stored patterns; the query is the probe.</li>
-                <li><strong>Attention is memory retrieval</strong>. The softmax operation is not just "weighting by importance"---it is the fixed-point update of an energy-based associative memory.</li>
-                <li><strong>Multi-head attention = multiple Hopfield memories</strong>. Each head stores a different set of patterns (keys/values) and retrieves independently.</li>
-                <li><strong>Capacity explains head dimension</strong>. The exponential capacity $\sim \exp(d_{\text{head}}/2)$ explains why Transformers work well with relatively small head dimensions (64 or 128): even modest dimensions provide enormous storage.</li>
+                <li><strong>Transformers are energy-based models</strong>. Each attention head minimizes a modern Hopfield energy. Key-value pairs are stored patterns; the query is the probe.</li>
+                <li><strong>Attention is memory retrieval</strong>. The softmax is not just "weighting by importance"---it is the fixed-point update of an associative memory.</li>
+                <li><strong>Multi-head attention = multiple Hopfield memories</strong>. Each head stores a different pattern set and retrieves independently.</li>
+                <li><strong>Capacity explains head dimension</strong>. Exponential capacity $\sim \exp(d_{\text{head}}/2)$ is why Transformers work with small head dimensions (64 or 128)---even modest $d$ provides enormous storage.</li>
             </ol>
 
             <h2>Capacity Comparison: The Full Picture</h2>
@@ -240,36 +239,36 @@ permalink: /projects/hopfield-benchmark/
             </table>
 
             <h2>Connection to Transformers</h2>
-            <p>The chain of equivalences we have established:</p>
+            <p>The equivalence chain:</p>
 
             <div class="math-block">
                 $$ \underbrace{\mathbf{x}^{\text{new}} = \Xi^\top \text{softmax}(\beta \Xi \mathbf{x})}_{\text{Modern Hopfield update}} \;=\; \underbrace{V^\top \text{softmax}\!\left(\frac{K^\top Q}{\sqrt{d_k}}\right)}_{\text{Softmax Attention}} $$
             </div>
 
-            <p>This means:</p>
+            <p>Concretely:</p>
             <ul>
-                <li>Every attention layer in GPT, BERT, or any Transformer is performing energy minimization in a Hopfield landscape.</li>
-                <li>The "attention pattern" (the softmax distribution) is the retrieval weight vector of the Hopfield memory.</li>
-                <li>Training a Transformer is, in part, learning which patterns to store in each attention head's Hopfield memory.</li>
+                <li>Every attention layer in GPT, BERT, or any Transformer performs energy minimization in a Hopfield landscape.</li>
+                <li>The attention pattern (softmax distribution) is the retrieval weight vector of the Hopfield memory.</li>
+                <li>Training a Transformer partly amounts to learning which patterns to store in each head's memory.</li>
             </ul>
 
-            <p>This perspective offers new ways to analyze Transformers: attention head capacity, energy landscape visualization, and memory interference between stored patterns (analogous to crosstalk in classical Hopfield networks).</p>
+            <p>This gives concrete tools for analyzing Transformers: attention head capacity, energy landscape visualization, and memory interference between stored patterns (the continuous analogue of classical crosstalk).</p>
 
             <h2>Conclusion</h2>
-            <p>Across three parts, we have:</p>
+            <p>Across three parts we:</p>
             <ol>
-                <li>Derived the mathematics of associative memory from energy functions and Hebbian learning.</li>
-                <li>Implemented both classical and modern Hopfield networks from scratch in pure PyTorch.</li>
-                <li>Demonstrated empirically that:
+                <li>Derived associative memory from energy functions and Hebbian learning.</li>
+                <li>Implemented both classical and modern Hopfield networks from scratch in PyTorch.</li>
+                <li>Showed empirically that:
                     <ul>
                         <li>Classical Hopfield achieves perfect retrieval below capacity ($\sim 0.14N$).</li>
-                        <li>Modern Hopfield stores 500+ patterns in 64 dimensions with 100% accuracy.</li>
+                        <li>Modern Hopfield stores 500+ patterns in 64 dimensions at 100% accuracy.</li>
                         <li>The modern Hopfield update is <em>numerically identical</em> to softmax attention.</li>
                     </ul>
                 </li>
             </ol>
 
-            <p>The deep insight is that <strong>attention is not just a mechanism---it is a physics</strong>. It is the equilibrium dynamics of an energy-based memory system. Understanding this connection opens new avenues for designing, analyzing, and improving Transformer architectures.</p>
+            <p>Attention is the equilibrium dynamics of an energy-based memory system. That is not a metaphor---it is a mathematical identity, and it gives us a physics-grounded framework for reasoning about Transformer architectures.</p>
 
         </article>
     </main>

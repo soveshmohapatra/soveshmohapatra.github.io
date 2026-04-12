@@ -263,26 +263,22 @@ permalink: /projects/rwkv-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>Over the past two parts, we've deconstructed the mathematics of RWKV (Part 1) and built a
-                    complete implementation in pure PyTorch (Part 2). Now, the moment of truth: does RWKV actually
-                    deliver on its promises?</p>
-                <p>I benchmarked our custom RWKV model against standard Transformer and LSTM baselines on synthetic
-                    sequence modeling tasks. All models were matched for parameter count (~50K params), training was
-                    run for 50 epochs on next-token prediction.</p>
-                <p><strong>The headline results:</strong> RWKV achieves <strong>87.3% accuracy</strong>
-                    (vs. 88.9% Transformer), <strong>3.2× lower inference latency</strong> at long sequences, and
-                    <strong>5.3× less memory</strong> during inference—validating the $O(1)$ promise in practice.</p>
+                <p>Parts 1 and 2 covered the math and the PyTorch implementation. Now: does RWKV actually
+                    deliver?</p>
+                <p>I ran all three models -- RWKV, Transformer, LSTM -- on synthetic next-token prediction,
+                    matched at ~50K parameters, trained for 50 epochs. RWKV hits 87.3% accuracy
+                    (vs. 88.9% Transformer), runs 3.2x faster at sequence length 256, and uses 5.3x less
+                    memory during inference.</p>
             </div>
 
             <h2>Benchmark Setup</h2>
 
-            <h3>Task: Next Token Prediction</h3>
-            <p>A synthetic next-token prediction task with sequences of varying lengths (32 to 256 tokens),
-                vocabulary size of 64, and sequences containing repeating patterns requiring both short-term and
-                long-term memory.</p>
+            <h3>Task</h3>
+            <p>Synthetic next-token prediction. Sequences of 32 to 256 tokens, vocabulary size 64, with
+                repeating patterns that require both short-term and long-term memory.</p>
 
-            <h3>Model Architectures</h3>
-            <p>All models were matched for parameter count as closely as possible:</p>
+            <h3>Models</h3>
+            <p>Parameter-matched as closely as possible:</p>
 
             <table class="results-table">
                 <thead>
@@ -311,12 +307,10 @@ permalink: /projects/rwkv-benchmark/
                 </tbody>
             </table>
 
-            <p>Training configuration: AdamW optimizer ($\beta_1=0.9$, $\beta_2=0.95$), learning rate $10^{-3}$
-                with cosine annealing, batch size 32, 50 epochs, gradient clipping at max norm 1.0.</p>
+            <p>AdamW ($\beta_1=0.9$, $\beta_2=0.95$), lr $10^{-3}$ with cosine annealing, batch size 32,
+                gradient clipping at norm 1.0.</p>
 
-            <h2>Results: Training Convergence</h2>
-            <p>All three models converged to similar training loss levels, confirming that RWKV can learn sequence
-                patterns as effectively as Transformers and LSTMs:</p>
+            <h2>Training Convergence</h2>
 
             <table class="results-table">
                 <thead>
@@ -349,14 +343,12 @@ permalink: /projects/rwkv-benchmark/
                 </tbody>
             </table>
 
-            <p>The Transformer achieved slightly better final loss—expected, given its superior expressivity from
-                full attention. But RWKV closed the gap with the Transformer significantly, outperforming the LSTM
-                by a wide margin. The LSTM showed signs of overfitting earlier, with a larger train-test loss gap.
-            </p>
+            <p>The Transformer's 1.6% accuracy edge over RWKV is expected -- full attention is strictly more
+                expressive than linear attention. RWKV beats the LSTM by 5.2 points. The LSTM also showed a
+                larger train-test gap (0.066 vs. RWKV's 0.055), suggesting earlier overfitting.</p>
 
-            <h2>Results: Inference Latency</h2>
-            <p>This is where RWKV shines. Per-token inference latency measured across different sequence lengths:
-            </p>
+            <h2>Inference Latency</h2>
+            <p>Per-token latency across sequence lengths:</p>
 
             <table class="results-table">
                 <thead>
@@ -395,19 +387,16 @@ permalink: /projects/rwkv-benchmark/
                 </tbody>
             </table>
 
-            <p>Key observations:</p>
             <ul>
-                <li><strong>RWKV latency is constant</strong> regardless of sequence length. This is the $O(1)$
-                    inference promise in action—the hidden state is fixed size no matter how many tokens have been
-                    generated.</li>
-                <li><strong>Transformer latency grows linearly</strong> because the KV cache grows with each token.
-                    At sequence length 256, RWKV is <strong>3.2× faster</strong> than the Transformer.</li>
-                <li><strong>LSTM is also constant</strong> but slower per-step due to its sequential gate
-                    computations.</li>
+                <li><strong>RWKV stays flat</strong> at 0.42--0.45 ms regardless of sequence length. The hidden
+                    state is fixed size.</li>
+                <li><strong>Transformer latency grows 3.8x</strong> from length 32 to 256 because the KV cache
+                    grows with each token. At length 256, RWKV is 3.2x faster.</li>
+                <li><strong>LSTM is also constant</strong> but consistently slower per step (0.51--0.58 ms) due to
+                    its sequential gate computations.</li>
             </ul>
 
-            <h2>Results: Memory Usage</h2>
-            <p>Memory efficiency is RWKV's other key advantage:</p>
+            <h2>Memory Usage</h2>
 
             <table class="results-table">
                 <thead>
@@ -446,61 +435,49 @@ permalink: /projects/rwkv-benchmark/
                 </tbody>
             </table>
 
-            <p>RWKV's memory usage is essentially flat at ~12.8 MB. The Transformer's memory grows linearly due to
-                the KV cache, reaching 67.5 MB at length 256—<strong>5.3× more memory</strong> than RWKV. This
-                has profound implications for deployment: RWKV can handle much longer contexts on the same hardware,
-                support larger batch sizes during inference, and run on edge devices with limited memory.</p>
+            <p>RWKV holds steady at ~12.5 MB. The Transformer climbs from 14.2 to 67.5 MB -- a 4.75x increase
+                over the same range, and 5.3x more than RWKV at length 256. In practice this means RWKV can
+                serve longer contexts on the same hardware and fit larger batches during inference.</p>
 
             <div class="figure-container">
                 <img src="/assets/projects/rwkv/rwkv_benchmark.png"
-                    alt="Comprehensive benchmark comparison of RWKV vs Transformer vs LSTM. Top-left: Training loss convergence. Top-right: Test loss generalization. Bottom-left: Inference latency vs sequence length showing RWKV's constant O(1) latency. Bottom-right: Final test accuracy comparison.">
-                <p class="figure-caption">Comprehensive benchmark comparison. <strong>Top-left:</strong> Training
-                    loss convergence over 50 epochs. <strong>Top-right:</strong> Test loss showing generalization
-                    performance. <strong>Bottom-left:</strong> Inference latency vs sequence length—note RWKV's
-                    constant $O(1)$ latency while Transformer grows linearly.
-                    <strong>Bottom-right:</strong> Final test accuracy. RWKV achieves 87.3%, closing the gap with
-                    Transformer (88.9%) while maintaining constant inference latency.</p>
+                    alt="RWKV vs Transformer vs LSTM: training loss, test loss, inference latency, and accuracy across 50 epochs and sequence lengths 32-256.">
+                <p class="figure-caption">Training loss (top-left), test loss (top-right), per-token inference
+                    latency vs. sequence length (bottom-left), and final test accuracy (bottom-right).</p>
             </div>
 
-            <h2>The Trade-offs</h2>
-            <p>RWKV is not a universal replacement for Transformers. Key trade-offs to consider:</p>
+            <h2>Trade-offs</h2>
             <ul>
-                <li><strong>Expressivity:</strong> Transformers still have an edge on complex reasoning tasks
-                    requiring global attention. The linear attention approximation in RWKV loses some expressivity.
-                </li>
-                <li><strong>Training Throughput:</strong> While RWKV training is parallel, the cumulative sum
-                    operations are slightly slower than Transformer attention on short sequences. On very long
-                    sequences (&gt;1024 tokens), RWKV pulls ahead.</li>
-                <li><strong>Ecosystem:</strong> The Transformer ecosystem (pre-trained models, tooling,
-                    optimizations) is vastly more mature. RWKV is still emerging.</li>
+                <li><strong>Expressivity:</strong> Full attention can model arbitrary pairwise interactions.
+                    Linear attention cannot. On tasks requiring global reasoning, Transformers will win.</li>
+                <li><strong>Short-sequence training throughput:</strong> The cumulative-sum approach is slightly
+                    slower than optimized attention kernels on short sequences. RWKV pulls ahead past ~1024
+                    tokens.</li>
+                <li><strong>Ecosystem maturity:</strong> Pre-trained Transformer checkpoints, tooling, and
+                    optimized serving stacks are far more developed.</li>
             </ul>
 
             <h2>When to Use RWKV</h2>
-            <p>RWKV is ideal for:</p>
+            <p>Good fit:</p>
             <ul>
-                <li><strong>Long-context generation:</strong> Stories, documents, code with context &gt;10K tokens.
-                </li>
-                <li><strong>Streaming applications:</strong> Real-time translation, chatbots where latency matters.
-                </li>
-                <li><strong>Edge deployment:</strong> Mobile, embedded systems with memory constraints.</li>
-                <li><strong>High-throughput inference:</strong> Serving many concurrent requests.</li>
+                <li>Long-context generation (10K+ tokens) -- stories, documents, code</li>
+                <li>Streaming and real-time applications where latency matters</li>
+                <li>Edge / mobile deployment with tight memory budgets</li>
+                <li>High-throughput serving with many concurrent requests</li>
             </ul>
-
-            <p>Transformers remain better for complex reasoning (math, logic, multi-hop QA), short-context tasks,
-                and fine-tuning existing pre-trained models.</p>
+            <p>Stick with Transformers for complex reasoning (math, multi-hop QA), short-context tasks, or when
+                you need to fine-tune an existing pre-trained checkpoint.</p>
 
             <h2>Conclusion</h2>
-            <p>RWKV delivers on its core promise: Transformer-like training with RNN-like inference. The $O(1)$
-                memory and constant latency make it a compelling choice for long-context, high-throughput
-                applications. At sequence length 256, our custom PyTorch RWKV model achieves:</p>
+            <p>RWKV does what it claims: Transformer-grade training, RNN-grade inference. At sequence length 256
+                on our ~50K-parameter models:</p>
             <ul>
-                <li><strong>87.3% test accuracy</strong> (vs. 88.9% Transformer, 82.1% LSTM)</li>
-                <li><strong>3.2× lower inference latency</strong> than the Transformer</li>
-                <li><strong>5.3× less memory</strong> usage during inference</li>
+                <li>87.3% test accuracy (vs. 88.9% Transformer, 82.1% LSTM)</li>
+                <li>0.45 ms per-token latency (vs. 1.43 ms Transformer)</li>
+                <li>12.8 MB inference memory (vs. 67.5 MB Transformer)</li>
             </ul>
-            <p>By building the complete architecture from first principles—no external libraries—we've shown that
-                RWKV's elegance is not just mathematical but practical: the linear recurrence is as easy to
-                implement as it is powerful to deploy.</p>
+            <p>The gap between RWKV and Transformers is small on accuracy and large on efficiency. For
+                long-context, latency-sensitive workloads, that is the right trade-off.</p>
 
         </article>
     </main>

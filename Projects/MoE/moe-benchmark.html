@@ -81,7 +81,7 @@ permalink: /projects/moe-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In the final installment of this series, we train our from-scratch MoE implementation on MNIST and compare it against a dense MLP baseline. The MoE model (8 experts, top-2 routing, 732,946 total parameters) achieves <strong>95.14% test accuracy</strong> -- within 0.22% of the dense baseline (95.36%) -- while keeping 54% of its parameters inactive per input. We analyze expert specialization patterns, demonstrating that experts autonomously learn to handle distinct digit classes without any explicit supervision of the routing.</p>
+                <p>We train the from-scratch MoE implementation on MNIST and compare it against a dense MLP baseline. The MoE model (8 experts, top-2 routing, 732,946 total parameters) hits <strong>95.14% test accuracy</strong> -- within 0.22% of the dense baseline (95.36%) -- with 54% of parameters inactive per input. We also look at how experts specialize across digit classes without any explicit routing supervision.</p>
             </div>
 
             <h2>Experimental Setup</h2>
@@ -121,18 +121,18 @@ permalink: /projects/moe-benchmark/
                 </tbody>
             </table>
 
-            <p>The MoE model achieves <strong>95.14% test accuracy</strong>, within 0.22% of the dense baseline. The MoE model's training loss plateaus around 0.21, of which only 0.004 is classification loss -- the remainder is the auxiliary load balancing loss ($0.1 \times 2.10 \approx 0.21$), which is the expected value for balanced routing.</p>
+            <p>The MoE model lands at <strong>95.14% test accuracy</strong>, 0.22% below the dense baseline. Its training loss plateaus around 0.21, but only 0.004 of that is classification loss -- the rest is the auxiliary load balancing term ($0.1 \times 2.10 \approx 0.21$), which is the expected equilibrium for balanced routing.</p>
 
             <h3>Learning Dynamics</h3>
             <ul>
-                <li><strong>Epoch 1</strong>: MoE 63.98% vs Dense 75.68%. The dense model starts faster because every parameter contributes immediately. MoE needs time for the gating network to learn useful routing.</li>
-                <li><strong>Epoch 5</strong>: MoE 95.66% vs Dense 96.84%. The gap narrows as experts begin to specialize.</li>
-                <li><strong>Epoch 15</strong>: MoE 99.60% vs Dense 99.80%. Both models approach training set saturation.</li>
-                <li><strong>Epoch 30</strong>: MoE 99.86% vs Dense 100.00%. The MoE model's residual error is due to the noise in gating, which occasionally misroutes samples during training.</li>
+                <li><strong>Epoch 1</strong>: MoE 63.98% vs Dense 75.68%. The dense model starts faster -- every parameter contributes immediately, while MoE still has to learn where to route.</li>
+                <li><strong>Epoch 5</strong>: MoE 95.66% vs Dense 96.84%. Gap narrows as experts specialize.</li>
+                <li><strong>Epoch 15</strong>: MoE 99.60% vs Dense 99.80%. Both near training set saturation.</li>
+                <li><strong>Epoch 30</strong>: MoE 99.86% vs Dense 100.00%. The residual MoE error comes from gating noise occasionally misrouting samples during training.</li>
             </ul>
 
             <h2>Expert Specialization Analysis</h2>
-            <p>The most striking result is the emergent specialization of experts. No supervision was provided about which expert should handle which digits -- the gating network discovered these assignments autonomously.</p>
+            <p>No supervision was provided about which expert should handle which digits -- the gating network learned these assignments on its own.</p>
 
             <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
                 <thead>
@@ -157,7 +157,6 @@ permalink: /projects/moe-benchmark/
             </table>
 
             <h3>Patterns in Expert Sharing</h3>
-            <p>Several interesting patterns emerge:</p>
             <ol>
                 <li><strong>Expert 0</strong> is shared between digits 3 and 5 -- both have curved strokes in their lower halves.</li>
                 <li><strong>Expert 6</strong> handles digits 4, 8, and 9 -- all three feature crossing or closed-loop structures in the upper portion.</li>
@@ -165,7 +164,7 @@ permalink: /projects/moe-benchmark/
                 <li><strong>Expert 4</strong> routes digits 0, 5, and 6 -- digits with rounded, enclosed shapes.</li>
             </ol>
 
-            <p>These sharing patterns suggest the experts have learned to specialize not on individual digit identities but on <em>visual features</em> -- strokes, curves, and structural elements shared across digit classes. This is a form of compositional representation: the top-2 routing allows each digit to be represented as a combination of two feature-processing specialists.</p>
+            <p>The experts appear to specialize on visual features -- strokes, curves, structural elements -- rather than on individual digit identities. Top-2 routing lets each digit be represented as a combination of two feature-processing specialists.</p>
 
             <h2>Parameter Efficiency</h2>
 
@@ -185,28 +184,26 @@ permalink: /projects/moe-benchmark/
                 </tbody>
             </table>
 
-            <p>The MoE model stores $2.72\times$ as many parameters as the dense baseline, but for any given input, only 337,426 of those 732,946 parameters are active. This is the fundamental trade-off of MoE: <em>memory for compute</em>. You pay more in storage (GPU memory) but less in computation (FLOPs per token).</p>
+            <p>The MoE model stores $2.72\times$ as many parameters as the dense baseline, but only 337,426 of 732,946 are active for any given input. The trade-off: more GPU memory, fewer FLOPs per token.</p>
 
             <h2>Lessons Learned</h2>
             <ol>
-                <li><strong>The gating network is simple.</strong> It is a single linear layer -- no attention, no deep network. The expressiveness comes from the softmax competition between experts.</li>
-                <li><strong>Load balancing is non-negotiable.</strong> Without the auxiliary loss, expert utilization collapses within the first few epochs. In our experiments, removing the load balancing loss caused 2 of 8 experts to handle over 80% of all tokens.</li>
-                <li><strong>Specialization is emergent.</strong> We never told Expert 4 to handle zeros or Expert 7 to handle ones. The routing patterns emerged purely from the combination of the classification gradient signal and the load balancing constraint.</li>
-                <li><strong>MoE starts slower.</strong> The dense model converges faster in early epochs because it does not need to simultaneously learn what to compute <em>and</em> who should compute it.</li>
-                <li><strong>The auxiliary loss dominates the total loss.</strong> At convergence, the classification loss is 0.004 but the total loss is 0.21 -- nearly all of it is the auxiliary loss at its balanced equilibrium value. This is expected and correct.</li>
+                <li><strong>The gating network is just a linear layer.</strong> No attention, no deep network. The expressiveness comes from softmax competition between experts.</li>
+                <li><strong>Load balancing is non-negotiable.</strong> Without the auxiliary loss, 2 of 8 experts ended up handling over 80% of all tokens within a few epochs.</li>
+                <li><strong>Specialization is unsupervised.</strong> We never told Expert 4 to handle zeros or Expert 7 to handle ones. Routing patterns fell out of the classification gradient and the load balancing constraint together.</li>
+                <li><strong>MoE starts slower.</strong> The dense model converges faster early on -- it does not need to simultaneously learn what to compute and who should compute it.</li>
+                <li><strong>The auxiliary loss dominates the total loss.</strong> At convergence, classification loss is 0.004 and total loss is 0.21. Nearly all of it is the auxiliary term at its balanced equilibrium value of $k = 2$.</li>
             </ol>
 
             <h2>Conclusion</h2>
-            <p>Over three parts, we have:</p>
+            <p>Across three parts, we:</p>
             <ol>
-                <li>Derived the mathematical foundations of MoE: sparse gating, top-$k$ routing, and load balancing loss.</li>
-                <li>Implemented every component from scratch in pure PyTorch: Expert, TopKGating, MoELayer, and MoEClassifier.</li>
-                <li>Demonstrated on MNIST that an 8-expert, top-2 MoE model achieves 95.14% accuracy (matching a dense baseline at 95.36%) while activating only 46% of its parameters per input.</li>
+                <li>Derived the math: sparse gating, top-$k$ routing, and load balancing loss.</li>
+                <li>Implemented Expert, TopKGating, MoELayer, and MoEClassifier from scratch in PyTorch.</li>
+                <li>Trained on MNIST: 8-expert, top-2 MoE reached 95.14% accuracy (vs 95.36% dense baseline) while activating only 46% of its parameters per input.</li>
             </ol>
 
-            <p>The architectural principle scales from our 733K-parameter toy model to Mixtral's 47B-parameter production system without conceptual change. The gating mechanism, the load balancing loss, the top-$k$ selection -- they are all the same. Only the numbers change.</p>
-
-            <p>Mixture of Experts is not just an optimization trick. It is a fundamentally different way of thinking about neural network capacity: not as a fixed resource that every input must share, but as a pool of specialists that can be dynamically composed based on what each input requires.</p>
+            <p>The same components -- gating, load balancing, top-$k$ selection -- scale from this 733K-parameter model to Mixtral's 47B-parameter system. The mechanism does not change; only the numbers do.</p>
 
         </article>
     </main>

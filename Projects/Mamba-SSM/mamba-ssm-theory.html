@@ -209,69 +209,34 @@ permalink: /projects/mamba-ssm-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>As sequence models push the boundaries of context length—handling entire books, massive genomic
-                    sequences, and high-frequency brain signals—the quadratic scaling of Attention in Transformers has
-                    become a critical bottleneck. State Space Models (SSMs), rooted in classical Control Theory, have
-                    recently emerged as a promising alternative. They offer linear-time scaling, potentially infinite
-                    context windows, and fast inference. In this post, we unpack the mathematical foundations of SSMs,
-                    starting from continuous-time differential equations to their discrete-time approximations, and
-                    highlight how recent architectures like Mamba achieve data-dependent selective state spaces.</p>
+                <p>The quadratic cost of Self-Attention is a hard wall for long-context workloads -- genomic sequences, full-length books, high-frequency biosignals. State Space Models (SSMs), borrowed from classical control theory, sidestep this wall entirely with linear-time scaling and constant-memory inference. This post covers the math: continuous-time state equations, Zero-Order Hold discretization, the recurrence/convolution duality, and the data-dependent selection mechanism that defines Mamba.</p>
             </div>
 
             <h2>1. Introduction: The Memory Wall of Transformers</h2>
-            <p>For years, the Transformer architecture has dominated deep learning. From natural language processing to
-                computer vision, the core mechanism—Self-Attention—has proven extraordinarily capable at modeling
-                complex relationships in data.</p>
+            <p>Self-Attention compares every token to every other token. Let $L$ be the sequence length; both compute and memory scale as $\mathcal{O}(L^2)$. Double the context, quadruple the cost. For sequences in the tens of thousands of tokens, this becomes impractical on commodity hardware.</p>
 
-            <p>However, Self-Attention has a fatal flaw: it scales quadratically with respect to sequence length. Every
-                token in a sequence must be compared to every other token. Let $L$ be the sequence length; the
-                computational complexity and memory footprint of calculating the Attention matrix grow as
-                $\mathcal{O}(L^2)$.</p>
-
-            <p>If you double the sequence length, you multiply the compute cost by four. For extremely long sequences,
-                this quickly hits a "memory wall." We need architectures that provide the rich representational power of
-                Transformers but scale linearly, $\mathcal{O}(L)$, with sequence length. This brings us to State Space
-                Models (SSMs).</p>
+            <p>We need the representational capacity of Transformers with $\mathcal{O}(L)$ scaling. That is where State Space Models come in.</p>
 
             <h2>2. Control Theory 101: Continuous-Time State Space</h2>
-            <p>State Space Models are fundamentally mathematical models from classical control theory used to describe
-                physical systems (like robotics, aerospace, and fluid dynamics).</p>
+            <p>SSMs originate in control theory, where they describe dynamical systems in robotics, aerospace, and fluid dynamics. Rather than cross-referencing all past inputs (as Attention does), an SSM compresses the sequence history into a fixed-size hidden state and updates it as new data arrives.</p>
 
-            <p>Instead of cross-referencing all past inputs (like Attention), an SSM compresses the entire sequence
-                history into a hidden "state." As new data flows in, this state is updated.</p>
-
-            <p>Formally, a continuous-time State Space Model maps a 1-dimensional input signal $x(t) \in \mathbb{R}$ to
-                an output signal $y(t) \in \mathbb{R}$ via an $N$-dimensional latent state $h(t) \in \mathbb{R}^N$. This
-                system is governed by a set of linear differential equations:</p>
+            <p>A continuous-time SSM maps a 1D input signal $x(t) \in \mathbb{R}$ to an output $y(t) \in \mathbb{R}$ through an $N$-dimensional latent state $h(t) \in \mathbb{R}^N$:</p>
 
             <div class="math-block">
                 $$ h'(t) = \mathbf{A} h(t) + \mathbf{B} x(t) $$
                 $$ y(t) = \mathbf{C} h(t) + \mathbf{D} x(t) $$
             </div>
 
-            <p>Here is what these matrices represent:</p>
+            <p>The matrices:</p>
             <ul>
-                <li><strong>$\mathbf{A} \in \mathbb{R}^{N \times N}$</strong>: The <strong>State Matrix</strong>. By far
-                    the most critical parameter, it dictates how the hidden state evolves over time and how memory of
-                    past inputs decays.</li>
-                <li><strong>$\mathbf{B} \in \mathbb{R}^{N \times 1}$</strong>: The <strong>Input Matrix</strong>. It
-                    controls how the current input $x(t)$ influences the hidden state.</li>
-                <li><strong>$\mathbf{C} \in \mathbb{R}^{1 \times N}$</strong>: The <strong>Output Matrix</strong>. It
-                    projects the hidden state $h(t)$ into the output $y(t)$.</li>
-                <li><strong>$\mathbf{D} \in \mathbb{R}^{1 \times 1}$</strong>: The <strong>Feedthrough Matrix</strong>.
-                    Often treated as a skip connection operating directly on $x(t)$ (and typically skipped or treated as
-                    a separate linear layer in deep learning).</li>
+                <li><strong>$\mathbf{A} \in \mathbb{R}^{N \times N}$</strong> (State Matrix) -- governs how the hidden state evolves and how memory of past inputs decays. The single most important parameter.</li>
+                <li><strong>$\mathbf{B} \in \mathbb{R}^{N \times 1}$</strong> (Input Matrix) -- controls how $x(t)$ enters the hidden state.</li>
+                <li><strong>$\mathbf{C} \in \mathbb{R}^{1 \times N}$</strong> (Output Matrix) -- projects the hidden state into the output $y(t)$.</li>
+                <li><strong>$\mathbf{D} \in \mathbb{R}^{1 \times 1}$</strong> (Feedthrough Matrix) -- a skip connection from input to output, typically handled as a separate linear layer in practice.</li>
             </ul>
 
             <h2>3. From Analog to Digital: Discretization</h2>
-            <p>In deep learning, we do not operate on continuous analog signals $x(t)$; we process discrete tokens $x_k$
-                sampled at specific time intervals. To make SSMs computable on discrete data (like text or discretized
-                time series), we must discretize the continuous system.</p>
-
-            <p>We introduce a timestep parameter $\Delta$ that represents the resolution of our discrete sampling. The
-                continuous parameters $(\mathbf{A}, \mathbf{B})$ are transformed into discrete parameters
-                $(\bar{\mathbf{A}}, \bar{\mathbf{B}})$ using a discretization rule, such as the <em>Zero-Order Hold
-                    (ZOH)</em>:</p>
+            <p>Deep learning operates on discrete tokens $x_k$, not continuous signals. To bridge this gap, we discretize the continuous system using a timestep $\Delta$ and a rule called the <em>Zero-Order Hold (ZOH)</em>:</p>
 
             <div class="math-block">
                 $$ \bar{\mathbf{A}} = \exp(\Delta \mathbf{A}) $$
@@ -279,35 +244,29 @@ permalink: /projects/mamba-ssm-theory/
                 \mathbf{B} $$
             </div>
 
-            <p>With the discretized matrices, the continuous differential equations become a standard discrete-time
-                recurrence:</p>
+            <p>The continuous ODEs now become a discrete recurrence:</p>
 
             <div class="math-block">
                 $$ h_k = \bar{\mathbf{A}} h_{k-1} + \bar{\mathbf{B}} x_k $$
                 $$ y_k = \mathbf{C} h_k + \mathbf{D} x_k $$
             </div>
 
-            <p>This formulation is incredibly powerful because $\bar{\mathbf{A}}$ and $\bar{\mathbf{B}}$ are constant
-                over time (in the standard setup). This is known as a Linear Time-Invariant (LTI) system.</p>
+            <p>Because $\bar{\mathbf{A}}$ and $\bar{\mathbf{B}}$ are constant across the sequence, this is a Linear Time-Invariant (LTI) system -- and that property unlocks a useful duality.</p>
 
             <h2>4. The Duality: Recurrence vs. Convolution</h2>
-            <p>One of the most elegant properties of LTI SSMs is that they can be computed in two completely different
-                ways depending on whether we are training or inferencing.</p>
+            <p>An LTI SSM can be executed in two distinct modes, and you pick the one that suits your workload.</p>
 
             <h3>4.1 Recurrent Representation (Fast Inference)</h3>
-            <p>During autoregressive generation (inference), we compute the system step-by-step just like a Recurrent
-                Neural Network (RNN):</p>
+            <p>At inference time, we step through the sequence like an RNN:</p>
 
             <div class="math-block">
                 $$ h_k = \bar{\mathbf{A}} h_{k-1} + \bar{\mathbf{B}} x_k $$
             </div>
 
-            <p>Because the state $h_k$ acts as a compressed summary of all past context, memory remains constant
-                $\mathcal{O}(1)$, and generation scales linearly $\mathcal{O}(L)$.</p>
+            <p>The state $h_k$ is a compressed summary of all prior context. Memory is $\mathcal{O}(1)$; generation cost is $\mathcal{O}(L)$.</p>
 
             <h3>4.2 Convolutional Representation (Fast Training)</h3>
-            <p>During training, we have the entire sequence $x = (x_1, x_2, \dots, x_L)$ available at once. Because the
-                system is linear, we can unroll the recurrence. Assuming $h_{-1} = 0$:</p>
+            <p>During training, the full sequence $x = (x_1, x_2, \dots, x_L)$ is available at once. Because the system is linear, we can unroll the recurrence. Starting from $h_{-1} = 0$:</p>
 
             <div class="math-block">
                 $$ h_0 = \bar{\mathbf{B}} x_0 $$
@@ -316,8 +275,7 @@ permalink: /projects/mamba-ssm-theory/
                 \bar{\mathbf{B}} x_2 $$
             </div>
 
-            <p>Substituting into the output equation $y_k = \mathbf{C} h_k$, we can express the entire output sequence
-                as a single 1D convolution:</p>
+            <p>Substituting into $y_k = \mathbf{C} h_k$ yields a single 1D convolution over the entire sequence:</p>
 
             <div class="math-block">
                 $$ y = x * \bar{\mathbf{K}} \quad \text{where} \quad \bar{\mathbf{K}} = \left(
@@ -325,18 +283,10 @@ permalink: /projects/mamba-ssm-theory/
                 \mathbf{C}\bar{\mathbf{A}}^2\bar{\mathbf{B}}, \dots \right) $$
             </div>
 
-            <p>This allows us to leverage Highly Optimized Convolution primitives and the Fast Fourier Transform (FFT)
-                to train the model in parallel across the sequence, avoiding the sequential bottleneck of RNNs.</p>
+            <p>This lets us use optimized convolution primitives and FFT for parallel training, avoiding the sequential bottleneck of RNNs.</p>
 
-            <h2>5. The Evolution: Mamba and Selective State Spaces</h2>
-            <p>In 2023, Gu and Dao addressed a major limitation of standard SSMs: the LTI property. Because
-                $\bar{\mathbf{A}}$ and $\bar{\mathbf{B}}$ are constant across the sequence, an LTI model applies the
-                exact same state transitions to every token, regardless of the token's content. It cannot flexibly
-                choose to ignore useless filler words or strongly remember crucial names.</p>
-
-            <p>To solve this, <strong>Mamba</strong> introduced <em>Selective State Spaces</em>. The matrices
-                $\mathbf{B}$, $\mathbf{C}$, and the step size $\Delta$ are no longer constants; they are parameterized
-                as linear projections of the input token $x_k$:</p>
+            <h2>5. Mamba: Selective State Spaces</h2>
+            <p>Standard SSMs are LTI: the same state transition applies to every token regardless of content. The model cannot selectively ignore filler tokens or emphasize important ones. Gu and Dao (2023) fixed this in <strong>Mamba</strong> by making $\mathbf{B}$, $\mathbf{C}$, and $\Delta$ functions of the input:</p>
 
             <div class="math-block">
                 $$ \mathbf{B}_k = \text{Linear}_B(x_k) $$
@@ -344,23 +294,14 @@ permalink: /projects/mamba-ssm-theory/
                 $$ \Delta_k = \text{Softplus}(\text{Parameter} + \text{Linear}_\Delta(x_k)) $$
             </div>
 
-            <p>This deceptively simple change is profound. The model is now <strong>data-dependent</strong>. $\Delta_k$
-                acts as an intensive gating mechanism: a large $\Delta_k$ focuses on the current input (resetting
-                memory), while a small $\Delta_k$ ignores the current input (maintaining memory). Mamba bridges the gap
-                between the constant memory of SSMs and the content-aware routing of Attention.</p>
+            <p>The system is now <strong>data-dependent</strong>. $\Delta_k$ acts as a gate: a large $\Delta_k$ focuses on the current input (resetting memory), while a small $\Delta_k$ preserves existing state (ignoring the current token). This bridges the constant-memory efficiency of SSMs with the content-aware routing of Attention.</p>
 
-            <p>Because the system is no longer Time-Invariant, we lose the Convolutional representation. However, Mamba
-                solves this by utilizing a parallel hardware-aware scan algorithm, keeping training as fast as
-                Transformers without sacrificing the linear scaling benefit.</p>
+            <p>The tradeoff: making parameters input-dependent breaks the LTI assumption, so the convolution shortcut no longer applies. Mamba compensates with a hardware-aware parallel scan algorithm that keeps training speed competitive with Transformers while preserving linear scaling.</p>
 
             <h2>Conclusion</h2>
-            <p>State Space Models offer a mathematically beautiful bridge between continuous dynamical systems and
-                modern deep learning. By moving from purely quadratic attention frameworks to linear selective state
-                spaces, we unlock architectures capable of reasoning over millions of tokens with extreme efficiency.
-            </p>
+            <p>SSMs connect continuous dynamical systems to sequence modeling. The shift from $\mathcal{O}(L^2)$ attention to $\mathcal{O}(L)$ selective state spaces makes it practical to process sequences of millions of tokens.</p>
 
-            <p>In Part 2 of this series, we will move from theory to practice, writing a 1D State Space layer in under
-                100 lines of pure PyTorch.</p>
+            <p>In Part 2, we translate these equations into a working 1D State Space layer in under 100 lines of PyTorch.</p>
 
         </article>
     </main>

@@ -96,7 +96,7 @@ permalink: /projects/rnns-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we explored the mathematics of recurrence. Now we implement RNNs in PyTorch, building from individual cells to complete sequence models.</p>
+                <p>Part 1 covered the math. Here we turn those equations into working PyTorch code, starting from a single RNN cell and building up to multi-layer sequence models with several architecture variants.</p>
             </div>
 
             <h2>The RNN Cell</h2>
@@ -118,7 +118,7 @@ permalink: /projects/rnns-live-code/
             </ul>
 
             <h2>Multi-Layer RNNs</h2>
-            <p>Stacking RNN cells creates deeper representations:</p>
+            <p>Stacking cells vertically gives the network more capacity to learn hierarchical features:</p>
             <ul>
                 <li>Layer 1 processes the raw input sequence</li>
                 <li>Layer 2 processes the hidden states from Layer 1</li>
@@ -200,8 +200,8 @@ Output: (batch, seq_len, num_tags)</code></pre>
                 <li>Adam optimizer with learning rate scheduling</li>
             </ul>
 
-            <h2>Conclusion</h2>
-            <p>With our RNN implemented, we can now train it and visualize how hidden states evolve. <strong>Part 3</strong> explores hidden state dynamics and analyzes what the network learns.</p>
+            <h2>What Comes Next</h2>
+            <p>The implementation is done. In <strong>Part 3</strong>, we train this model on a synthetic classification task and look at what the hidden states actually do during inference.</p>
 
         </article>
     </main>

@@ -215,47 +215,46 @@ permalink: /projects/snns-theory/
                     through dense matrix multiplications on every forward pass, demanding billions of
                     multiply-accumulate (MAC) operations for even modest models.</p>
                 <p>The brain does none of this. Biological neurons communicate via discrete, all-or-nothing electrical
-                    pulses called <strong>action potentials</strong> (or <strong>spikes</strong>). This sparse,
-                    event-driven communication is why a human brain performs remarkable cognitive feats on roughly 20
-                    Watts—while a GPU-accelerated Transformer requires kilowatts for comparable tasks.</p>
-                <p><strong>Spiking Neural Networks (SNNs)</strong> are the attempt to bring this paradigm into machine
-                    learning. In this 3-part series, we will completely deconstruct SNNs: from the biological neuron
-                    model and the infamous gradient problem, to a full PyTorch implementation, to a benchmark against a
-                    standard ANN on MNIST.</p>
+                    pulses called <strong>action potentials</strong> (or <strong>spikes</strong>). A neuron only fires
+                    when its internal charge crosses a threshold; the rest of the time it is silent. This sparse,
+                    event-driven communication is why the human brain runs on roughly 20 Watts—less than a laptop
+                    screen—while a GPU-accelerated Transformer burns kilowatts.</p>
+                <p><strong>Spiking Neural Networks (SNNs)</strong> try to bring this paradigm into machine learning.
+                    This 3-part series deconstructs SNNs: the biological neuron model and the gradient problem (here),
+                    a full PyTorch implementation (Part 2), and a head-to-head benchmark against a standard ANN on
+                    MNIST (Part 3).</p>
             </div>
 
             <h2>The Biological Neuron</h2>
             <p>A biological neuron integrates electrical charge from thousands of synaptic inputs through its
                 dendrites. This charge gradually builds the neuron's <em>membrane potential</em> $V_m$. If $V_m$
-                crosses a threshold $V_{th}$, the neuron fires a spike—a stereotyped 1–2 ms voltage pulse—which
+                crosses a threshold $V_{th}$, the neuron fires a spike—a stereotyped 1--2 ms voltage pulse—which
                 travels down the axon to stimulate or inhibit downstream neurons.</p>
 
-            <p>Crucially, after firing the neuron's potential is rapidly reset and then hyperpolarized (driven below
-                resting potential) for a short refractory period. Information is not encoded in the amplitude of the
-                spike (they are all the same height). It is encoded in <em>timing</em> and <em>rate</em>—when and how
-                often the neuron fires.</p>
+            <p>After firing, the potential resets and briefly hyperpolarizes (drops below resting potential) during
+                a short refractory period. Information is not encoded in spike amplitude—they are all the same
+                height. It is encoded in <em>timing</em> and <em>rate</em>: when and how often the neuron fires.</p>
 
             <h2>The Leaky Integrate-and-Fire (LIF) Model</h2>
-            <p>The simplest and most widely used computational model of the spiking neuron is the <strong>Leaky
-                    Integrate-and-Fire (LIF)</strong> model. It captures the essential dynamics in a single first-order
-                differential equation:</p>
+            <p>The <strong>Leaky Integrate-and-Fire (LIF)</strong> model is the simplest and most widely used
+                computational spiking neuron. It reduces the dynamics to a single first-order ODE:</p>
 
             <div class="math-block">
                 $$ \tau_m \frac{dV(t)}{dt} = -V(t) + RI(t) $$
             </div>
 
-            <p>Here, $V(t)$ is the membrane potential, $\tau_m$ is the membrane time constant (governing how fast the
-                potential leaks back to rest), $I(t)$ is the synaptic input current, and $R$ is the membrane
-                resistance. The dynamics are augmented by two firing rules:</p>
+            <p>$V(t)$ is the membrane potential, $\tau_m$ is the membrane time constant (how fast the potential leaks
+                back to rest), $I(t)$ is the synaptic input current, and $R$ is the membrane resistance. Two firing
+                rules complete the model:</p>
 
             <ol>
                 <li><strong>Fire:</strong> If $V(t) \geq V_{th}$, emit a spike $S(t) = 1$.</li>
                 <li><strong>Reset:</strong> After firing, immediately reset $V(t) \leftarrow 0$.</li>
             </ol>
 
-            <p>For implementation on a digital computer, we discretize using an Euler step. Defining $\beta =
-                \exp(-\Delta t / \tau_m) \in (0,1)$ as the discrete <em>membrane decay factor</em>, we get the update
-                rule used in our PyTorch implementation:</p>
+            <p>To run this on a digital computer, we discretize via an Euler step. Define $\beta =
+                \exp(-\Delta t / \tau_m) \in (0,1)$ as the discrete <em>membrane decay factor</em>. The update
+                rule becomes:</p>
 
             <div class="math-block">
                 $$
@@ -273,36 +272,32 @@ permalink: /projects/snns-theory/
                     reset</em>: after a spike, the membrane drops by $V_{th}$.</p>
 
             <h2>Rate Coding vs. Temporal Coding</h2>
-            <p>How does a spiking neuron encode information? There are two primary paradigms:</p>
+            <p>Two paradigms for encoding information in spikes:</p>
             <ul>
-                <li><strong>Rate Coding:</strong> The information is the <em>average firing rate</em> over a time
-                    window $T$. A strongly stimulated neuron fires many times; a weakly stimulated one fires rarely.
-                    This is the most common encoding scheme in computational SNNs because it maps naturally onto
-                    probabilities.</li>
-                <li><strong>Temporal Coding:</strong> The information is encoded in the <em>precise timing</em> of
-                    individual spikes. This is believed to be the dominant coding scheme in the biological brain and
-                    offers extreme efficiency, but is much harder to train computationally.</li>
+                <li><strong>Rate Coding:</strong> Information is the <em>average firing rate</em> over a time window
+                    $T$. A strongly stimulated neuron fires many times; a weakly stimulated one fires rarely. This is
+                    the most common scheme in computational SNNs because it maps naturally onto probabilities.</li>
+                <li><strong>Temporal Coding:</strong> Information is in the <em>precise timing</em> of individual
+                    spikes (e.g., time-to-first-spike). Believed to dominate in biology, and more efficient in
+                    principle, but much harder to train.</li>
             </ul>
-            <p>In our PyTorch implementation (Part 2), we use rate coding: the same input pixel values are presented
-                at every timestep $t \in \{1, \ldots, T\}$, and the output class is determined by which output neuron
-                accumulates the most spikes over $T$ steps.</p>
+            <p>In our implementation (Part 2), we use rate coding: the same input pixel values are presented at every
+                timestep $t \in \{1, \ldots, T\}$, and the output class is whichever neuron accumulates the most
+                spikes over $T$ steps.</p>
 
             <h2>The Gradient Problem</h2>
-            <p>This is where SNNs diverge sharply from standard deep learning. The spike emission step $S[t] =
+            <p>Here is where SNNs diverge from standard deep learning. The spike emission $S[t] =
                 \Theta(V[t] - V_{th})$ is a Heaviside step function. Its derivative is a Dirac delta: zero almost
-                everywhere, and undefined at the threshold. Backpropagation requires computing $\frac{\partial
-                S}{\partial V}$ at every neuron—and with the true gradient, the entire chain rule collapses to zero.
-            </p>
+                everywhere, undefined at the threshold. Backpropagation requires $\frac{\partial S}{\partial V}$ at
+                every neuron—and with the true gradient, the chain rule collapses to zero.</p>
 
-            <p>SNNs appeared, for decades, to be fundamentally untrainable via gradient descent. The solution, explored
-                in Part 2, is the <strong>surrogate gradient</strong> trick.</p>
+            <p>For decades this made SNNs appear untrainable via gradient descent. The fix is the <strong>surrogate
+                gradient</strong> trick, which we implement in Part 2.</p>
 
-            <h2>Next Steps: Building an SNN in PyTorch</h2>
-            <p>The equations in this post are clean and compact, but translating them to a trainable PyTorch module
-                requires solving the gradient problem. In Part 2, we will implement the LIF update in a custom
-                <code>nn.Module</code>, introduce the fast-sigmoid surrogate gradient via a custom
-                <code>torch.autograd.Function</code>, and assemble a full 2-layer SNN classifier for MNIST.
-            </p>
+            <h2>What Comes Next</h2>
+            <p>Part 2 takes these equations and turns them into a trainable PyTorch module: a custom
+                <code>torch.autograd.Function</code> for the fast-sigmoid surrogate gradient, a
+                <code>LIFNeuron</code> layer with learnable decay, and a 2-layer SNN classifier for MNIST.</p>
 
         </article>
     </main>

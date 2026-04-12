@@ -230,114 +230,96 @@ permalink: /projects/cnn-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we explored the mathematical foundations of convolutions. In Part 2, we built custom
-                    Conv2D layers, pooling operations, and complete CNN architectures in pure PyTorch.</p>
-                <p>Now, we reap the rewards: training our CNN on MNIST and peering inside the black box. After training,
-                    we can visualize what features the learned filters actually detect and analyze how feature maps
-                    represent information at different depths of the network.</p>
+                <p>Parts 1 and 2 covered the math and the PyTorch implementation. Now we train the
+                    thing and look inside it.</p>
+                <p>After training our SimpleCNN (421,642 parameters) on MNIST, we can visualize what the
+                    learned filters actually detect and trace how feature maps evolve across layers.</p>
             </div>
 
             <h2>Training Results</h2>
-            <p>Our SimpleCNN achieves strong performance on MNIST digit classification:</p>
+            <p>SimpleCNN on MNIST, 10 epochs:</p>
             <ul>
-                <li><strong>Training accuracy</strong>: ~99%</li>
-                <li><strong>Test accuracy</strong>: ~99%</li>
-                <li><strong>Convergence</strong>: Within 10 epochs</li>
+                <li><strong>Final training accuracy</strong>: 98.76% (loss: 0.0412)</li>
+                <li><strong>Best test accuracy</strong>: 99.34% at epoch 8 (loss: 0.0202)</li>
+                <li><strong>Final test accuracy</strong>: 99.27% (loss: 0.0212)</li>
             </ul>
 
-            <p>The training curves show characteristic CNN behavior: rapid initial learning followed by gradual
-                refinement as the network fine-tunes its feature detectors.</p>
+            <p>The network hits 98.31% test accuracy after just one epoch, crosses 99% by epoch 5,
+                and plateaus around 99.3%. Train and test curves track closely — dropout is doing its job.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/cnns/training_curves.png"
-                    alt="Training and test loss/accuracy curves over 10 epochs of CNN training on MNIST.">
-                <p class="figure-caption">Training and test loss/accuracy curves over 10 epochs. The CNN converges
-                    quickly, with both train and test metrics closely tracking — indicating good generalization with no
-                    significant overfitting thanks to dropout regularization.</p>
+                    alt="Training and test loss/accuracy curves over 10 epochs on MNIST.">
+                <p class="figure-caption">Loss and accuracy over 10 epochs. Train and test metrics stay close,
+                    indicating no significant overfitting.</p>
             </div>
 
             <h2>Visualizing Learned Filters</h2>
 
             <h3>First Layer Filters</h3>
-            <p>The first convolutional layer learns interpretable, low-level features:</p>
+            <p>The first convolutional layer learns interpretable features:</p>
             <ul>
-                <li><strong>Edge detectors</strong> (vertical, horizontal, diagonal orientations)</li>
-                <li><strong>Blob detectors</strong> responding to local intensity patterns</li>
-                <li><strong>Simple texture patterns</strong> capturing fine-grained structure</li>
+                <li>Edge detectors (vertical, horizontal, diagonal)</li>
+                <li>Blob detectors for local intensity patterns</li>
+                <li>Simple texture patterns</li>
             </ul>
 
-            <p>These match findings from neuroscience: early visual cortex neurons also respond to oriented edges and
-                simple spatial frequency patterns.</p>
+            <p>This mirrors neuroscience findings — V1 neurons in the visual cortex respond to oriented edges
+                in much the same way.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/cnns/filters.png"
-                    alt="Grid visualization of the 32 learned convolutional filters from the first layer.">
-                <p class="figure-caption">The 32 learned convolutional filters from the first layer of our SimpleCNN.
-                    Each 3x3 filter has learned to detect a specific low-level feature. We normalize each filter to
-                    $[0, 1]$ for visualization. Notice the variety of edge orientations and blob patterns the network
-                    has discovered autonomously through backpropagation.</p>
+                    alt="32 learned 3x3 convolutional filters from the first layer.">
+                <p class="figure-caption">All 32 first-layer filters, normalized to $[0, 1]$ for display.
+                    Each 3x3 kernel has specialized to detect a different low-level pattern.</p>
             </div>
 
             <h2>Feature Map Analysis</h2>
 
-            <h3>What Are Feature Maps?</h3>
-            <p>Feature maps are the activations produced when an input image passes through a convolutional layer.
-                Each map represents the <strong>spatial presence</strong> of a specific feature — bright regions
-                indicate where the corresponding filter responds strongly to the input.</p>
-
             <h3>Progressive Abstraction</h3>
-            <p>As we move deeper through the network, the feature maps show progressive abstraction:</p>
+            <p>Feature maps are the activations produced when an input passes through a convolutional layer.
+                Each map shows where a specific filter fires strongly. Deeper layers combine these
+                into increasingly abstract representations:</p>
             <ul>
-                <li><strong>Layer 1</strong>: Responds to edges and simple patterns in the raw image</li>
-                <li><strong>Layer 2</strong>: Combines edges into shapes, contours, and motifs</li>
-                <li><strong>Deeper layers</strong>: Detect complex patterns and discriminative digit features</li>
+                <li><strong>Layer 1</strong>: Edges and simple patterns from the raw image</li>
+                <li><strong>Layer 2</strong>: Edges combined into shapes and contours</li>
+                <li><strong>Deeper layers</strong>: Discriminative patterns for digit identity</li>
             </ul>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/cnns/feature_maps.png"
-                    alt="Feature map activations from the first convolutional layer for a sample MNIST digit.">
-                <p class="figure-caption">Feature map activations from the first convolutional layer for a sample
-                    MNIST digit. Each map highlights different structural aspects of the input — some respond to
-                    horizontal strokes, others to vertical edges or curves. The ReLU activation creates sparse maps
-                    where most neurons are inactive, focusing the representation on the most salient features.</p>
+                    alt="Feature map activations from the first convolutional layer for a sample digit.">
+                <p class="figure-caption">First-layer feature maps for a sample MNIST digit. Different maps
+                    respond to horizontal strokes, vertical edges, and curves. ReLU zeroes out most
+                    activations, keeping the representation sparse.</p>
             </div>
 
             <h3>Sparse Activations</h3>
-            <p>ReLU creates sparse feature maps — most neurons are inactive (zero) for any given input. This
-                sparsity is computationally efficient and may aid generalization by encouraging the network to develop
-                more robust, non-redundant feature detectors.</p>
+            <p>ReLU produces sparse feature maps — most neurons output zero for any given input. This sparsity
+                is computationally cheap and likely helps generalization.</p>
 
             <h2>Why CNNs Work</h2>
 
             <h3>Inductive Biases</h3>
-            <p>CNNs encode powerful assumptions about visual data that make them remarkably effective:</p>
+            <p>CNNs bake in three assumptions about visual data:</p>
             <ul>
-                <li><strong>Locality</strong>: Nearby pixels are correlated — features are local</li>
+                <li><strong>Locality</strong>: Nearby pixels are correlated</li>
                 <li><strong>Translation equivariance</strong>: Features are location-independent</li>
-                <li><strong>Compositionality</strong>: Complex patterns are built from simpler ones</li>
+                <li><strong>Compositionality</strong>: Complex patterns build from simpler ones</li>
             </ul>
 
-            <h3>Comparison to Fully Connected Networks</h3>
-            <p>For image tasks, CNNs vastly outperform fully connected networks because of:</p>
-            <ul>
-                <li><strong>Parameter efficiency</strong>: Weight sharing reduces parameters by orders of magnitude</li>
-                <li><strong>Spatial structure preservation</strong>: The 2D structure of images is maintained</li>
-                <li><strong>Hierarchical feature learning</strong>: Layer-by-layer composition of increasingly abstract
-                    representations</li>
-            </ul>
+            <h3>vs. Fully Connected Networks</h3>
+            <p>For images, CNNs outperform FC networks because of weight sharing (far fewer parameters),
+                spatial structure preservation, and hierarchical feature composition.</p>
 
             <h2>Conclusion</h2>
-            <p>CNNs remain foundational to computer vision. While Vision Transformers have gained popularity for
-                large-scale tasks, CNNs offer unmatched efficiency, interpretability, and strong inductive biases for
-                visual data. Understanding CNNs is essential for any deep learning practitioner.</p>
+            <p>CNNs remain foundational to computer vision. Vision Transformers have taken over at the
+                large-scale end, but CNNs still offer better efficiency and stronger inductive biases
+                when data or compute is limited.</p>
 
-            <p>We built this entirely from scratch in PyTorch — no pre-built convolutional layers, no pre-trained
-                weights. By seeing the raw filters learn edge detectors and watching feature maps light up with
-                hierarchical abstractions, we demystify the core architecture that launched the deep learning
-                revolution.</p>
-
-            <p><em>Thank you for following this 3-part "Build in Public" series on Convolutional Neural Networks. Stay
-                    connected on LinkedIn for future architectural tear-downs!</em></p>
+            <p>Everything here was built from scratch — no pre-built conv layers, no pre-trained weights.
+                Watching 3x3 kernels independently converge to edge detectors is a good way to build
+                intuition for what these networks are actually doing.</p>
 
         </article>
     </main>

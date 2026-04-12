@@ -81,8 +81,8 @@ permalink: /projects/vits-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Parts 1 and 2, we derived and implemented a Vision Transformer from scratch: patch embeddings via Conv2d, multi-head self-attention without <code>nn.MultiheadAttention</code>, pre-norm Transformer blocks, and the full ViT assembly. Now we confront the critical question: how does it actually perform?</p>
-                <p>We train our ViT-Tiny on CIFAR-10 alongside a simple CNN baseline, both on a restricted 5,000-image subset for 30 epochs. The results reveal a fundamental tension between architectural flexibility and data efficiency -- and confirm a central finding of the original ViT paper.</p>
+                <p>Parts 1 and 2 covered the math and implementation: patch embeddings via Conv2d, manual multi-head self-attention, pre-norm Transformer blocks, and the full ViT assembly. Now the question: how does it actually perform?</p>
+                <p>We train our ViT-Tiny (1.2M params) on CIFAR-10 alongside a SimpleCNN (141K params) and our SmallResNet (175K params), all on a restricted 5,000-image subset for 30 epochs. The gap is large, and it lines up with the central finding of the original ViT paper.</p>
             </div>
 
             <h2>Experimental Setup</h2>
@@ -125,93 +125,87 @@ permalink: /projects/vits-benchmark/
                 </tbody>
             </table>
 
-            <p>The CNN outperforms the ViT by <strong>21.2 percentage points</strong> despite having <strong>$8.5\times$ fewer parameters</strong>.</p>
+            <p>The SimpleCNN beats the ViT by <strong>21.2 percentage points</strong> with <strong>$8.5\times$ fewer parameters</strong>. The SmallResNet lands at 63.30%, reaching that peak at epoch 28 (train loss 0.8683, test loss 1.0764).</p>
 
             <h3>Training Dynamics</h3>
             <ul>
-                <li><strong>CNN</strong>: Fast initial learning, reaching 50% train accuracy by epoch 5. Continues to climb steadily, with a growing train-test gap indicating mild overfitting on the small dataset.</li>
-                <li><strong>ViT</strong>: Slow start during the warmup phase (~16% at epoch 1, barely above random). Gradual improvement throughout training but never achieves the CNN's learning rate. The train-test gap remains modest -- the model is underfitting, not overfitting.</li>
+                <li><strong>CNN</strong>: Fast early progress -- 50% train accuracy by epoch 5, then a steady climb. The growing train-test gap (80% vs 71%) signals mild overfitting on the small dataset.</li>
+                <li><strong>ViT</strong>: Barely above random at epoch 1 (~16%) during warmup. Gradual improvement through 30 epochs but never catches the CNN. The train-test gap stays small -- the model is underfitting, not overfitting.</li>
+                <li><strong>SmallResNet</strong>: Starts slow (19.64% at epoch 1), crosses 50% train accuracy around epoch 10, and plateaus near 69% train / 63% test by epoch 27-28.</li>
             </ul>
 
-            <p>This is a crucial distinction: the CNN's failure mode on small data is <em>overfitting</em> (80% train vs 70% test). The ViT's failure mode is <em>underfitting</em> (54% train vs 50% test) -- it cannot even fit the training data well, despite having $8.5\times$ more parameters.</p>
+            <p>The failure modes are different. The CNN overfits (80% train vs 71% test). The ViT underfits (54% train vs 50% test) -- it cannot even fit the training set, despite having $8.5\times$ more parameters.</p>
 
             <h2>Attention Map Analysis</h2>
-            <p>We extract the attention weights from the last Transformer layer and examine which patches the CLS token attends to. Each of the 4 heads produces a $65 \times 65$ attention matrix; we take the CLS token's row (index 0) and the patch columns (indices 1-64), reshaping into an $8 \times 8$ spatial map.</p>
+            <p>We extract attention weights from the last Transformer layer and look at which patches the CLS token attends to. Each of the 4 heads produces a $65 \times 65$ attention matrix; we take the CLS row (index 0) over the patch columns (indices 1-64) and reshape into an $8 \times 8$ spatial map.</p>
 
             <h3>Observations</h3>
-            <p>Even with limited training, the attention heads show differentiated behavior:</p>
+            <p>Even after only 30 epochs on 5,000 images, the attention heads differentiate:</p>
             <ul>
-                <li>Some heads attend broadly across the image, aggregating global context</li>
-                <li>Other heads show localized attention patterns, focusing on specific spatial regions</li>
-                <li>The attention distributions are non-uniform -- the model has learned that some patches are more informative than others for the given input</li>
+                <li>Some heads spread attention broadly, aggregating global context</li>
+                <li>Others focus on specific spatial regions</li>
+                <li>The distributions are non-uniform -- the model has learned that some patches matter more than others for a given input</li>
             </ul>
 
-            <p>This head specialization is consistent with findings from NLP Transformers and suggests that the multi-head mechanism is serving its intended purpose: different heads capture different types of relationships between patches.</p>
+            <p>This specialization across heads matches what has been observed in NLP Transformers. Different heads capture different types of patch relationships.</p>
 
             <h2>Positional Embedding Analysis</h2>
-            <p>We compute the cosine similarity between all pairs of learned positional embeddings. If the model has learned meaningful spatial structure, nearby patches should have more similar positional embeddings than distant ones.</p>
+            <p>We compute cosine similarity between all pairs of learned positional embeddings. If the model has picked up spatial structure, nearby patches should have more similar embeddings than distant ones.</p>
 
             <h3>Similarity to Center Patch</h3>
-            <p>For a more intuitive visualization, we compute the cosine similarity of every patch position to the center patch (index 32 in our $8 \times 8$ grid). The resulting $8 \times 8$ heatmap shows:</p>
-            <ul>
-                <li>Highest similarity at and near the center position</li>
-                <li>Decreasing similarity with increasing distance</li>
-                <li>The model has discovered 2D spatial locality from 1D positional indices</li>
-            </ul>
+            <p>Computing cosine similarity of every position to the center patch (index 32 in the $8 \times 8$ grid) produces an $8 \times 8$ heatmap showing highest similarity near the center and decreasing similarity with distance. The model has recovered 2D spatial locality from 1D positional indices.</p>
 
-            <p>This confirms Dosovitskiy et al.'s finding: even 1D positional embeddings can capture 2D spatial structure. The model learns that patch 32 is spatially close to patches 31 and 33 (horizontal neighbors) and patches 24 and 40 (vertical neighbors, 8 positions apart in the flattened sequence).</p>
+            <p>This matches Dosovitskiy et al.'s finding. The model learns that patch 32 is close to patches 31 and 33 (horizontal neighbors) and patches 24 and 40 (vertical neighbors, 8 apart in the flattened sequence) -- all without being told the image is 2D.</p>
 
             <h2>Why ViTs Fail on Small Data</h2>
-            <p>Our results cleanly reproduce the central finding of the ViT paper. The explanation involves the concept of <strong>inductive bias</strong>.</p>
+            <p>Our results reproduce the central claim of the ViT paper. It comes down to <strong>inductive bias</strong>.</p>
 
             <h3>What CNNs Know a Priori</h3>
-            <p>Convolutional networks encode two strong assumptions about images:</p>
+            <p>Convolutional networks bake in two assumptions about images:</p>
             <ol>
-                <li><strong>Locality</strong>: A $3 \times 3$ filter only sees nearby pixels. Important features (edges, textures) are local.</li>
-                <li><strong>Translation equivariance</strong>: The same filter is applied at every spatial location. A cat in the top-left looks the same as a cat in the bottom-right.</li>
+                <li><strong>Locality</strong>: A $3 \times 3$ filter only sees nearby pixels. Edges and textures are local features.</li>
+                <li><strong>Translation equivariance</strong>: The same filter applies at every spatial position. A cat in the top-left uses the same detector as a cat in the bottom-right.</li>
             </ol>
 
-            <p>These assumptions are correct for natural images and dramatically reduce the hypothesis space. A CNN doesn't need to <em>learn</em> that nearby pixels are related -- it knows this architecturally.</p>
+            <p>These are correct for natural images and they shrink the hypothesis space. A CNN does not need to <em>learn</em> that nearby pixels are related -- the architecture enforces it.</p>
 
             <h3>What ViTs Must Learn from Data</h3>
-            <p>A Vision Transformer has none of these built-in assumptions:</p>
+            <p>A Vision Transformer starts with none of these built-in assumptions:</p>
             <ul>
-                <li>Every patch can attend to every other patch from layer 1 -- there is no locality constraint</li>
-                <li>Positional embeddings are learned from scratch -- spatial structure is not given</li>
-                <li>The attention pattern is input-dependent -- the model must learn <em>when</em> to attend locally vs globally</li>
+                <li>Every patch can attend to every other patch from layer 1 -- no locality constraint</li>
+                <li>Positional embeddings are initialized randomly -- spatial structure is not given</li>
+                <li>Attention patterns are input-dependent -- the model must figure out <em>when</em> to attend locally vs globally</li>
             </ul>
 
-            <p>This flexibility is powerful with sufficient data (ViT was originally trained on JFT-300M, a dataset of 300 million images). But with only 5,000 images, the model cannot learn these spatial priors effectively.</p>
+            <p>This flexibility pays off with enough data (the original ViT trained on JFT-300M, 300 million images). With 5,000 images, the model cannot learn these spatial priors.</p>
 
             <h3>The Bias-Variance Tradeoff</h3>
-            <p>In classical statistical terms:</p>
+            <p>In classical terms:</p>
             <ul>
                 <li><strong>CNNs</strong>: High bias (strong assumptions), low variance $\rightarrow$ good on small data</li>
                 <li><strong>ViTs</strong>: Low bias (few assumptions), high variance $\rightarrow$ need large data to generalize</li>
             </ul>
 
-            <p>This is why ViT-Large with JFT-300M pretraining surpasses the best CNNs, but our ViT-Tiny on 5,000 images loses by 21 points. The crossover point -- where ViTs begin to outperform CNNs -- occurs somewhere around ImageNet scale (~1M images) with appropriate regularization.</p>
+            <p>This is why ViT-Large with JFT-300M pretraining surpasses the best CNNs, while our ViT-Tiny on 5,000 images loses by 21 points. The crossover -- where ViTs start outperforming CNNs -- sits around ImageNet scale (~1M images) with proper regularization.</p>
 
             <h2>Bridging the Gap</h2>
-            <p>Several subsequent works have addressed ViT's data efficiency:</p>
+            <p>Several lines of work have tackled ViT's data efficiency problem:</p>
             <ul>
-                <li><strong>DeiT</strong> (Touvron et al., 2021): Training recipe with strong data augmentation, knowledge distillation, and regularization enables ViT to match CNNs on ImageNet-1K alone</li>
-                <li><strong>Hybrid models</strong>: CCT, CvT, and CoAtNet introduce convolutional stems or local attention to inject inductive bias</li>
-                <li><strong>Masked pretraining</strong>: MAE (He et al., 2022) uses masked image modeling as a self-supervised pretext task, enabling data-efficient ViT training</li>
+                <li><strong>DeiT</strong> (Touvron et al., 2021): A training recipe with heavy augmentation, knowledge distillation, and regularization lets ViT match CNNs using only ImageNet-1K</li>
+                <li><strong>Hybrid models</strong>: CCT, CvT, and CoAtNet add convolutional stems or local attention to inject spatial priors</li>
+                <li><strong>Masked pretraining</strong>: MAE (He et al., 2022) uses masked image modeling as a self-supervised pretext task for data-efficient ViT training</li>
             </ul>
 
             <h2>Conclusion</h2>
-            <p>Our from-scratch ViT implementation demonstrates both the elegance and the limitation of applying pure self-attention to images:</p>
+            <p>What this experiment shows:</p>
             <ul>
-                <li>The architecture is remarkably simple: patch embed, stack Transformer blocks, classify the CLS token</li>
-                <li>Attention maps show meaningful spatial specialization even with limited training</li>
-                <li>Positional embeddings learn 2D structure from 1D indices</li>
-                <li>But data efficiency remains the fundamental bottleneck in the low-data regime</li>
+                <li>The ViT architecture is simple -- patch embed, stack Transformer blocks, classify the CLS token -- but it is not a free lunch</li>
+                <li>Attention heads specialize spatially even with limited training data</li>
+                <li>1D positional embeddings learn 2D structure</li>
+                <li>On 5,000 images, data efficiency is the bottleneck: 49.60% (ViT) vs 70.80% (CNN) vs 63.30% (ResNet)</li>
             </ul>
 
-            <p>The lesson is not that ViTs are inferior to CNNs -- they are not. The lesson is that <strong>inductive biases are priors, not limitations</strong>. When your prior matches the data distribution (as spatial locality matches natural images), it accelerates learning. When you have enough data to overcome the lack of priors, the more flexible architecture wins.</p>
-
-            <p>This is arguably the deepest insight of the ViT paper: the boundary between "architecture design" and "learning from data" is a spectrum, not a binary choice. Vision Transformers shifted that boundary decisively toward data-driven learning, and the field has never looked back.</p>
+            <p>ViTs are not worse than CNNs. They just need more data. <strong>Inductive biases are priors, not limitations</strong> -- when the prior fits the data (spatial locality for natural images), it speeds up learning. When you have enough data to compensate for the lack of priors, the more flexible architecture wins.</p>
 
         </article>
     </main>

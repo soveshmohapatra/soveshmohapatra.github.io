@@ -192,7 +192,7 @@ permalink: /projects/vaes-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we derived the ELBO, KL divergence, and the reparameterization trick. Now we translate every equation into working PyTorch code, building a complete VAE from scratch---no generative modeling libraries, just <code>torch.nn</code>.</p>
+                <p>Part 1 covered the ELBO, KL divergence, and the reparameterization trick. Here we turn those equations into a working VAE in pure PyTorch---just <code>torch.nn</code>, no external generative modeling libraries.</p>
             </div>
 
             <h2>The Encoder</h2>
@@ -208,7 +208,7 @@ self.fc_log_var = nn.Linear(256, latent_dim)</code></pre>
             <p>Why $\log \boldsymbol{\sigma}^2$ instead of $\boldsymbol{\sigma}$? The log-variance can take any real value, while $\boldsymbol{\sigma}$ must be positive. Parameterizing in log-space avoids the need for explicit positivity constraints and improves numerical stability.</p>
 
             <h2>The Reparameterization Trick</h2>
-            <p>The most elegant function in the entire model:</p>
+            <p>The core of the whole model, in three lines:</p>
 
 <pre><code class="language-python">def reparameterize(self, mu, log_var):
     std = torch.exp(0.5 * log_var)
@@ -216,7 +216,7 @@ self.fc_log_var = nn.Linear(256, latent_dim)</code></pre>
     z = mu + eps * std
     return z</code></pre>
 
-            <p>Three lines. <code>torch.exp(0.5 * log_var)</code> converts log-variance to standard deviation. <code>torch.randn_like(std)</code> samples $\boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$ with the same shape and device. The final line computes $\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\epsilon} \odot \boldsymbol{\sigma}$.</p>
+            <p><code>torch.exp(0.5 * log_var)</code> converts log-variance to standard deviation. <code>torch.randn_like(std)</code> samples $\boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$ with matching shape and device. The final line computes $\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\epsilon} \odot \boldsymbol{\sigma}$.</p>
 
             <p>During training, this introduces stochasticity---each forward pass samples a different $\mathbf{z}$ for the same input. At inference time, you can either sample or simply use $\boldsymbol{\mu}$ as the latent representation.</p>
 
@@ -262,7 +262,7 @@ self.dec_fc3 = nn.Linear(512, 784)</code></pre>
             <p>With <code>latent_dim=2</code>: 1,068,820 trainable parameters.
             With <code>latent_dim=20</code>: 1,082,680 trainable parameters.</p>
 
-            <p>The difference is minimal---only 13,860 additional parameters---because the latent layer is tiny compared to the hidden layers. Yet the impact on reconstruction quality is dramatic, as we will see in Part 3.</p>
+            <p>Only 13,860 additional parameters, since the latent layer is tiny relative to the hidden layers. The effect on reconstruction quality, however, is substantial (see Part 3).</p>
 
             <h2>Training Setup</h2>
             <ul>
@@ -274,7 +274,7 @@ self.dec_fc3 = nn.Linear(512, 784)</code></pre>
             </ul>
 
             <h2>Conclusion</h2>
-            <p>The complete VAE implementation requires surprisingly little code---under 150 lines for the model and loss function. The architectural simplicity belies the mathematical depth. In <strong>Part 3</strong>, we train these models and explore their latent spaces through visualization, interpolation, and random generation.</p>
+            <p>The full VAE fits in under 150 lines for the model and loss function. Part 3 trains both the FC and convolutional variants and explores their latent spaces through visualization, interpolation, and generation.</p>
 
         </article>
     </main>

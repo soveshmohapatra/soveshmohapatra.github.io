@@ -228,98 +228,91 @@ permalink: /projects/resnet-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we established the mathematical foundation of residual learning. In Part 2, we built
-                    the entire ResNet family from scratch in pure PyTorch — from ResidualBlock all the way to
-                    ResNet-152.</p>
-                <p>Today, we put our implementation to the test. Does learning deviations from identity actually solve
-                    the degradation problem? To find out, we train our SmallResNet-18 variant on CIFAR-10 and visualize
-                    both the activation statistics flowing through the layers and the feature maps learned by the
-                    network.</p>
+                <p>Part 1 was the math. Part 2 was the PyTorch implementation. Now we run the thing and see
+                    whether residual connections actually do what the theory promises -- stable gradient flow
+                    through deep networks, no degradation.</p>
+                <p>We train our SmallResNet-18 on a CIFAR-10 subset and look at training curves, activation
+                    magnitudes per layer, and learned feature maps.</p>
             </div>
 
             <h2>The Fast Training Experiment</h2>
-            <p>To make this code reproducible on standard CPUs in minutes rather than hours, we configured the training
-                loop to use a 5,000-image subset of CIFAR-10 (instead of all 50,000) and ran for 30 epochs.</p>
+            <p>To keep this reproducible on a laptop CPU, we used a 5,000-image subset of CIFAR-10 (10% of
+                the full training set) and trained for 30 epochs. Total wall time: about 4 minutes.</p>
 
-            <p>Our SmallResNet-18 (175,258 parameters) achieved:</p>
+            <p>Our SmallResNet-18 has 175,258 parameters. Final numbers from the training log:</p>
             <ul>
-                <li><strong>Training accuracy</strong>: ~69%</li>
-                <li><strong>Test accuracy</strong>: ~63%</li>
-                <li><strong>Training time</strong>: ~4 minutes on a standard CPU</li>
+                <li><strong>Final training loss</strong>: 0.8805 (down from 2.0799 at epoch 1)</li>
+                <li><strong>Final training accuracy</strong>: 68.92%</li>
+                <li><strong>Best test accuracy</strong>: 63.30% (epoch 28)</li>
+                <li><strong>Final test accuracy</strong>: 62.50%</li>
             </ul>
 
-            <p>While these absolute numbers reflect the restricted dataset size, the <em>training dynamics</em> reveal
-                exactly why ResNets revolutionized deep learning.</p>
+            <p>These numbers are capped by the tiny dataset, not the architecture. What matters more is the
+                shape of the training dynamics.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/resnets/training_curves.png"
                     alt="Training and test loss/accuracy curves over 30 epochs of ResNet training on CIFAR-10.">
-                <p class="figure-caption">Training and test curves for our 30-epoch fast run on a 5K CIFAR-10 subset.
-                    Notice the rapid initial learning and the distinct bumps at epochs 15 and 25 where the learning
-                    rate step scheduler activates. Despite the small data regime, the network learns stable
-                    representations without collapsing.</p>
+                <p class="figure-caption">Loss and accuracy over 30 epochs on a 5K CIFAR-10 subset. The LR drops
+                    at epochs 15 and 25 produce visible jumps -- training loss falls from 1.20 to 1.05 after
+                    the first drop, and from 0.90 to 0.87 after the second.</p>
             </div>
 
             <h2>Visualizing the Gradient Highway</h2>
-            <p>The core premise of a ResNet is the $y = F(x) + x$ skip connection. This creates a "gradient highway"
-                that prevents signal decay during both the forward pass and backpropagation. We can directly verify
-                this by tracking activation statistics through the network.</p>
+            <p>The whole point of $y = F(x) + x$ is that the identity path keeps signal alive through depth.
+                We can check this directly by recording activation magnitudes at each residual layer during
+                a forward pass.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/resnets/activations.png"
                     alt="Mean activation magnitude through successive residual layers.">
-                <p class="figure-caption">Mean activation magnitude through successive residual layers. Notice how the
-                    signal remains remarkably stable throughout the depth of the network rather than vanishing to
-                    zero — the defining failure mode of deep plain convolutional networks.</p>
+                <p class="figure-caption">Mean activation magnitude across residual layers. Signal stays
+                    stable through the full depth of the network -- no vanishing, no explosion.</p>
             </div>
 
             <h3>Activation Flow Analysis</h3>
-            <p>By registering forward hooks in PyTorch, we captured the outputs at each residual layer. The plot
-                confirms:</p>
+            <p>We registered forward hooks on <code>layer1</code>, <code>layer2</code>, and
+                <code>layer3</code> to capture output tensors. Two things stand out:</p>
             <ul>
-                <li><strong>No Vanishing Activations</strong>: The mean activation magnitude remains stable across all
-                    layers. In a plain 18-layer network without skip connections, we would see extreme scaling issues
-                    (either blowing up or vanishing).</li>
-                <li><strong>Signal Preservation</strong>: The additive $+ x$ term successfully propagates the raw
-                    input/feature signal all the way to the classification head.</li>
+                <li><strong>No vanishing activations</strong>: Mean activation magnitude holds steady across
+                    all layers. A plain 18-layer network without skip connections would show either decay
+                    toward zero or blowup -- not this flat profile.</li>
+                <li><strong>Signal preservation</strong>: The $+ x$ term carries the input signal all the
+                    way to the classification head.</li>
             </ul>
 
             <h2>What Do Residual Blocks Learn?</h2>
-            <p>We also visualized the raw feature maps emitted by the first residual block (immediately after the
-                stem convolution).</p>
+            <p>We visualized the feature maps from the first residual block, right after the stem
+                convolution.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/resnets/feature_maps.png"
                     alt="Eight feature maps from the first residual layer showing edge detection and frequency filters.">
-                <p class="figure-caption">Eight feature maps from the first residual layer. Visually inspecting these
-                    reveals standard early-CNN behavior: edge detection, Gabor-like frequency filters, and color blob
-                    isolation. ResNets learn the same hierarchical features as standard CNNs, but they do so in a way
-                    that allows the network to be an order of magnitude deeper.</p>
+                <p class="figure-caption">Eight feature maps from layer 1. Typical early-CNN patterns: edges,
+                    Gabor-like filters, color blobs.</p>
             </div>
 
+            <p>These are the same types of features you see in any trained CNN. The difference is that
+                ResNets can learn them reliably even when the network is an order of magnitude deeper.</p>
+
             <h2>Why This Matters Today</h2>
-            <p>You might ask: in the age of Transformers and Diffusion Models, do ResNets still matter?
-                Absolutely.</p>
+            <p>ResNets are from 2015, but the skip connection idea is everywhere now:</p>
             <ol>
-                <li><strong>They are everywhere</strong>: ResNets remain the default visual backbone for object
-                    detection (Faster R-CNN), segmentation (Mask R-CNN), and pose estimation pipelines.</li>
-                <li><strong>The trick is universal</strong>: The core innovation — the identity residual connection
-                    $y = F(x) + x$ — is the exact same trick used in every Transformer block today to connect
-                    attention and feed-forward layers.</li>
+                <li><strong>Vision backbones</strong>: ResNets are still the default feature extractor in
+                    Faster R-CNN, Mask R-CNN, and most pose estimation pipelines.</li>
+                <li><strong>Transformers</strong>: Every Transformer block uses $y = F(x) + x$ to connect
+                    attention and feed-forward sublayers. Same residual connection, different $F$.</li>
             </ol>
 
             <h2>Conclusion</h2>
-            <p>We derived the math, built the PyTorch blocks, and validated the flow of activations. We successfully
-                replicated the core insight from He et al.: <strong>learning deviations is fundamentally easier than
-                learning absolute mappings</strong>.</p>
+            <p>Across this series we went from the degradation problem to a working, trained ResNet. The
+                activation plots confirm the theory: skip connections keep gradients and activations stable
+                through depth. The core insight from He et al. -- learn deviations from identity, not absolute
+                mappings -- turns out to be one of the most reusable ideas in deep learning.</p>
 
-            <p>The identity skip connection — a single line of code (<code>out += identity</code>) — solved a problem
-                that had blocked the entire field: the inability to train deep networks. From 20-layer plateaus to
-                1000+ layer architectures, this one idea changed everything.</p>
-
-            <p><em>Thank you for following this 3-part "Build in Public" series on Residual Networks. The full code,
-                    training logs, and visualization scripts are live on the GitHub repo. Run the 4-minute training
-                    script yourself to watch the residual connections in action!</em></p>
+            <p>Full code, training logs, and visualization scripts are on the
+                <a href="https://github.com/soveshmohapatra/ResNets" target="_blank">GitHub repo</a>.
+                The training script runs in about 4 minutes on CPU.</p>
 
         </article>
     </main>

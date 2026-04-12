@@ -220,11 +220,9 @@ permalink: /projects/cnn-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we explored the mathematical foundations of convolutions — the sliding window operation,
-                    weight sharing, pooling, and hierarchical feature learning.</p>
-                <p>Today, we take that math and translate it into a pure PyTorch implementation. We will build every
-                    component from scratch: a custom Conv2D layer, pooling operations, activation functions, and three
-                    complete CNN architectures of increasing depth.</p>
+                <p>Part 1 covered the math — convolution, weight sharing, pooling, hierarchical features.</p>
+                <p>Now we translate that into code. This post walks through a pure PyTorch implementation:
+                    a custom Conv2D layer, pooling operations, and three CNN architectures of increasing depth.</p>
                 <p style="margin-top: 1rem; font-weight: 500; color: var(--accent-light);">
                     <i class="fab fa-github"></i>
                     <a href="https://github.com/soveshmohapatra/CNN-Models-From-Scratch" target="_blank"
@@ -233,8 +231,8 @@ permalink: /projects/cnn-live-code/
             </div>
 
             <h2>The Convolutional Layer</h2>
-            <p>Our custom Conv2D layer implements the sliding window operation with learnable kernels. We use
-                <strong>Xavier initialization</strong> to ensure stable gradient flow at the start of training.</p>
+            <p>Our Conv2D wraps the sliding window operation with learnable kernels and
+                <strong>Xavier initialization</strong> for stable early training.</p>
 
             <pre><code class="language-python">class Conv2D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size,
@@ -257,8 +255,8 @@ permalink: /projects/cnn-live-code/
         return F.conv2d(x, self.weight, self.bias, stride=self.stride)</code></pre>
 
             <h2>Pooling Layers</h2>
-            <p>We implement both <strong>MaxPool2D</strong> and <strong>AveragePool2D</strong> for spatial downsampling.
-                Max pooling preserves the strongest activations while average pooling smooths the representation.</p>
+            <p>Both <strong>MaxPool2D</strong> and <strong>AveragePool2D</strong> for spatial downsampling.
+                Max pooling keeps the strongest activations; average pooling smooths them.</p>
 
             <pre><code class="language-python">class MaxPool2D(nn.Module):
     """Reduces spatial dimensions by taking the maximum in each window."""
@@ -282,9 +280,8 @@ class AveragePool2D(nn.Module):
         return F.avg_pool2d(x, self.kernel_size, self.stride, self.padding)</code></pre>
 
             <h2>Architecture 1: LeNet-5 (1998)</h2>
-            <p>One of the earliest successful CNNs, designed by Yann LeCun for handwritten digit recognition. LeNet-5
-                uses <strong>tanh activations</strong> and <strong>average pooling</strong> — reflecting the conventions
-                of the era before ReLU.</p>
+            <p>Yann LeCun's LeNet-5 for digit recognition. It uses <strong>tanh activations</strong> and
+                <strong>average pooling</strong> — conventions of the pre-ReLU era.</p>
 
             <pre><code class="language-python">class LeNet5(nn.Module):
     def __init__(self, num_classes=10, in_channels=1):
@@ -311,8 +308,7 @@ class AveragePool2D(nn.Module):
         return self.fc3(x)</code></pre>
 
             <h2>Architecture 2: SimpleCNN</h2>
-            <p>A modern architecture demonstrating the classic <strong>Conv &rarr; ReLU &rarr; Pool</strong> pattern
-                with dropout regularization:</p>
+            <p>The standard modern pattern — <strong>Conv &rarr; ReLU &rarr; Pool</strong> — with dropout:</p>
 
             <pre><code class="language-python">class SimpleCNN(nn.Module):
     def __init__(self, num_classes=10, in_channels=1):
@@ -334,8 +330,8 @@ class AveragePool2D(nn.Module):
         return self.fc2(x)</code></pre>
 
             <h2>Architecture 3: DeepCNN (VGG-Style)</h2>
-            <p>A deeper network using reusable <strong>CNN blocks</strong> with BatchNorm. Each block follows
-                the pattern Conv &rarr; BatchNorm &rarr; ReLU &rarr; Pool, doubling channels at each stage:</p>
+            <p>A deeper network built from reusable <strong>CNN blocks</strong> — Conv &rarr; BatchNorm &rarr; ReLU
+                &rarr; Pool — doubling channels at each stage:</p>
 
             <pre><code class="language-python">class CNNBlock(nn.Module):
     """Reusable Conv -> BatchNorm -> ReLU -> Pool block."""
@@ -376,12 +372,12 @@ class DeepCNN(nn.Module):
         )</code></pre>
 
             <h2>Training Strategy</h2>
-            <p>We train our SimpleCNN on MNIST with:</p>
+            <p>We train SimpleCNN on MNIST with:</p>
             <ul>
                 <li><strong>Cross-entropy loss</strong> for multi-class classification</li>
-                <li><strong>Adam optimizer</strong> with learning rate $0.001$</li>
-                <li><strong>StepLR scheduler</strong> halving the learning rate every 5 epochs</li>
-                <li><strong>Dropout regularization</strong> ($p=0.5$) in fully connected layers</li>
+                <li><strong>Adam optimizer</strong> at learning rate $0.001$</li>
+                <li><strong>StepLR scheduler</strong> — halves LR every 5 epochs</li>
+                <li><strong>Dropout</strong> ($p=0.5$) in the FC layers</li>
             </ul>
 
             <pre><code class="language-python">model = SimpleCNN(num_classes=10, in_channels=1).to(device)
@@ -394,10 +390,9 @@ for epoch in range(1, EPOCHS + 1):
     test_loss, test_acc = evaluate(model, test_loader, criterion, device)
     scheduler.step()</code></pre>
 
-            <h2>Next Steps: Visualizing What CNNs Learn</h2>
-            <p>We now have a complete implementation — from custom convolutional layers to three full architectures.
-                In <strong>Part 3</strong>, we will train on MNIST, visualize the learned convolutional filters, and
-                analyze the feature map activations to understand what the network actually detects at each layer.</p>
+            <h2>Up Next</h2>
+            <p>That covers the implementation — custom convolutional layers through three complete architectures.
+                Part 3 trains this on MNIST, visualizes the learned filters, and analyzes feature maps at each layer.</p>
 
         </article>
     </main>

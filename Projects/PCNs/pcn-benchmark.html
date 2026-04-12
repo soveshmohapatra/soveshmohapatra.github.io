@@ -230,97 +230,70 @@ permalink: /projects/pcn-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In our series on Predictive Coding Networks (PCNs), we explored the profound biological theory of
-                    top-down predictive processing in Part 1. In Part 2, we translated that local, heuristic learning
-                    rule into a functional, iterative codebase in pure PyTorch, successfully retiring
-                    <code>loss.backward()</code> in favor of local energy minimization.</p>
-                <p>But theoretical elegance is only half the battle. The ultimate question remains: <em>How do these
-                        biologically plausible models actually perform against standard Artificial Neural Networks (ANNs)
-                        trained with backpropagation?</em></p>
-                <p>Today, we benchmark a Predictive Coding Network against a standard Multilayer Perceptron (MLP) of the
-                    exact same size on two distinct tasks: Non-linear Regression and Image Classification.</p>
+                <p><a href="{{ site.baseurl }}/projects/pcn-theory/">Part 1</a> covered the theory.
+                    <a href="{{ site.baseurl }}/projects/pcn-live-code/">Part 2</a> built the PyTorch
+                    implementation. Now the question: how does a PCN actually perform against standard
+                    backpropagation?</p>
+                <p>We benchmark identical architectures -- one trained with backprop, one with local energy
+                    minimization -- on nonlinear regression and MNIST classification.</p>
             </div>
 
             <h2>Experiment 1: Non-Linear Regression</h2>
-            <p>For our first test, we modeled a noisy sine wave to evaluate continuous function approximation. The
-                architecture for both the standard MLP and the PCN was <code>1 -> 32 -> 32 -> 1</code>.</p>
-            <p>For the standard MLP, we used an Adam optimizer and standard backpropagation. For the PCN, we used 20
-                steps of internal inference to settle the local energy landscape before applying the local Hebbian weight
-                update rule.</p>
+            <p>We fit a noisy sine wave using both a standard MLP and a PCN, each with architecture
+                <code>1 -> 32 -> 32 -> 1</code>. The MLP used Adam with standard backprop. The PCN ran 20
+                inference steps per sample before applying the local Hebbian weight update.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/pcn/pcn_vs_mlp_regression.png"
                     alt="Training Loss Comparison: Standard MLP vs PCN on nonlinear sine wave regression.">
-                <p class="figure-caption">Training Loss Comparison: Standard MLP vs PCN on nonlinear sine wave
-                    regression. Both networks learn the underlying function, but the MLP converges faster with less
-                    noise.</p>
+                <p class="figure-caption">MLP vs PCN training loss on sine wave regression. The MLP converges
+                    faster with less noise.</p>
             </div>
 
-            <h3>Results & Analysis</h3>
-            <p>Both networks successfully learned the underlying non-linear sine function, but their learning dynamics
-                were radically different:</p>
+            <h3>Results</h3>
+            <p>Both networks learned the sine function, but the dynamics differed:</p>
             <ul>
-                <li><strong>MLP:</strong> The standard MLP converged extremely efficiently in wall-clock time and
-                    requires significantly fewer epochs to reach a structurally low Mean Squared Error (MSE). Because
-                    backpropagation has instantaneous access to the exact global gradient chain, it optimizes the network
-                    without hesitation.</li>
-                <li><strong>PCN:</strong> The Predictive Coding Network successfully approximated the sine wave, but its
-                    learning trajectory was inherently noisier. This noise stems from the <em>inference phase</em>. If
-                    the latent nodes do not perfectly minimize their local prediction errors before the learning phase
-                    begins, the subsequent synaptic weight update will be misaligned. Tuned learning rates for the
-                    inference walk are critical to stability.</li>
+                <li><strong>MLP:</strong> Converged quickly to low MSE. Backprop has access to exact global
+                    gradients, so there is no ambiguity in the weight update direction.</li>
+                <li><strong>PCN:</strong> Approximated the sine wave but with a noisier training curve. The noise
+                    comes from the inference phase: if latent nodes do not fully minimize their local prediction
+                    errors before the weight update, the subsequent gradient is misaligned. Inference learning rate
+                    tuning is critical.</li>
             </ul>
 
             <h2>Experiment 2: Image Classification (MNIST)</h2>
-            <p>To push the models into a high-dimensional space, we built an architecture of
-                <code>784 -> 128 -> 10</code> to classify the classic MNIST digit dataset.</p>
+            <p>Architecture: <code>784 -> 128 -> 10</code>, classifying MNIST digits.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/pcn/pcn_vs_mlp_mnist.png"
                     alt="Test Accuracy Comparison: Standard MLP vs PCN on MNIST image classification.">
-                <p class="figure-caption">Test Accuracy Comparison: Standard MLP vs PCN on MNIST image classification.
-                    The MLP reaches >94% quickly while the PCN climbs to 72% using purely local learning.</p>
+                <p class="figure-caption">MLP vs PCN test accuracy on MNIST. The MLP reaches >94%; the PCN
+                    climbs to 72% using only local learning.</p>
             </div>
 
-            <p>Here, the "Generative" nature of the Predictive Coding Network shines through, shedding light on a
-                unique architectural challenge:</p>
+            <p>This is where the PCN's generative nature creates specific challenges:</p>
             <ul>
-                <li><strong>MLP Accuracy:</strong> As expected, the MLP quickly hit $>94\%$ test accuracy within the
-                    first 10 epochs. It acts as a flawless discriminative pipeline.</li>
-                <li><strong>PCN Accuracy:</strong> Training the PCN for classification proved highly unstable when using
-                    standard practices. Using <code>ReLU</code> activations caused the negative latent states to
-                    zero-gradient, halting the bottom-up inference phase entirely and flatlining accuracy at exactly 10%
-                    (random guessing). After swapping the structural activations to <code>Tanh</code> and boosting the
-                    inference walk to $T=50$ steps, the PCN successfully escaped the flatline to climb beyond $72\%$
-                    accuracy.</li>
+                <li><strong>MLP:</strong> Hit >94% test accuracy within 10 epochs.</li>
+                <li><strong>PCN:</strong> With <code>ReLU</code> activations, negative latent states got
+                    zero-gradient during inference, flatlining accuracy at 10% (random chance). Switching to
+                    <code>Tanh</code> and increasing inference steps to $T=50$ brought the PCN to 72% accuracy.</li>
             </ul>
-            <p>The PCN achieved learning <em>with absolutely no global loss propagation</em>. It learned to classify
-                handwritten digits purely by minimizing local discrepancies layer by layer.</p>
+            <p>The key result: the PCN classified handwritten digits with zero global loss propagation, learning
+                purely from local prediction errors at each layer.</p>
 
-            <h2>The Verdict: Why Use PCNs?</h2>
-            <p>If standard backpropagation wins decisively on parameter efficiency, convergence speed, and stability,
-                why research Predictive Coding?</p>
+            <h2>Why PCNs Matter</h2>
+            <p>Backprop wins on speed, accuracy, and stability. So why bother?</p>
 
-            <p><strong>1. Algorithmic Biology:</strong> Backpropagation requires a hyper-optimized global supervisor.
-                PCNs offer empirical, mathematical proof that complex, non-linear feature clustering (like MNIST) can
-                emerge natively from entirely local, unsupervised rules within node clusters.</p>
+            <p><strong>1. Algorithmic Biology:</strong> PCNs demonstrate that non-linear feature clustering (MNIST
+                classification) can emerge from entirely local update rules. No global supervisor required.</p>
 
-            <p><strong>2. The Neuromorphic Hardware Paradigm:</strong> Our current multi-trillion dollar GPU acceleration
-                architectures (from NVIDIA and AMD) are fundamentally constrained by global matrix multiplication and
-                rigid memory bandwidth specifically tailored to the backward pass. PCNs do not require synchronous
-                global memory locking to pass errors backwards. This paradigm shift perfectly correlates with
-                next-generation <strong>Neuromorphic Hardware</strong> (such as IBM NorthPole or analog crossbar
-                arrays), where strictly local weight updates map 1:1 to physical variable-resistance synapses.</p>
+            <p><strong>2. Neuromorphic Hardware:</strong> Current GPU architectures are optimized for the backward
+                pass -- global matrix multiplications and synchronous memory access. PCNs need none of that. Their
+                local weight updates map directly onto <strong>neuromorphic chips</strong> (IBM NorthPole, analog
+                crossbar arrays), where variable-resistance synapses update in place.</p>
 
-            <p><strong>3. Generative by Default:</strong> A PCN is fundamentally bidirectional. Because it structurally
-                learns by actively predicting a layer's output from the top down, a fully trained PCN can run "in
-                reverse" to imagine or hallucinate inputs purely by fixing the label constraint.</p>
-
-            <p>Predictive Coding is the bleeding edge of making Artificial Intelligence algorithmically and physically
-                identical to Natural Intelligence.</p>
-
-            <p><em>Thank you for following this 3-part "Build in Public" series on Predictive Coding Networks. Stay
-                    connected on LinkedIn for future architectural tear-downs!</em></p>
+            <p><strong>3. Generative by Default:</strong> PCNs predict each layer's state from above, making them
+                bidirectional. A trained PCN can run in reverse -- fix a label and generate plausible inputs.</p>
 
         </article>
     </main>

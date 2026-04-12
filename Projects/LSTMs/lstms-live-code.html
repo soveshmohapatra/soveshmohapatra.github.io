@@ -96,11 +96,11 @@ permalink: /projects/lstms-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we explored the mathematics of gated recurrence—the forget gate, input gate, output gate, and the additive cell state update that creates a gradient highway through time. Today, we take that math and translate it into a pure PyTorch implementation. We will build from individual cells to complete sequence models.</p>
+                <p>Part 1 covered the math: forget gate, input gate, output gate, and the additive cell state update. Now we translate those equations into working PyTorch code, building from a single cell up to full sequence models.</p>
             </div>
 
             <h2>The LSTM Cell</h2>
-            <p>Our LSTMCell class implements the four key computations. Each gate is a linear projection of the concatenated input $x_t$ and previous hidden state $h_{t-1}$, followed by a nonlinearity:</p>
+            <p>Each gate is a linear projection of the concatenated input $x_t$ and previous hidden state $h_{t-1}$, followed by a nonlinearity:</p>
 
             <div class="code-block-container">
                 <div class="code-header">
@@ -121,7 +121,7 @@ h_new = o * torch.tanh(c_new)</code></pre>
             </div>
 
             <h3>Weight Initialization</h3>
-            <p>We use Xavier initialization for all weights, with a critical modification: <strong>forget gate biases are initialized to 1.0</strong>. This encourages the network to start with information preservation rather than information destruction, stabilizing early training. This trick, first noted by Jozefowicz et al. (2015), is essential for consistent convergence.</p>
+            <p>All weights use Xavier initialization, with one important detail: <strong>forget gate biases start at 1.0</strong>. Without this, the forget gate sigmoid outputs ~0.5 at initialization, immediately discarding half the cell state. Setting the bias to 1 pushes the initial output toward 1 (preserve everything), which stabilizes early training. Jozefowicz et al. (2015) showed this is critical for consistent convergence.</p>
 
             <div class="code-block-container">
                 <div class="code-header">
@@ -134,39 +134,39 @@ nn.init.ones_(self.Whf.bias)</code></pre>
             </div>
 
             <h2>Multi-Layer LSTMs</h2>
-            <p>Stacking LSTM cells creates hierarchical temporal processing:</p>
+            <p>Stacking cells gives you hierarchical temporal processing:</p>
             <ul>
-                <li>Lower layers capture short-term patterns (local token interactions)</li>
-                <li>Higher layers learn long-term structure (global sentence-level meaning)</li>
-                <li>Dropout between layers prevents overfitting</li>
+                <li>Lower layers pick up short-range patterns (local token interactions)</li>
+                <li>Higher layers capture longer-range structure (sentence-level meaning)</li>
+                <li>Dropout between layers regularizes the stack</li>
             </ul>
 
-            <p>The output of each layer's hidden state $h_t^{(l)}$ becomes the input for the next layer. We apply dropout only between layers, never at the final output—matching the convention used in PyTorch's built-in LSTM.</p>
+            <p>Each layer's hidden state $h_t^{(l)}$ feeds into the layer above it. Dropout is applied between layers only, not after the final output -- matching PyTorch's built-in LSTM convention.</p>
 
             <h2>Architecture Variants</h2>
 
             <h3>LSTM Classifier (Many-to-One)</h3>
-            <p>For sequence classification tasks:</p>
+            <p>For sequence classification:</p>
             <ul>
-                <li>Processes the entire sequence through multi-layer LSTM</li>
-                <li>Concatenates final hidden states from <em>all layers</em></li>
-                <li>Projects to class logits via a fully-connected layer</li>
-                <li>Optional bidirectional support doubles the representation power</li>
+                <li>Run the full sequence through the multi-layer LSTM</li>
+                <li>Concatenate final hidden states from all layers</li>
+                <li>Project to class logits through a linear layer</li>
+                <li>Bidirectional mode doubles the representation</li>
             </ul>
 
             <h3>LSTM Tagger (Many-to-Many)</h3>
             <p>For sequence labeling (POS tagging, NER):</p>
             <ul>
-                <li>Outputs a prediction at <em>each</em> time step</li>
-                <li>Projects each hidden state $h_t$ to output vocabulary</li>
+                <li>Emit a prediction at every time step</li>
+                <li>Each $h_t$ is projected to the label vocabulary</li>
             </ul>
 
             <h3>CharLSTM</h3>
             <p>Character-level language model:</p>
             <ul>
                 <li>Embedding layer maps character indices to dense vectors</li>
-                <li>Multi-layer LSTM processes the embedded sequence</li>
-                <li>Autoregressive generation uses temperature-controlled sampling</li>
+                <li>Multi-layer LSTM processes the sequence</li>
+                <li>Generation uses temperature-controlled sampling</li>
             </ul>
 
             <div class="code-block-container">
@@ -182,29 +182,29 @@ nn.init.ones_(self.Whf.bias)</code></pre>
             </div>
 
             <h3>Seq2SeqLSTM (Encoder-Decoder)</h3>
-            <p>The classic encoder-decoder architecture:</p>
+            <p>The encoder-decoder architecture:</p>
             <ul>
-                <li><strong>Encoder</strong> LSTM compresses the source sequence into a fixed-size context vector (its final hidden and cell states)</li>
-                <li><strong>Decoder</strong> LSTM is initialized with the encoder's final states and generates the target sequence autoregressively</li>
+                <li><strong>Encoder</strong> LSTM compresses the source sequence into a fixed-size context vector (final hidden and cell states)</li>
+                <li><strong>Decoder</strong> LSTM initializes from the encoder's final states and generates the target autoregressively</li>
             </ul>
 
             <h2>Bidirectional Processing</h2>
-            <p>For tasks requiring full context (e.g., sentiment analysis, NER), we implement bidirectional LSTMs:</p>
+            <p>When the model needs full left-right context (sentiment analysis, NER), we run two LSTMs in opposite directions:</p>
             <ul>
-                <li>Forward LSTM processes left-to-right: $h_t^{\rightarrow}$</li>
-                <li>Backward LSTM processes right-to-left: $h_t^{\leftarrow}$</li>
-                <li>Concatenate both: $h_t = [h_t^{\rightarrow}; h_t^{\leftarrow}]$</li>
+                <li>Forward pass: $h_t^{\rightarrow}$</li>
+                <li>Backward pass: $h_t^{\leftarrow}$</li>
+                <li>Concatenation: $h_t = [h_t^{\rightarrow}; h_t^{\leftarrow}]$</li>
             </ul>
 
             <h2>Training Strategy</h2>
-            <p>We train on a challenging long-range dependency task specifically designed to expose the vanishing gradient problem:</p>
+            <p>We test on a synthetic long-range dependency task designed to expose vanishing gradients:</p>
             <ul>
                 <li>Input: random sequence of length 30</li>
                 <li>Task: classify based on the <em>first + last</em> element only</li>
-                <li>The model must remember information across 30 time steps while ignoring irrelevant intermediate values</li>
+                <li>The 28 intermediate values are noise -- the model must learn to ignore them while retaining the endpoints</li>
             </ul>
 
-            <p>Gradient clipping prevents the complementary exploding gradient problem:</p>
+            <p>Gradient clipping handles the complementary exploding gradient problem:</p>
             <div class="code-block-container">
                 <div class="code-header">
                     <span>train.py</span>
@@ -213,10 +213,8 @@ nn.init.ones_(self.Whf.bias)</code></pre>
                 <pre><code class="language-python">torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)</code></pre>
             </div>
 
-            <h2>Next Steps: Visualizing Gate Dynamics</h2>
-            <p>With our LSTM implemented and architecture variants in place, we can now train and analyze <em>what the gates actually learn</em>. In <strong>Part 3</strong>, we will visualize forget gate, input gate, and output gate activations across time—watching the network learn to selectively remember and forget.</p>
-
-            <p style="margin-top: 2rem; font-style: italic;">Full code is on the GitHub repo. Stay tuned for the gate visualization drop!</p>
+            <h2>Next: Visualizing Gate Dynamics</h2>
+            <p>The implementation is done. In <strong>Part 3</strong>, we train this model and look at what the gates actually learn -- extracting forget, input, and output gate activations across time to see how the network decides what to remember and what to discard.</p>
 
         </article>
     </main>

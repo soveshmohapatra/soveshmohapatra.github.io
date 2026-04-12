@@ -192,7 +192,7 @@ permalink: /projects/autoencoders-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we established the mathematical foundation of autoencoders---the information bottleneck, MSE reconstruction loss, and the manifold hypothesis. Today, we translate that math into code. We implement four distinct autoencoder variants from scratch in pure PyTorch, each illustrating a different design principle.</p>
+                <p>Part 1 covered the math: the information bottleneck, MSE loss, and the manifold hypothesis. Here we translate that into four PyTorch implementations---Vanilla, Denoising, Sparse, and Convolutional---each targeting a different design constraint.</p>
             </div>
 
             <h2>Vanilla Autoencoder</h2>
@@ -219,10 +219,10 @@ self.decoder = nn.Sequential(
 
             <h3>Architecture Choices</h3>
             <ul>
-                <li><strong>Layer sizes</strong> (784 &rarr; 512 &rarr; 256 &rarr; d): The encoder progressively halves the representation, creating a smooth compression funnel rather than an abrupt bottleneck.</li>
-                <li><strong>ReLU activations</strong>: Introduce non-linearity so the autoencoder can learn non-linear manifolds. Without activations, stacking linear layers is equivalent to a single linear layer (PCA).</li>
-                <li><strong>Sigmoid output</strong>: Constrains the reconstruction to $[0, 1]$, matching the normalized pixel range of MNIST images.</li>
-                <li><strong>No Sigmoid on the bottleneck</strong>: The latent code $\mathbf{z}$ is unconstrained, allowing the network to use the full real line.</li>
+                <li><strong>Layer sizes</strong> (784 &rarr; 512 &rarr; 256 &rarr; d): Progressive halving creates a smooth compression funnel rather than an abrupt squeeze.</li>
+                <li><strong>ReLU activations</strong>: Without non-linearities, stacking linear layers collapses to a single linear layer (PCA). ReLU lets the network learn non-linear manifolds.</li>
+                <li><strong>Sigmoid output</strong>: Constrains reconstruction to $[0, 1]$, matching normalized MNIST pixel values.</li>
+                <li><strong>No Sigmoid on the bottleneck</strong>: The latent code $\mathbf{z}$ is unconstrained---free to use the full real line.</li>
             </ul>
 
             <h2>Denoising Autoencoder</h2>
@@ -243,10 +243,10 @@ def forward(self, x):
 
             <h3>Key Design Decisions</h3>
             <ul>
-                <li><strong>Noise injection is training-only</strong>: The <code>self.training</code> flag ensures that during evaluation, the autoencoder processes clean inputs. This is critical for fair comparison with other variants.</li>
-                <li><strong>Clamping to $[0,1]$</strong>: After adding Gaussian noise, we clamp to keep pixel values in the valid range. Without clamping, the noisy input could have negative values or values above 1, which would shift the input distribution away from what the Sigmoid output can produce.</li>
-                <li><strong>Clean reconstruction targets</strong>: The loss is always computed against the <em>original</em> clean input $\mathbf{x}$, not the noisy input $\tilde{\mathbf{x}}$. This is what forces the network to denoise.</li>
-                <li><strong>Noise factor 0.3</strong>: This adds substantial corruption---roughly 30% of the pixel range as standard deviation. High enough to challenge the network, low enough that the digit identity is usually preserved.</li>
+                <li><strong>Noise injection is training-only</strong>: The <code>self.training</code> flag means evaluation uses clean inputs, which is necessary for fair comparison with other variants.</li>
+                <li><strong>Clamping to $[0,1]$</strong>: Without clamping, noisy inputs can go negative or exceed 1, shifting the distribution away from what the Sigmoid output can represent.</li>
+                <li><strong>Clean reconstruction targets</strong>: Loss is computed against the original $\mathbf{x}$, not the noisy $\tilde{\mathbf{x}}$. This forces the network to denoise.</li>
+                <li><strong>Noise factor 0.3</strong>: Roughly 30% of the pixel range as standard deviation---enough to challenge the network but not enough to destroy digit identity.</li>
             </ul>
 
             <h2>Sparse Autoencoder</h2>
@@ -298,9 +298,9 @@ self.dec_conv = nn.Sequential(
 
             <h3>Why Convolutions Win</h3>
             <ul>
-                <li><strong>Spatial structure</strong>: Fully-connected layers flatten images into 784-dimensional vectors, treating adjacent pixels the same as distant ones. Convolutions preserve the 2D grid, so the encoder learns local spatial features (edges, corners, curves).</li>
-                <li><strong>Parameter efficiency</strong>: A 3$\times$3 conv with 16 filters has $1 \times 16 \times 3 \times 3 = 144$ parameters. The equivalent fully-connected layer would have $784 \times 512 = 401{,}408$ parameters.</li>
-                <li><strong>Translation equivariance</strong>: A "7" in the top-left corner produces the same feature activations as a "7" in the bottom-right, shifted accordingly. This built-in invariance reduces the number of examples needed to learn.</li>
+                <li><strong>Spatial structure</strong>: FC layers flatten images into 784-d vectors, treating adjacent pixels the same as distant ones. Convolutions preserve the 2D grid and learn local features (edges, corners, curves).</li>
+                <li><strong>Parameter efficiency</strong>: A 3$\times$3 conv with 16 filters has $1 \times 16 \times 3 \times 3 = 144$ parameters vs. $784 \times 512 = 401{,}408$ for the equivalent FC layer.</li>
+                <li><strong>Translation equivariance</strong>: A "7" in the top-left produces the same feature activations as one in the bottom-right, shifted accordingly. Fewer examples needed.</li>
             </ul>
 
             <h3>ConvTranspose2d: Learned Upsampling</h3>
@@ -323,10 +323,8 @@ self.dec_conv = nn.Sequential(
                 <li><strong>Latent dim</strong>: 2 (for visualization) and 32 (for quality comparison)</li>
             </ul>
 
-            <h2>Next Steps: What Does the Bottleneck Learn?</h2>
-            <p>With all four variants implemented, we can now train them and investigate what the bottleneck actually discovers. In <strong>Part 3</strong>, we visualize the 2D latent space as a scatter plot colored by digit class, demonstrate the denoising autoencoder's ability to remove heavy Gaussian noise, and compare reconstruction quality across all four architectures.</p>
-
-            <p><em>Full code is on the GitHub repo. Stay tuned for the training results!</em></p>
+            <h2>What Does the Bottleneck Learn?</h2>
+            <p>All four variants are implemented. <strong>Part 3</strong> trains them on MNIST and digs into the results: 2D latent space scatter plots colored by digit class, denoising under heavy Gaussian noise, and reconstruction quality across architectures. Full code is on GitHub.</p>
 
         </article>
     </main>

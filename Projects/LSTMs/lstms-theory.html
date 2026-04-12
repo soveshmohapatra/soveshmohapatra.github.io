@@ -91,40 +91,40 @@ permalink: /projects/lstms-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>Standard RNNs have a fundamental flaw: they cannot learn long-range dependencies. The vanishing gradient problem causes gradients to decay exponentially as they backpropagate through time, making it impossible to connect events separated by many time steps.</p>
-                <p>Long Short-Term Memory (LSTM) networks, introduced by Hochreiter and Schmidhuber in 1997, solved this problem through an elegant architectural innovation: gated memory cells.</p>
-                <p>In Part 1 of this "Build in Public" mini-series, we deconstruct the mathematical foundation of LSTMs: the cell state, the three gates, and how they enable gradient flow across hundreds of time steps. In Part 2, we will build the complete architecture in PyTorch. In Part 3, we will train on a long-range dependency task and visualize gate dynamics.</p>
+                <p>Standard RNNs cannot learn long-range dependencies. Gradients decay exponentially during backpropagation through time, so the network has no way to connect events separated by more than a handful of steps.</p>
+                <p>LSTMs (Hochreiter & Schmidhuber, 1997) fix this with a single architectural idea: gated memory cells that use additive updates instead of multiplicative ones.</p>
+                <p>This is Part 1 of three. Here we cover the math -- the cell state, the three gates, and why gradients survive across hundreds of time steps. Part 2 implements everything in PyTorch. Part 3 trains on a long-range task and visualizes what the gates learn.</p>
             </div>
 
             <h2>The Core Insight: Additive Memory</h2>
-            <p>The key innovation of LSTMs is the <em>cell state</em> $c_t$, which runs through the entire sequence like a conveyor belt. Information is added to or removed from this state through <em>gates</em>—learned, differentiable switches that control information flow.</p>
-            <p>Critically, the cell state update is <em>additive</em>:</p>
+            <p>The central piece of an LSTM is the <em>cell state</em> $c_t$. It runs through the entire sequence and gets modified only through <em>gates</em> -- learned, differentiable switches that add or remove information.</p>
+            <p>The cell state update is additive:</p>
             <div class="math-block">
                 $$ c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t $$
             </div>
-            <p>This additive structure creates a gradient highway—gradients can flow backward through time without vanishing because addition doesn't multiply gradients like matrix multiplication does. This is the core reason LSTMs work where vanilla RNNs fail.</p>
+            <p>This matters because addition distributes gradients without scaling them. In a vanilla RNN, hidden states pass through repeated matrix multiplications, which either shrink or blow up gradients. The additive cell state sidesteps that entirely.</p>
 
             <h2>The Three Gates</h2>
 
             <h3>Forget Gate</h3>
-            <p>The forget gate decides what information to discard from the cell state:</p>
+            <p>Decides what to discard from the cell state:</p>
             <div class="math-block">
                 $$ f_t = \sigma(W_{xf} x_t + W_{hf} h_{t-1} + b_f) $$
             </div>
-            <p>Output: values between 0 (completely forget) and 1 (completely keep).</p>
+            <p>Outputs values in $(0, 1)$. A value near 0 erases that dimension; near 1 keeps it intact.</p>
 
             <h3>Input Gate</h3>
-            <p>The input gate controls what new information to store:</p>
+            <p>Controls what new information enters the cell state:</p>
             <div class="math-block">
                 \begin{align*}
                 i_t &= \sigma(W_{xi} x_t + W_{hi} h_{t-1} + b_i) \\
                 \tilde{c}_t &= \tanh(W_{xc} x_t + W_{hc} h_{t-1} + b_c)
                 \end{align*}
             </div>
-            <p>where $i_t$ decides which values to update, and $\tilde{c}_t$ creates candidate values.</p>
+            <p>$i_t$ selects which dimensions to write to, and $\tilde{c}_t$ proposes the candidate values.</p>
 
             <h3>Output Gate</h3>
-            <p>The output gate determines what to output based on the cell state:</p>
+            <p>Determines what the cell exposes as its output:</p>
             <div class="math-block">
                 \begin{align*}
                 o_t &= \sigma(W_{xo} x_t + W_{ho} h_{t-1} + b_o) \\
@@ -133,7 +133,7 @@ permalink: /projects/lstms-theory/
             </div>
 
             <h2>The Cell State Update</h2>
-            <p>Combining all gates:</p>
+            <p>Putting the gates together:</p>
             <div class="math-block">
                 $$ c_t = \underbrace{f_t \odot c_{t-1}}_{\text{keep old}} + \underbrace{i_t \odot \tilde{c}_t}_{\text{add new}} $$
             </div>
@@ -142,11 +142,11 @@ permalink: /projects/lstms-theory/
             </div>
 
             <h2>Why LSTMs Don't Vanish</h2>
-            <p>During backpropagation, the gradient of the cell state is:</p>
+            <p>During backpropagation through time, the gradient of the loss with respect to the cell state satisfies:</p>
             <div class="math-block">
                 $$ \frac{\partial c_t}{\partial c_{t-1}} = f_t + \text{(other terms)} $$
             </div>
-            <p>When the forget gate is close to 1, gradients flow through unchanged. The LSTM can learn to keep $f_t \approx 1$ when long-range information is needed, creating an unconstrained gradient pathway. Hochreiter and Schmidhuber called this the "Constant Error Carousel" — a mechanism that allows error signals to flow backward for hundreds or even thousands of time steps.</p>
+            <p>When the forget gate is close to 1, the gradient passes through nearly unchanged. The network can learn to hold $f_t \approx 1$ whenever long-range information matters, creating what Hochreiter and Schmidhuber called the "Constant Error Carousel" -- error signals that propagate backward for hundreds or thousands of steps without decaying.</p>
 
             <h2>Comparison to RNNs</h2>
             <ul>
@@ -154,11 +154,8 @@ permalink: /projects/lstms-theory/
                 <li><strong>LSTM</strong>: Separate cell state, additive updates &rarr; stable gradients</li>
             </ul>
 
-            <h2>Next Steps: From Math to Code</h2>
-            <p>We have established the mathematical foundation of gated recurrence: three gates controlling a dedicated additive memory cell.</p>
-            <p>In <strong>Part 2</strong>, we implement this exact formulation in pure PyTorch. We will build from a single LSTMCell up through multi-layer LSTMs, bidirectional processing, sequence classification, and the encoder-decoder Seq2Seq architecture.</p>
-
-            <p style="margin-top: 2rem; font-style: italic;">Stay tuned for the code drop as we build LSTMs from scratch!</p>
+            <h2>Next: From Math to Code</h2>
+            <p>That covers the mathematical foundation -- three gates controlling a dedicated additive memory cell. In <strong>Part 2</strong>, we implement these equations in pure PyTorch, building from a single LSTMCell up through multi-layer stacks, bidirectional processing, sequence classification, and the encoder-decoder Seq2Seq architecture.</p>
 
         </article>
     </main>

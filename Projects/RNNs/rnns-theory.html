@@ -91,12 +91,12 @@ permalink: /projects/rnns-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>Before Transformers dominated sequence modeling, Recurrent Neural Networks were the architecture of choice for temporal data. Unlike feedforward networks that process inputs independently, RNNs maintain an internal state that evolves over time, enabling them to capture dependencies across time steps.</p>
-                <p>In Part 1 of this mini-series, we deconstruct the mathematical foundation of RNNs: the recurrence relation, backpropagation through time, and the infamous vanishing gradient problem.</p>
+                <p>Before Transformers took over sequence modeling, Recurrent Neural Networks were the go-to architecture for temporal data. Where feedforward networks treat each input independently, RNNs carry an internal state forward through time, letting them pick up on dependencies between time steps.</p>
+                <p>This post covers the core math behind RNNs: the recurrence relation, backpropagation through time (BPTT), and the vanishing gradient problem that ultimately limits them.</p>
             </div>
 
             <h2>The Intuition Behind Recurrence</h2>
-            <p>Consider reading a sentence word by word. As you read, you build up context—each word modifies your understanding based on what came before. RNNs formalize this intuition mathematically through a <em>hidden state</em> that accumulates information across time steps.</p>
+            <p>Think about reading a sentence one word at a time. Each word shifts your understanding based on everything you have read so far. RNNs do something analogous: they maintain a <em>hidden state</em> vector that gets updated at each time step, accumulating information as the sequence progresses.</p>
 
             <h2>The Recurrence Relation</h2>
             <p>At each time step $t$, an RNN:</p>
@@ -117,7 +117,7 @@ permalink: /projects/rnns-theory/
             </ul>
 
             <h2>Parameter Sharing Across Time</h2>
-            <p>Critically, the <em>same</em> weights $(W_{xh}, W_{hh}, b_h)$ are used at every time step. This is parameter sharing, and it provides two key benefits:</p>
+            <p>The <em>same</em> weights $(W_{xh}, W_{hh}, b_h)$ are reused at every time step. This parameter sharing has two practical consequences:</p>
             <ol>
                 <li>The model can generalize to sequences of different lengths</li>
                 <li>The number of parameters is independent of sequence length</li>
@@ -135,7 +135,7 @@ permalink: /projects/rnns-theory/
             <div class="math-block">
                 $$ \frac{\partial h_t}{\partial h_0} = \prod_{k=1}^{t} \frac{\partial h_k}{\partial h_{k-1}} = \prod_{k=1}^{t} W_{hh}^T \cdot \text{diag}(1 - \tanh^2(\cdot)) $$
             </div>
-            <p>If the eigenvalues of $W_{hh}$ are less than 1, repeated multiplication causes gradients to vanish exponentially. This makes it impossible for standard RNNs to learn long-range dependencies.</p>
+            <p>When the eigenvalues of $W_{hh}$ sit below 1, this product shrinks exponentially with sequence length. The result: gradients from early time steps effectively disappear, and the network cannot learn long-range dependencies.</p>
 
             <h2>Why RNNs Still Matter</h2>
             <p>Despite being overshadowed by Transformers, RNNs remain relevant:</p>
@@ -145,8 +145,8 @@ permalink: /projects/rnns-theory/
                 <li><strong>Foundation</strong>: Understanding RNNs is prerequisite to LSTMs and GRUs</li>
             </ul>
 
-            <h2>Conclusion</h2>
-            <p>The RNN's elegant recurrence relation provides a natural framework for sequence modeling. However, the vanishing gradient problem limits its practical utility. In <strong>Part 2</strong>, we implement RNNs in PyTorch and explore architectural improvements.</p>
+            <h2>What Comes Next</h2>
+            <p>The recurrence relation gives RNNs a straightforward way to model sequences, but vanishing gradients cap how far back they can actually learn from. In <strong>Part 2</strong>, we translate these equations into PyTorch code and build out several architecture variants.</p>
 
         </article>
     </main>

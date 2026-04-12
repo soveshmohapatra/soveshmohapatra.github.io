@@ -220,13 +220,10 @@ permalink: /projects/pcn-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we explored the biological plausibility of Predictive Coding Networks (PCNs) and how they
-                    flip standard Multi-Layer Perceptrons (MLPs) on their head. We proved that PCNs can replace the
-                    global, non-biological <code>loss.backward()</code> of standard Artificial Neural Networks with
-                    iterative, local energy minimization.</p>
-                <p>Today, we will turn that theory into raw PyTorch code. Our goal is to create a network that can learn
-                    a simple task without ever calling PyTorch's automatic generalized backpropagation through the whole
-                    network!</p>
+                <p><a href="{{ site.baseurl }}/projects/pcn-theory/">Part 1</a> covered the theory: PCNs replace the
+                    global <code>loss.backward()</code> with iterative, local energy minimization. Here we turn that
+                    into working PyTorch code -- a network that learns without calling backpropagation through the
+                    full graph.</p>
                 <p style="margin-top: 1rem; font-weight: 500; color: var(--accent-light);">
                     <i class="fab fa-github"></i>
                     <a href="https://github.com/soveshmohapatra/Predictive-Coding-Networks" target="_blank"
@@ -235,9 +232,9 @@ permalink: /projects/pcn-live-code/
             </div>
 
             <h2>The PCN Layer</h2>
-            <p>A standard PyTorch <code>nn.Linear</code> layer simply maps inputs to outputs. A PCN layer, however,
-                contains dynamic states that require updating during an explicit <em>inference phase</em>. Each layer
-                holds a latent "belief" and calculates its own local prediction error against the layer below it.</p>
+            <p>A standard <code>nn.Linear</code> maps inputs to outputs in one shot. A PCN layer is different: it
+                holds a dynamic latent state that gets updated during an inference phase, and it computes its own
+                local prediction error against the layer below.</p>
 
             <pre><code class="language-python">class PCNLayer(nn.Module):
     def __init__(self, in_features, out_features, activation=torch.tanh):
@@ -261,14 +258,12 @@ permalink: /projects/pcn-live-code/
         self.prediction_error = target_state - prediction
         return self.prediction_error</code></pre>
 
-            <p>Notice we recommend <code>torch.tanh</code>. In standard neural nets, <code>ReLU</code> is the default.
-                But in iterative PCNs, <code>ReLU</code>'s zero-gradient for negative inputs can cause latent beliefs to
-                "die" during the inference phase, halting learning.</p>
+            <p>We use <code>torch.tanh</code> instead of <code>ReLU</code>. In iterative PCNs, ReLU's zero gradient
+                for negative inputs causes latent states to die during inference, stalling learning entirely.</p>
 
             <h2>Phase 1: The Inference Walk</h2>
-            <p>Unlike feed-forward networks, PCNs don't calculate their output in one step. They enter an <em>inference
-                    phase</em> where the latent states of all layers recursively undergo gradient descent to minimize
-                total prediction error. The synaptic weights remain entirely frozen during this phase.</p>
+            <p>PCNs do not compute output in one forward pass. Instead, all latent states undergo gradient descent to
+                minimize total prediction error. Weights stay frozen throughout.</p>
 
             <pre><code class="language-python">def inference_step(self, inference_lr):
     total_energy = 0.0
@@ -302,16 +297,13 @@ permalink: /projects/pcn-live-code/
 
     return total_energy.item()</code></pre>
 
-            <p>We use PyTorch's <code>autograd.grad</code> explicitly here to descend the energy landscape with respect
-                to the latent nodes. No <code>optimizer.step()</code> is used on the weights.</p>
+            <p><code>autograd.grad</code> computes gradients of the energy with respect to latent nodes only.
+                No <code>optimizer.step()</code> touches the weights here.</p>
 
-            <h2>Phase 2: The Biological Learning Rule</h2>
-            <p>Once the inference phase has run for sufficient iterations (e.g., $T=50$) and the latent states have
-                settled into a low-energy configuration, we execute the learning phase.</p>
-
-            <p>This is the biological magic. The generic chain rule is gone. The weight update is executed using
-                <strong>only</strong> the post-synaptic local prediction error ($\epsilon_{l-1}$) and the pre-synaptic
-                activation ($f(v_l)$).</p>
+            <h2>Phase 2: The Hebbian Weight Update</h2>
+            <p>After the inference phase runs (e.g., $T=50$ iterations) and the latent states settle, we update
+                weights. The chain rule is gone. Each weight update uses <strong>only</strong> the post-synaptic
+                prediction error ($\epsilon_{l-1}$) and the pre-synaptic activation ($f(v_l)$):</p>
 
             <pre><code class="language-python">def update_weights(self, learning_rate):
     with torch.no_grad():
@@ -329,15 +321,9 @@ permalink: /projects/pcn-live-code/
             if layer.W.bias is not None:
                 layer.W.bias.add_(learning_rate * delta_bias)</code></pre>
 
-            <h2>Next Up: The Benchmark Showdown</h2>
-            <p>We have successfully built a Predictive Coding Network that learns via local energy minimization. But how
-                does this elegant biological algorithm stack up against raw, globally-optimized Backpropagation?</p>
-
-            <p>In <strong>Part 3</strong>, we will put this PyTorch PCN implementation to the test against a standard
-                identical MLP on nonlinear regression and MNIST image classification to analyze its stability, generative
-                properties, and hardware future.</p>
-
-            <p><em>Ready to see the results? Stay tuned for the final data drop!</em></p>
+            <h2>Next: Benchmarks</h2>
+            <p>The PCN learns via local energy minimization. <a href="{{ site.baseurl }}/projects/pcn-benchmark/">Part
+                3</a> benchmarks it against an identical MLP on nonlinear regression and MNIST classification.</p>
 
         </article>
     </main>

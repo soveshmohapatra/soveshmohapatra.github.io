@@ -97,11 +97,11 @@ permalink: /projects/hopfield-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>Hopfield Networks are energy-based models where memory storage and retrieval emerge from the physics of energy minimization. In this first installment of a three-part series, we develop the mathematical foundations: the energy function, Hebbian learning, storage capacity bounds, and the modern continuous extension that connects directly to Transformer attention. No code yet---just the math that makes it all work.</p>
+                <p>Hopfield Networks are energy-based models where memory storage and retrieval reduce to energy minimization. This post covers the mathematical foundations: the energy function, Hebbian learning, storage capacity bounds, and the modern continuous extension that maps directly onto Transformer attention.</p>
             </div>
 
             <h2>Energy-Based Models and Associative Memory</h2>
-            <p>The central premise of a Hopfield network is deceptively simple: <strong>memories are energy minima</strong>.</p>
+            <p>The premise of a Hopfield network is straightforward: <strong>memories are energy minima</strong>.</p>
 
             <p>Consider a system of $N$ binary neurons, each taking values in $\{-1, +1\}$. The state of the network is a vector $\mathbf{x} \in \{-1, +1\}^N$. We define an energy function over states:</p>
 
@@ -111,7 +111,7 @@ permalink: /projects/hopfield-theory/
 
             <p>where $W \in \mathbb{R}^{N \times N}$ is a symmetric weight matrix with zero diagonal ($W_{ii} = 0$).</p>
 
-            <p>The key insight: if we can construct $W$ such that the stored patterns $\{\boldsymbol{\xi}^1, \ldots, \boldsymbol{\xi}^P\}$ correspond to <em>local minima</em> of $E$, then retrieval becomes gradient descent on the energy landscape. Starting from a corrupted query, the dynamics roll downhill until they settle into the nearest minimum---recovering the stored memory.</p>
+            <p>If we construct $W$ so that the stored patterns $\{\boldsymbol{\xi}^1, \ldots, \boldsymbol{\xi}^P\}$ sit at <em>local minima</em> of $E$, then retrieval is just gradient descent on the energy landscape. Feed in a corrupted query, let the dynamics roll downhill, and the state settles into the nearest minimum---recovering the stored memory.</p>
 
             <p>This is <strong>content-addressable memory</strong>: you retrieve by content (a partial or noisy version of the memory), not by address.</p>
 
@@ -149,7 +149,7 @@ permalink: /projects/hopfield-theory/
             </div>
 
             <h3>Energy Always Decreases</h3>
-            <p>A crucial property: each asynchronous update can only decrease (or maintain) the energy. The change in energy when neuron $i$ flips:</p>
+            <p>Each asynchronous update can only decrease (or maintain) the energy. The change when neuron $i$ flips:</p>
 
             <div class="math-block">
                 $$ \Delta E = -\left(x_i^{\text{new}} - x_i\right) \sum_j W_{ij} x_j \leq 0 $$
@@ -158,7 +158,7 @@ permalink: /projects/hopfield-theory/
             <p>Since the energy is bounded below and strictly non-increasing, the dynamics must converge to a fixed point (a local minimum of $E$).</p>
 
             <h2>Storage Capacity</h2>
-            <p>The fundamental question: <strong>how many patterns can a Hopfield network reliably store?</strong></p>
+            <p><strong>How many patterns can a Hopfield network reliably store?</strong></p>
 
             <h3>The Classical Bound</h3>
             <p>The answer, established by Amit, Gutfreund, and Sompolinsky (1985), is:</p>
@@ -179,7 +179,7 @@ permalink: /projects/hopfield-theory/
             <p>The bottleneck is crosstalk. Each additional stored pattern adds noise to the local field. When $P$ grows relative to $N$, the crosstalk overwhelms the signal, creating <em>spurious attractors</em>---stable states that do not correspond to any stored pattern. These are "chimeric" mixtures of multiple patterns.</p>
 
             <h2>The Modern Continuous Hopfield Network</h2>
-            <p>In 2020, Ramsauer et al. proposed a radical upgrade: replace the quadratic energy with a log-sum-exp.</p>
+            <p>In 2020, Ramsauer et al. replaced the quadratic energy with a log-sum-exp.</p>
 
             <h3>Continuous States and the New Energy</h3>
             <p>Instead of binary states, we allow $\mathbf{x} \in \mathbb{R}^d$. The stored patterns are continuous vectors $\boldsymbol{\xi}^1, \ldots, \boldsymbol{\xi}^P \in \mathbb{R}^d$. The energy function becomes:</p>
@@ -212,7 +212,7 @@ permalink: /projects/hopfield-theory/
                 $$ P_{\max} \sim \exp\left(\frac{d}{2}\right) $$
             </div>
 
-            <p>which is <strong>exponential</strong> in the pattern dimension $d$. For $d = 64$, this is astronomically larger than the classical $0.14N$ bound.</p>
+            <p>which is <strong>exponential</strong> in the pattern dimension $d$. For $d = 64$, this dwarfs the classical $0.14N$ bound.</p>
 
             <h2>Summary and Preview</h2>
 

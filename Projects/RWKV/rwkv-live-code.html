@@ -220,34 +220,27 @@ permalink: /projects/rwkv-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we explored the mathematical foundations of RWKV: how attention can be rewritten as a
-                    linear recurrence via the WKV operator, enabling parallel training and $O(1)$ inference.</p>
-                <p>Today, in Part 2, we turn that math into code. I've written a complete RWKV implementation in
-                    pure PyTorch—no external libraries, no CUDA kernels, just clean tensor operations. The code
-                    supports both <strong>parallel training mode</strong> (for efficiency) and
-                    <strong>recurrent inference mode</strong> (for memory-flat generation).</p>
+                <p>Part 1 covered the math: how attention becomes a linear recurrence through the WKV operator.</p>
+                <p>Here we turn that into working code. The implementation is pure PyTorch--no external libraries,
+                    no custom CUDA kernels. It supports both <strong>parallel training mode</strong> and
+                    <strong>recurrent inference mode</strong> with $O(1)$ memory.</p>
             </div>
 
-            <h2>The Implementation Strategy</h2>
-            <p>RWKV's elegance lies in its simplicity. The architecture decomposes into two modules:</p>
+            <h2>Architecture Overview</h2>
+            <p>Two modules per block, each with pre-norm residual connections ($x \leftarrow x +
+                \text{Module}(\text{LayerNorm}(x))$):</p>
             <ol>
-                <li><strong>Time Mixing (TM):</strong> The attention equivalent, computing the WKV recurrence.</li>
-                <li><strong>Channel Mixing (CM):</strong> The FFN equivalent, using gated squared ReLU.</li>
+                <li><strong>Time Mixing (TM):</strong> Attention equivalent -- computes the WKV recurrence.</li>
+                <li><strong>Channel Mixing (CM):</strong> FFN equivalent -- gated squared ReLU.</li>
             </ol>
-            <p>Each module follows a pre-norm pattern similar to Transformers: $x \leftarrow x +
-                \text{Module}(\text{LayerNorm}(x))$</p>
 
             <h2>Time Mixing: Parallel Training Mode</h2>
-            <p>The key challenge is computing the WKV operator efficiently. During training, we have access to the
-                entire sequence at once, so we want to parallelize the recurrence.</p>
-
-            <p>Recall from Part 1 that the numerator at time $t$ is:</p>
+            <p>During training we have the full sequence, so we parallelize the WKV recurrence. The numerator at time $t$:</p>
             <div class="math-block">
                 $$ \text{num}_t = \exp(u + k_t) v_t + \sum_{i=0}^{t-1} \exp(-(t-1-i)w + k_i) v_i $$
             </div>
 
-            <p>This can be computed using a <strong>cumulative sum with decay</strong>. The key steps are: compute
-                $kv_t = k_t \cdot v_t$ for all $t$, apply decay weights, accumulate, and rescale. In PyTorch:</p>
+            <p>This decomposes into element-wise products, decay-weighted terms, and a cumulative sum:</p>
 
             <pre><code class="language-python">def _compute_wkv_parallel(self, kv, time_decay, time_first, T):
     B, T, C = kv.shape
@@ -263,8 +256,7 @@ permalink: /projects/rwkv-live-code/
     return wkv</code></pre>
 
             <h2>Time Mixing: Recurrent Inference Mode</h2>
-            <p>During inference, we generate tokens one at a time. Here, the recurrence shines—we simply maintain
-                the accumulated state:</p>
+            <p>At inference time we generate one token at a time, so we just step the recurrence forward:</p>
 
             <pre><code class="language-python">def forward_recurrent(self, x, state=None):
     # x is (B, C) for a single token
@@ -283,12 +275,10 @@ permalink: /projects/rwkv-live-code/
     output = self.output(torch.sigmoid(r_t) * wkv_t)
     return output, (wkv_t,)</code></pre>
 
-            <p>The state is just a single tensor of shape $(B, C)$—constant size regardless of how many tokens
-                we've generated. Compare this to Transformers, which must store $(B, L, C)$ for the KV cache that
-                grows with each token!</p>
+            <p>The entire state is a single $(B, C)$ tensor -- fixed size no matter how many tokens have been
+                generated. A Transformer would need $(B, L, C)$ for the KV cache, growing with every step.</p>
 
             <h2>Channel Mixing: Squared ReLU Gating</h2>
-            <p>The Channel Mixing module uses a GLU-style gating mechanism with squared ReLU:</p>
 
             <pre><code class="language-python">class RWKVChannelMixer(nn.Module):
     def __init__(self, embed_dim, expand_factor=4):
@@ -303,11 +293,10 @@ permalink: /projects/rwkv-live-code/
         x = self.ln(x)
         return torch.sigmoid(self.receptance(x)) * self.value(F.relu(self.key(x)) ** 2)</code></pre>
 
-            <p>The squared ReLU ($\text{ReLU}(x)^2$) provides smoother gradients than standard ReLU while
-                maintaining sparsity—a subtle but important design choice for training stability.</p>
+            <p>Squared ReLU ($\text{ReLU}(x)^2$) gives smoother gradients than standard ReLU while preserving sparsity.</p>
 
             <h2>The Complete RWKV Model</h2>
-            <p>Stacking Time Mixing and Channel Mixing blocks gives us the full RWKV model:</p>
+            <p>Stack the blocks, add weight tying between embedding and output head:</p>
 
             <pre><code class="language-python">class RWKV(nn.Module):
     def __init__(self, vocab_size, embed_dim, num_layers, num_heads=1, expand_factor=4):
@@ -330,12 +319,8 @@ permalink: /projects/rwkv-live-code/
                 x, _ = block(x)
         return self.head(self.ln_out(x)), states</code></pre>
 
-            <p>Weight tying between the embedding and output projection is a standard technique that improves
-                parameter efficiency and training stability—the same weights learn to both encode inputs and predict
-                outputs.</p>
-
             <h2>Autoregressive Generation</h2>
-            <p>With the recurrent mode implemented, autoregressive generation is straightforward:</p>
+            <p>Process the prompt in parallel, then switch to single-step recurrence for generation:</p>
 
             <pre><code class="language-python">@torch.no_grad()
 def generate(self, prompt_tokens, max_new_tokens, temperature=1.0):
@@ -357,26 +342,15 @@ def generate(self, prompt_tokens, max_new_tokens, temperature=1.0):
 
     return context</code></pre>
 
-            <p>After processing the prompt in parallel, each new token requires only a single recurrent step with
-                $O(1)$ memory—no KV cache to grow.</p>
+            <p>Each new token after the prompt costs $O(1)$ memory -- no growing cache.</p>
 
-            <h2>Implementation Gotchas</h2>
-            <p>A few pitfalls to watch for when implementing RWKV:</p>
+            <h2>Implementation Pitfalls</h2>
             <ol>
-                <li><strong>Decay Parameterization:</strong> The decay $w$ must be positive to ensure stable fading
-                    memory. Parameterize via sigmoid to keep it in $(0, 1)$.</li>
-                <li><strong>Time First Initialization:</strong> The $u$ parameter should be initialized to
-                    emphasize the current token ($u = 1.0$, giving $\sigma(u) \approx 0.73$).</li>
-                <li><strong>Gradient Clipping:</strong> RWKV can have gradient explosions in early training.
-                    Gradient clipping at norm 1.0 is essential.</li>
-                <li><strong>State Initialization:</strong> During recurrent inference, the state starts at zero,
-                    representing no prior context.</li>
+                <li><strong>Decay must be positive.</strong> Parameterize $w$ through sigmoid to keep it in $(0, 1)$.</li>
+                <li><strong>Time-first initialization matters.</strong> Set $u = 1.0$ (so $\sigma(u) \approx 0.73$) to bias toward the current token.</li>
+                <li><strong>Gradient clipping is not optional.</strong> Without clipping at norm 1.0, early training often diverges.</li>
+                <li><strong>Zero-initialize state.</strong> The recurrent state starts at zero, representing no prior context.</li>
             </ol>
-
-            <h2>Next Steps: Benchmarking</h2>
-            <p>The code is complete. In Part 3, we'll put RWKV to the test against Transformer and LSTM baselines
-                on synthetic sequence tasks, measuring training convergence, inference latency, and memory
-                usage—validating the $O(1)$ inference promise in practice.</p>
 
         </article>
     </main>

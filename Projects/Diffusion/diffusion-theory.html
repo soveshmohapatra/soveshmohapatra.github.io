@@ -210,87 +210,75 @@ permalink: /projects/diffusion-theory/
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
                 <p>If standard deep learning is about recognizing patterns, <strong>diffusion models</strong> are about
-                    creating them from scratch. From DALL-E to Midjourney, scaling diffusion models has fundamentally
-                    changed generative AI. But how do we teach a neural network to create structure from pure
-                    randomness?</p>
-                <p>The answer is counterintuitive: <em>first, teach it to systematically forget</em>.</p>
-                <p>In this new 3-part "Build in Public" series, we will deconstruct Denoising Diffusion Probabilistic
-                    Models (DDPMs) from first principles. Today, we look at the mathematical foundation: the Forward
-                    Process, the Reparameterization Trick, and the Evidence Lower Bound (ELBO). In Part 2, we will build
-                    the UNet and the PyTorch implementation. In Part 3, we will generate handwritten MNIST digits from
-                    pure noise and trace their denoising trajectories.</p>
+                    creating them from scratch. From DALL-E to Midjourney, diffusion models have changed generative AI.
+                    But how do you teach a neural network to create structure from pure randomness?</p>
+                <p>The trick is counterintuitive: <em>first, teach it to systematically forget</em>.</p>
+                <p>This post covers the mathematical foundation of Denoising Diffusion Probabilistic Models (DDPMs):
+                    the Forward Process, the Reparameterization Trick, and the Evidence Lower Bound (ELBO).</p>
             </div>
 
             <h2>The Forward Process: Order to Chaos</h2>
-            <p>A standard diffusion model defines a Markov chain over $T$ timesteps (often $T=1000$). We start with a
-                real image $x_0 \sim q(x)$ and incrementally add Gaussian noise according to a fixed variance schedule
+            <p>A diffusion model defines a Markov chain over $T$ timesteps (typically $T=1000$). Starting from a
+                real image $x_0 \sim q(x)$, we add Gaussian noise at each step according to a variance schedule
                 $\beta_1, \beta_2, \dots, \beta_T$.</p>
 
-            <p>The transition probability from step $t-1$ to $t$ is:</p>
+            <p>The transition from step $t-1$ to $t$:</p>
             <div class="math-block">
                 $$ q(x_t \mid x_{t-1}) := \mathcal{N}(x_t; \sqrt{1-\beta_t} x_{t-1}, \beta_t \mathbf{I}) $$
             </div>
 
-            <p>By scaling the mean by $\sqrt{1-\beta_t}$, the variance of $x_t$ remains bounded near 1.0 throughout the
-                process. As $t \to T$, the image $x_T$ becomes indistinguishable from an isotropic Gaussian distribution
+            <p>Scaling the mean by $\sqrt{1-\beta_t}$ keeps the variance of $x_t$ bounded near 1.0 throughout the
+                chain. By $t = T$, the image $x_T$ is indistinguishable from isotropic Gaussian noise
                 $\mathcal{N}(0, \mathbf{I})$.</p>
 
             <h2>The Reparameterization Trick: Sampling at Arbitrary Timesteps</h2>
-            <p>If we want to train a network on timestep $t=500$, applying the transition equation sequentially 500
-                times is computationally absurd. Luckily, a property of Gaussians allows us to sample $x_t$ directly
-                from $x_0$ in a single closed-form step.</p>
+            <p>Training on timestep $t=500$ by applying the transition equation 500 times in sequence is not
+                practical. A property of Gaussians lets us sample $x_t$ directly from $x_0$ in closed form.</p>
 
-            <p>Let $\alpha_t = 1 - \beta_t$ and let $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$. By recursively applying
-                the noise addition, you can prove that:</p>
+            <p>Let $\alpha_t = 1 - \beta_t$ and $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$. Recursively applying
+                the noise addition gives:</p>
 
             <div class="math-block">
                 $$ q(x_t \mid x_0) = \mathcal{N}(x_t; \sqrt{\bar{\alpha}_t} x_0, (1 - \bar{\alpha}_t)\mathbf{I}) $$
             </div>
 
-            <p>To sample from this distribution cleanly, we use the <strong>reparameterization trick</strong>:</p>
+            <p>Using the <strong>reparameterization trick</strong>:</p>
 
             <div class="math-block">
                 $$ x_t = \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \epsilon \quad \text{where} \quad
                 \epsilon \sim \mathcal{N}(0, \mathbf{I}) $$
             </div>
 
-            <p>This single equation is the engine of diffusion model training. It allows us to pick any image $x_0$, any
-                random timestep $t$, and instantly generate the corrupted image $x_t$ and the exact noise $\epsilon$
-                that was added to it.</p>
+            <p>This is the engine of diffusion training. Pick any image $x_0$, any timestep $t$, and you can instantly
+                produce the corrupted $x_t$ along with the exact noise $\epsilon$ that created it.</p>
 
             <h2>The Reverse Process and the ELBO</h2>
-            <p>If the forward process $q(x_t \mid x_{t-1})$ destroys structure, the <strong>reverse process</strong>
+            <p>The forward process $q(x_t \mid x_{t-1})$ destroys structure. The <strong>reverse process</strong>
                 $p_\theta(x_{t-1} \mid x_t)$ must learn to restore it.</p>
 
             <div class="math-block">
                 $$ p_\theta(x_{t-1} \mid x_t) := \mathcal{N}(x_{t-1}; \mu_\theta(x_t, t), \Sigma_\theta(x_t, t)) $$
             </div>
 
-            <p>To train $\theta$, we maximize the log-likelihood of the data. Because exact likelihood is intractable,
-                we optimize a Variational Lower Bound, or <strong>Evidence Lower Bound (ELBO)</strong>. After extensive
-                algebraic manipulation, Ho et al. (2020) showed that the ELBO simplifies into an intuitively beautiful
-                objective: we do not need to predict the entire cleanly denoised image $x_0$. Instead, the optimal
-                strategy is to train a neural network <strong>to predict the noise $\epsilon$ that was added to $x_t$ at
-                    timestep $t$</strong>.</p>
+            <p>We train $\theta$ by maximizing log-likelihood. Since exact likelihood is intractable,
+                we optimize a Variational Lower Bound -- the <strong>Evidence Lower Bound (ELBO)</strong>. Ho et al.
+                (2020) showed that after simplification, the ELBO reduces to a direct objective: rather than predicting
+                the clean image $x_0$, the network should predict <strong>the noise $\epsilon$ that was added to $x_t$
+                    at timestep $t$</strong>.</p>
 
             <h2>The Simplified Objective</h2>
-            <p>The final, stripped-down loss function that powers state-of-the-art DDPMs is simply the Mean Squared
-                Error between the true noise $\epsilon$ and the network's predicted noise $\epsilon_\theta$:</p>
+            <p>The loss function is MSE between the true noise $\epsilon$ and the network's prediction
+                $\epsilon_\theta$:</p>
 
             <div class="math-block">
                 $$ L(\theta) := \mathbb{E}_{t, x_0, \epsilon} \left[ \| \epsilon - \epsilon_\theta(x_t, t) \|^2 \right]
                 $$
             </div>
 
-            <h2>Next Steps: From Math to Code</h2>
-            <p>We have reduced a complex, intractable stochastic process into a surprisingly simple objective: noise an
-                image, ask the network to guess the noise, and penalize the difference.</p>
-
-            <p>In <strong>Part 2</strong>, we will implement this exact formulation in pure PyTorch. We will construct
-                the $T=1000$ noise schedule, build a UNet architecture modified to accept sinusoidal time embeddings,
-                and write the training and sampling loops.</p>
-
-            <p><em>Stay tuned for the code drop as we build a generative diffusion model from scratch!</em></p>
+            <h2>From Math to Code</h2>
+            <p>That is it. We reduced an intractable stochastic process to: noise an image, predict the noise,
+                minimize MSE. Part 2 implements this in PyTorch -- the noise schedule, a time-conditioned UNet, and
+                the training loop.</p>
 
         </article>
     </main>

@@ -209,28 +209,20 @@ permalink: /projects/kans-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>For decades, the standard Multi-Layer Perceptron (MLP) has been the undisputed foundational building
-                    block of deep learning paradigms. The architecture is universally taught in week one of any machine
-                    learning course: take an input vector, multiply it by a dense weight matrix, sum the results at each
-                    node, and pass that scalar through a fixed, non-linear activation function like ReLU, Sigmoid, or
-                    Tanh.</p>
-                <p>We place the linear operations on the edges (the weights) and the non-linear operations on the nodes
-                    (the activation functions). But what if we inverted this paradigm? What if the nodes simply summed
-                    the inputs, and the non-linear activation functions lived directly on the <em>edges</em>?</p>
-                <p>This is the core premise of Kolmogorov-Arnold Networks (KANs). In this 3-part series, we will
-                    completely deconstruct KANs, moving from pure mathematical theory to a functional PyTorch
-                    implementation, and finally, a benchmark comparing them against traditional MLPs.</p>
-                <p>In Part 1, we will explore the foundational mathematics that makes KANs possible: The
-                    Kolmogorov-Arnold Representation Theorem and the mechanics of B-Splines.</p>
+                <p>The MLP is the first thing you learn in any ML course: multiply inputs by a weight matrix, sum at
+                    each node, apply a fixed activation like ReLU or Tanh. Linear operations live on the edges (weights),
+                    non-linear operations live on the nodes (activations).</p>
+                <p>What if we flipped that? Nodes just sum. The learnable, non-linear activation functions move to the
+                    <em>edges</em>. That is the core idea behind Kolmogorov-Arnold Networks (KANs).</p>
+                <p>This post covers the math that makes KANs work: the Kolmogorov-Arnold Representation Theorem and
+                    B-spline parameterization.</p>
             </div>
 
             <h2>1. The Kolmogorov-Arnold Representation Theorem</h2>
-            <p>The theoretical foundation of KANs rests on a mathematical theorem proven by Vladimir Arnold and Andrey
-                Kolmogorov in 1957. The theorem states, rather astonishingly, that any multivariate continuous function
-                can be represented as a finite composition of continuous functions of a single variable and the
-                operation of addition.</p>
+            <p>KANs rest on a theorem proved by Arnold and Kolmogorov in 1957: any multivariate continuous function
+                can be decomposed into a finite composition of continuous single-variable functions and addition.</p>
 
-            <p>Mathematically, for a continuous function $f : [0,1]^n \to \mathbb{R}$, the theorem is expressed as:</p>
+            <p>For a continuous function $f : [0,1]^n \to \mathbb{R}$:</p>
 
             <div class="math-block">
                 $$ f(x_1, \dots, x_n) = \sum_{q=0}^{2n} \Phi_q \left( \sum_{p=1}^{n} \phi_{q,p}(x_p) \right) $$
@@ -244,39 +236,35 @@ permalink: /projects/kans-theory/
             </ul>
 
             <h3>Implications for Neural Architecture</h3>
-            <p>If we view the universal approximation capabilities of MLPs, they rely on depth and width (a large number
-                of nodes) to approximate complex functions, using fixed non-linearities. However, the Kolmogorov-Arnold
-                theorem suggests that we do not need complex multivariate mappings at all. We only need univariate (1D)
-                functions and summation.</p>
+            <p>MLPs approximate complex functions through depth and width -- lots of nodes with fixed non-linearities.
+                The Kolmogorov-Arnold theorem says you don't need multivariate mappings at all. Univariate functions
+                plus addition are enough.</p>
 
-            <p>In a KAN layer architecture, instead of a matrix $W \in \mathbb{R}^{out \times in}$, we have a grid of 1D
-                functions $\phi_{i,j}$, where each function connects input $i$ to output $j$.</p>
+            <p>In a KAN layer, instead of a weight matrix $W \in \mathbb{R}^{out \times in}$, you have a grid of 1D
+                functions $\phi_{i,j}$ connecting input $i$ to output $j$.</p>
 
-            <p>The output $y_j$ of a KAN node is simply the sum of these non-linear edge functions applied to the
-                respective inputs:</p>
+            <p>The output of a KAN node is the sum of non-linear edge functions applied to each input:</p>
             <div class="math-block">
                 $$ y_j = \sum_{i=1}^{n_{in}} \phi_{i,j}(x_i) $$
             </div>
 
-            <p>The network learns the functions themselves, rather than just scalar weights.</p>
+            <p>The network learns the functions themselves, not just scalar weights.</p>
 
             <h2>2. Parameterizing Edge Functions: B-Splines</h2>
-            <p>To make KANs practical in deep learning, we need a differentiable, expressive way to parameterize these
-                1D edge functions $\phi(x)$. We cannot simply learn arbitrary continuous functions without a basis.</p>
+            <p>We need a differentiable way to parameterize the 1D edge functions $\phi(x)$. You can't learn
+                arbitrary continuous functions without choosing a basis.</p>
 
-            <p>The authors of KAN propose using Basis Splines (B-splines). A B-spline is a piecewise polynomial curve
-                defined by a set of control points and a knot vector. This provides localized control: adjusting one
-                parameter of the spline only affects a local region of the function, preventing catastrophic forgetting
-                and enabling highly stable optimization.</p>
+            <p>The KAN paper uses B-splines: piecewise polynomial curves defined by control points and a knot vector.
+                The key property is locality -- adjusting one spline parameter only changes a local region of the
+                function, which keeps optimization stable and limits catastrophic forgetting.</p>
 
-            <p>For an edge function $\phi(x)$, it is decomposed into a residual base activation (like SiLU) and a
-                parameterized spline:</p>
+            <p>Each edge function $\phi(x)$ decomposes into a residual base activation (SiLU) and a learned spline:</p>
 
             <div class="math-block">
                 $$ \phi(x) = w_b \cdot \text{SiLU}(x) + w_s \cdot \text{Spline}(x) $$
             </div>
 
-            <p>The spline itself is a linear combination of B-spline basis functions $B_i(x)$:</p>
+            <p>The spline is a linear combination of B-spline basis functions $B_i(x)$:</p>
             <div class="math-block">
                 $$ \text{Spline}(x) = \sum_{i=1}^{c} c_i B_i(x) $$
             </div>
@@ -285,24 +273,19 @@ permalink: /projects/kans-theory/
                 polynomial basis functions evaluated at $x$.</p>
 
             <h2>3. Why does this matter?</h2>
-            <p>By pushing the non-linearity to the edges and using splines, KANs offer several profound advantages over
-                MLPs:</p>
+            <p>Moving non-linearity to the edges and parameterizing it with splines gives KANs concrete advantages
+                over MLPs:</p>
 
             <ul>
-                <li><strong>Interpretability:</strong> Because the edge functions are 1D splines, we can literally plot
-                    them. If the network learns a $\sin(x)$ mapping or an $x^2$ mapping, we can visualize the curve
-                    directly on the edge. Try doing that with a 10,000x10,000 weight matrix!</li>
-                <li><strong>Parameter Efficiency in Symbolic Tasks:</strong> For problems in physics and mathematics,
-                    KANs can often achieve higher accuracy than MLPs using orders of magnitude fewer parameters, because
-                    they actively learn the underlying symbolic function shape.</li>
-                <li><strong>Grid Extension:</strong> We can arbitrarily increase the resolution of the B-spline grids
-                    <em>after</em> training without retraining from scratch, allowing for "fine-grained" scaling.</li>
+                <li><strong>Interpretability:</strong> Edge functions are 1D splines, so you can plot them directly. If
+                    the network learns a $\sin(x)$ or $x^2$ mapping, you see the curve on the edge. Good luck
+                    extracting that from a 10,000x10,000 weight matrix.</li>
+                <li><strong>Parameter Efficiency in Symbolic Tasks:</strong> On physics and math problems, KANs often
+                    match or beat MLP accuracy with orders of magnitude fewer parameters, because they learn the
+                    symbolic function shape directly.</li>
+                <li><strong>Grid Extension:</strong> You can increase B-spline grid resolution <em>after</em> training
+                    without retraining from scratch.</li>
             </ul>
-
-            <h2>Next Steps: Building it in PyTorch</h2>
-            <p>The math is beautiful, but the true test is translating formulas into tensor operations. In Part 2 of
-                this series, we will drop the theory and open up an IDE. We will construct the B-spline basis
-                evaluations and build a 1D KAN layer in pure PyTorch in under 100 lines of code.</p>
 
         </article>
     </main>

@@ -83,8 +83,8 @@ permalink: /projects/vits-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1, we established the mathematical foundations of Vision Transformers: images as patch sequences, the CLS token as a global aggregator, and learnable positional embeddings for spatial awareness. Now we translate every equation into working PyTorch code.</p>
-                <p>We build four modules from scratch: <code>PatchEmbedding</code>, <code>MultiHeadSelfAttention</code>, <code>TransformerBlock</code>, and <code>VisionTransformer</code>. Crucially, we implement attention manually -- no <code>nn.MultiheadAttention</code> -- to expose every matrix multiplication and softmax operation.</p>
+                <p>Part 1 covered the math: images as patch sequences, the CLS token, and learnable positional embeddings. Now we turn every equation into working PyTorch code.</p>
+                <p>Four modules, built from scratch: <code>PatchEmbedding</code>, <code>MultiHeadSelfAttention</code>, <code>TransformerBlock</code>, and <code>VisionTransformer</code>. We implement attention manually -- no <code>nn.MultiheadAttention</code> -- so every matrix multiplication and softmax is visible.</p>
             </div>
 
             <h2>PatchEmbedding: The Conv2d Trick</h2>
@@ -106,7 +106,7 @@ permalink: /projects/vits-live-code/
             torch.randn(1, 1 + self.num_patches, embed_dim)
         )</code></pre>
 
-            <p>For CIFAR-10 ($32 \times 32$, $P=4$, $D=128$):</p>
+            <p>Tensor shapes through the pipeline for CIFAR-10 ($32 \times 32$, $P=4$, $D=128$):</p>
             <ul>
                 <li>Input: $(B, 3, 32, 32)$</li>
                 <li>After Conv2d: $(B, 128, 8, 8)$ -- 64 patches, each projected to 128 dims</li>
@@ -116,7 +116,7 @@ permalink: /projects/vits-live-code/
             </ul>
 
             <h2>MultiHeadSelfAttention: From Scratch</h2>
-            <p>This is the core of the Transformer. We implement scaled dot-product attention with multiple heads, entirely from linear projections and matrix multiplications:</p>
+            <p>The heart of the Transformer. Scaled dot-product attention with multiple heads, built entirely from linear projections and matrix multiplications:</p>
 
             <pre><code class="language-python">class MultiHeadSelfAttention(nn.Module):
     def __init__(self, embed_dim=128, num_heads=4):
@@ -130,7 +130,7 @@ permalink: /projects/vits-live-code/
         self.W_v = nn.Linear(embed_dim, embed_dim)
         self.out_proj = nn.Linear(embed_dim, embed_dim)</code></pre>
 
-            <p>The forward pass follows the attention formula precisely:</p>
+            <p>The forward pass implements the attention equation directly:</p>
 
             <div class="math-block">
                 $$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right) V $$
@@ -152,10 +152,10 @@ permalink: /projects/vits-live-code/
     out = out.permute(0,2,1,3).reshape(B, N, C)
     return self.out_proj(out), attn</code></pre>
 
-            <p>The attention weights $\text{attn} \in \mathbb{R}^{B \times h \times N \times N}$ tell us exactly how much each token attends to every other token. We return these for visualization.</p>
+            <p>We return the attention weights $\text{attn} \in \mathbb{R}^{B \times h \times N \times N}$ alongside the output -- useful for visualizing what the model looks at.</p>
 
             <h3>Why the $\sqrt{d_k}$ Scaling?</h3>
-            <p>Without scaling, the dot products $QK^\top$ grow in magnitude with dimension $d_k$. For large $d_k$, the softmax saturates into near-one-hot distributions, producing vanishingly small gradients. Dividing by $\sqrt{d_k}$ keeps the variance of the dot products at approximately 1.</p>
+            <p>Without scaling, the dot products $QK^\top$ grow in magnitude with $d_k$. Large dot products push the softmax into near-one-hot distributions, which kills gradients. Dividing by $\sqrt{d_k}$ keeps the variance of the dot products near 1.</p>
 
             <h2>TransformerBlock: Pre-Norm Architecture</h2>
 
@@ -181,25 +181,25 @@ permalink: /projects/vits-live-code/
         return x, attn_w</code></pre>
 
             <h3>Pre-Norm vs Post-Norm</h3>
-            <p>ViT uses <strong>pre-norm</strong>: LayerNorm is applied <em>before</em> each sub-layer. Pre-norm stabilizes training, especially for deeper models, because the residual path remains unnormalized -- gradients flow through the identity connection without being scaled by normalization.</p>
+            <p>ViT applies LayerNorm <em>before</em> each sub-layer (<strong>pre-norm</strong>), not after. This stabilizes training for deeper models because the residual path stays unnormalized -- gradients flow through the identity connection without being rescaled.</p>
 
             <h3>GELU Activation</h3>
-            <p>The MLP uses GELU (Gaussian Error Linear Unit) rather than ReLU:</p>
+            <p>The MLP uses GELU instead of ReLU:</p>
 
             <div class="math-block">
                 $$ \text{GELU}(x) = x \cdot \Phi(x) \approx 0.5 \cdot x \cdot \left(1 + \tanh\left[\sqrt{2/\pi}(x + 0.044715x^3)\right]\right) $$
             </div>
 
-            <p>GELU provides a smooth approximation to ReLU, avoiding the sharp zero-gradient region, and has become standard in Transformer architectures.</p>
+            <p>GELU smoothly approximates ReLU, avoiding the hard zero-gradient cutoff. It has become the default activation in Transformer architectures.</p>
 
             <h3>The Residual Connection</h3>
-            <p>The residual connection $x + F(x)$ is the same principle from our ResNet series. The mathematical guarantee is identical:</p>
+            <p>Same principle as in ResNets. The residual connection $x + F(x)$ guarantees gradient flow:</p>
 
             <div class="math-block">
                 $$ \frac{\partial \mathcal{L}}{\partial x} = \frac{\partial \mathcal{L}}{\partial y}\left(\frac{\partial F}{\partial x} + \mathbf{I}\right) $$
             </div>
 
-            <p>The identity term $\mathbf{I}$ ensures gradients always flow, regardless of how many layers the network has.</p>
+            <p>The identity term $\mathbf{I}$ means gradients always have a direct path, no matter the depth.</p>
 
             <h2>VisionTransformer: Full Assembly</h2>
 
@@ -237,7 +237,7 @@ permalink: /projects/vits-live-code/
             </ul>
 
             <h2>Parameter Count Breakdown</h2>
-            <p>Where do the 1.2M parameters come from?</p>
+            <p>Where the 1.2M parameters live:</p>
             <ul>
                 <li><strong>Patch Embedding Conv2d</strong>: $3 \times 128 \times 4 \times 4 + 128 = 6{,}272$</li>
                 <li><strong>CLS token</strong>: $128$</li>
@@ -247,10 +247,10 @@ permalink: /projects/vits-live-code/
                 <li><strong>Classification head</strong>: $128 \times 10 + 10 = 1{,}290$</li>
             </ul>
 
-            <p>The vast majority of parameters ($>$98%) are in the Transformer blocks, split roughly equally between attention projections and the MLP.</p>
+            <p>Over 98% of the parameters sit in the Transformer blocks, split roughly evenly between attention projections and the MLP.</p>
 
-            <h2>Next Steps: Training and Analysis</h2>
-            <p>We have a complete, working Vision Transformer built entirely from scratch in PyTorch. In <strong>Part 3</strong>, we train it on CIFAR-10 alongside a CNN baseline and analyze training dynamics, attention maps, positional embeddings, and the data efficiency question.</p>
+            <h2>Next: Training and Analysis</h2>
+            <p>That gives us a complete Vision Transformer in pure PyTorch. In <strong>Part 3</strong>, we train it on CIFAR-10 alongside a CNN baseline and dig into training dynamics, attention maps, positional embeddings, and the data efficiency gap.</p>
 
         </article>
     </main>

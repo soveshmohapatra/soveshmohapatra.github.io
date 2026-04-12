@@ -192,12 +192,12 @@ permalink: /projects/gans-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>Welcome to Part 2 of our series on Generative Adversarial Networks. In Part 1, we derived the minimax objective, proved the form of the optimal discriminator, and showed that GAN training implicitly minimizes the Jensen-Shannon divergence between real and generated distributions.</p>
-                <p>Now, it is time to turn those equations into code. We implement two complete architectures in pure PyTorch: a Vanilla GAN with fully-connected layers and a Deep Convolutional GAN (DCGAN) that leverages the spatial inductive bias of convolutions.</p>
+                <p>Part 1 covered the math: the minimax objective, the optimal discriminator, and the JSD connection. Here we turn those equations into working PyTorch code.</p>
+                <p>We implement two architectures: a Vanilla GAN with fully-connected layers, and a DCGAN that uses convolutions for spatial structure. The differences in design choices matter more than you might expect.</p>
             </div>
 
             <h2>The Vanilla Generator</h2>
-            <p>The Generator maps a 100-dimensional noise vector $z$ to a $28 \times 28$ image through a sequence of fully-connected layers with BatchNorm and ReLU activations:</p>
+            <p>The Generator maps a 100-dimensional noise vector $z$ to a $28 \times 28$ image through fully-connected layers with BatchNorm and ReLU:</p>
 
 <pre><code class="language-python">class Generator(nn.Module):
     def __init__(self, z_dim=100):
@@ -220,10 +220,10 @@ permalink: /projects/gans-live-code/
         out = self.net(z)
         return out.view(-1, 1, 28, 28)</code></pre>
 
-            <p>The final <code>Tanh</code> activation ensures the output lies in $[-1, 1]$, matching our data normalization. This seemingly small detail is critical: a mismatch between the generator's output range and the data range prevents convergence entirely.</p>
+            <p>The <code>Tanh</code> output clamps values to $[-1, 1]$, which must match the data normalization. If there is a mismatch here, the network will not converge.</p>
 
             <h2>The Vanilla Discriminator</h2>
-            <p>The Discriminator takes a $28 \times 28$ image, flattens it, and classifies it as real or fake through descending linear layers:</p>
+            <p>The Discriminator flattens the $28 \times 28$ input and classifies it through descending linear layers:</p>
 
 <pre><code class="language-python">class Discriminator(nn.Module):
     def __init__(self):
@@ -238,19 +238,19 @@ permalink: /projects/gans-live-code/
             nn.Sigmoid(),
         )</code></pre>
 
-            <p>Notice the use of <code>LeakyReLU(0.2)</code> instead of standard ReLU. In the Discriminator, dead neurons from ReLU can kill the gradient signal entirely, preventing the Generator from learning. LeakyReLU's small negative slope (0.2) ensures that gradients always flow, even for negative activations.</p>
+            <p>We use <code>LeakyReLU(0.2)</code> rather than ReLU. Standard ReLU can kill neurons in the Discriminator permanently, cutting off the gradient signal to the Generator. The 0.2 negative slope keeps gradients flowing even for negative activations.</p>
 
             <h2>The DCGAN Architecture</h2>
-            <p>Radford et al. (2015) identified a set of architectural guidelines that dramatically stabilize GAN training:</p>
+            <p>Radford et al. (2015) laid out architectural guidelines that stabilize GAN training significantly:</p>
             <ol>
-                <li>Replace pooling layers with strided convolutions (Discriminator) and transposed convolutions (Generator)</li>
-                <li>Use BatchNorm in both networks (except the Discriminator's input layer and the Generator's output layer)</li>
-                <li>Use ReLU in the Generator, LeakyReLU in the Discriminator</li>
-                <li>Remove fully-connected hidden layers in favor of convolutional structure</li>
+                <li>Replace pooling with strided convolutions ($D$) and transposed convolutions ($G$)</li>
+                <li>Use BatchNorm everywhere except $D$'s input layer and $G$'s output layer</li>
+                <li>ReLU in $G$, LeakyReLU in $D$</li>
+                <li>Drop fully-connected hidden layers; use convolutional structure throughout</li>
             </ol>
 
             <h3>DCGAN Generator</h3>
-            <p>The DCGAN Generator projects the noise vector into a spatial feature map, then progressively upsamples using <code>ConvTranspose2d</code>:</p>
+            <p>The noise vector is projected into a spatial feature map, then upsampled through <code>ConvTranspose2d</code> layers:</p>
 
 <pre><code class="language-python">class DCGenerator(nn.Module):
     def __init__(self, z_dim=100):
@@ -271,10 +271,10 @@ permalink: /projects/gans-live-code/
             nn.Tanh(),
         )</code></pre>
 
-            <p>The transposed convolutions learn spatial upsampling filters rather than relying on the fully-connected network to independently generate each pixel. This gives the generator an inductive bias for local spatial structure --- exactly what's needed for image generation.</p>
+            <p>Transposed convolutions learn spatial upsampling filters instead of forcing the network to generate each pixel independently. This gives the generator a natural bias toward local spatial coherence.</p>
 
             <h3>DCGAN Discriminator</h3>
-            <p>The Discriminator mirrors the Generator with standard strided convolutions:</p>
+            <p>The Discriminator mirrors the Generator with strided convolutions:</p>
 
 <pre><code class="language-python">class DCDiscriminator(nn.Module):
     def __init__(self):
@@ -292,10 +292,10 @@ permalink: /projects/gans-live-code/
             nn.Sigmoid(),
         )</code></pre>
 
-            <p>Note that the first convolutional layer has no BatchNorm, following the DCGAN paper's recommendation. Normalizing the raw input can destabilize early training.</p>
+            <p>No BatchNorm on the first convolutional layer, per the DCGAN paper. Normalizing raw pixel inputs tends to destabilize early training.</p>
 
             <h2>Weight Initialization</h2>
-            <p>Both architectures use custom weight initialization drawn from $\mathcal{N}(0, 0.02)$. The DCGAN paper found this essential for stable convergence. Without it, the networks can fall into degenerate modes within the first few epochs.</p>
+            <p>All weights are initialized from $\mathcal{N}(0, 0.02)$. The DCGAN paper found this necessary for stable convergence --- without it, training can collapse within the first few epochs.</p>
 
 <pre><code class="language-python">def weights_init(m):
     classname = m.__class__.__name__
@@ -306,19 +306,19 @@ permalink: /projects/gans-live-code/
         nn.init.constant_(m.bias.data, 0)</code></pre>
 
             <h2>The Training Loop</h2>
-            <p>The adversarial training loop alternates between two optimization steps per batch:</p>
+            <p>Each batch involves two optimization steps:</p>
 
-            <p><strong>Step 1 --- Train Discriminator</strong>: Feed real images (label = 1) and fake images from the Generator (label = 0). Compute BCELoss for both, backpropagate, and update $D$.</p>
+            <p><strong>Step 1 --- Train $D$</strong>: Forward pass on real images (label 1) and fake images from $G$ (label 0). Compute BCELoss on both, backprop, update $D$.</p>
 
-            <p><strong>Step 2 --- Train Generator</strong>: Generate fake images and pass them through $D$. The Generator's loss uses label = 1 (it wants $D$ to classify its fakes as real). Backpropagate through $D$ (frozen) into $G$ and update $G$.</p>
+            <p><strong>Step 2 --- Train $G$</strong>: Generate fakes and pass them through $D$. $G$'s loss uses label 1 --- it wants $D$ to classify its outputs as real. Backprop through $D$ (frozen) into $G$, update $G$.</p>
 
-            <p>The critical detail: we use <code>.detach()</code> on the fake images when training $D$ to prevent gradients from flowing back into $G$ during the Discriminator's update step.</p>
+            <p>One detail that is easy to miss: we call <code>.detach()</code> on the fake images during $D$'s update to prevent gradients from leaking back into $G$.</p>
 
             <h2>Optimizer Configuration</h2>
-            <p>Following the DCGAN paper, we use Adam with a learning rate of $0.0002$ and $(\beta_1, \beta_2) = (0.5, 0.999)$. The reduced $\beta_1$ (compared to the default 0.9) dampens the momentum, which helps stabilize the adversarial oscillations.</p>
+            <p>We use Adam with $\text{lr} = 0.0002$ and $(\beta_1, \beta_2) = (0.5, 0.999)$, following the DCGAN paper. The lower $\beta_1$ (default is 0.9) dampens momentum, which reduces the adversarial oscillations.</p>
 
             <h2>Up Next</h2>
-            <p>With both architectures implemented, we have everything needed to train GANs on real data. In <strong>Part 3</strong>, we will train both models on MNIST, analyze the loss dynamics, compare the visual quality of generated samples, and discuss the practical challenges of adversarial training including mode collapse.</p>
+            <p>In <strong>Part 3</strong>, we train both models on MNIST, look at loss dynamics, compare sample quality, and discuss where things go wrong --- including mode collapse.</p>
 
         </article>
     </main>

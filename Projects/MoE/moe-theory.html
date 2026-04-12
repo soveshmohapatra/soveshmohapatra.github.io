@@ -81,16 +81,16 @@ permalink: /projects/moe-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p><strong>Mixture of Experts</strong> (MoE) is the architectural principle behind the scaling of modern large language models including GPT-4, Mixtral, and Switch Transformer. Rather than activating every parameter for every input, MoE routes each token to a small subset of specialized sub-networks (experts), achieving massive model capacity at a fraction of the computational cost.</p>
+                <p><strong>Mixture of Experts</strong> (MoE) is the architectural principle behind the scaling of GPT-4, Mixtral, and Switch Transformer. Rather than activating every parameter for every input, MoE routes each token to a small subset of specialized sub-networks (experts), increasing model capacity without proportionally increasing compute.</p>
                 <p>This first installment derives the mathematical foundations: gating functions, top-$k$ routing, and the load balancing loss that prevents expert collapse.</p>
             </div>
 
             <h2>The Scaling Problem</h2>
             <p>Dense neural networks have a fundamental coupling between <em>model capacity</em> and <em>computational cost</em>. If a model has $P$ parameters, then processing a single input requires $\mathcal{O}(P)$ floating-point operations. Doubling the model's knowledge requires doubling the compute.</p>
 
-            <p>This coupling becomes untenable at the frontier. A dense transformer with 1.8 trillion parameters would require proportionally enormous compute for every single token -- whether that token is a trivial article like "the" or a complex reasoning step.</p>
+            <p>This coupling becomes impractical at scale. A dense transformer with 1.8 trillion parameters would require proportionally enormous compute for every token -- whether that token is the word "the" or a complex reasoning step.</p>
 
-            <p><strong>Conditional computation</strong> breaks this coupling. The idea is simple: maintain a large number of parameters for capacity, but only <em>activate</em> a small subset of them for each input.</p>
+            <p><strong>Conditional computation</strong> breaks this coupling: maintain a large number of parameters for capacity, but only <em>activate</em> a small subset of them for each input.</p>
 
             <div class="math-block">
                 $$ \text{Compute per input} \ll \text{Total model capacity} $$
@@ -123,7 +123,7 @@ permalink: /projects/moe-theory/
             <p>If we compute the full weighted sum above, we have gained nothing -- every expert runs on every input, and the compute cost is $N$ times that of a single expert. The entire point of MoE is to make this sum <em>sparse</em>.</p>
 
             <h2>Top-$k$ Routing</h2>
-            <p>The key to computational efficiency is <strong>top-$k$ routing</strong>. Instead of consulting all $N$ experts, we select only the $k$ experts with the highest gate values:</p>
+            <p>The fix is <strong>top-$k$ routing</strong>. Instead of consulting all $N$ experts, we select only the $k$ experts with the highest gate values:</p>
 
             <div class="math-block">
                 $$ \mathbf{y} = \sum_{i \in \text{TopK}(G(\mathbf{x}),\, k)} \tilde{G}(\mathbf{x})_i \cdot E_i(\mathbf{x}) $$
@@ -145,7 +145,7 @@ permalink: /projects/moe-theory/
             <p>The model has $8\times$ the capacity of a single expert but only $2\times$ the compute cost.</p>
 
             <h3>Noisy Gating for Exploration</h3>
-            <p>A critical training trick from Shazeer et al. (2017) is to add tunable noise to the gating logits during training:</p>
+            <p>Shazeer et al. (2017) add tunable noise to the gating logits during training:</p>
 
             <div class="math-block">
                 $$ G(\mathbf{x}) = \text{softmax}\!\left(\mathbf{W}_g \mathbf{x} + \epsilon \cdot \text{softplus}(\mathbf{w}_{\text{noise}})\right) $$
@@ -186,15 +186,15 @@ permalink: /projects/moe-theory/
 
             <p>where $\alpha$ is a hyperparameter (typically $0.01$--$0.1$) controlling the strength of the balancing penalty. Too small and experts collapse; too large and the model sacrifices task performance for routing uniformity.</p>
 
-            <h2>Summary and Next Steps</h2>
-            <p>The mathematical framework for MoE rests on three pillars:</p>
+            <h2>Summary</h2>
+            <p>Three components define the MoE framework:</p>
             <ol>
                 <li><strong>Sparse gating</strong> via top-$k$ selection reduces compute from $\mathcal{O}(N)$ to $\mathcal{O}(k)$ expert evaluations.</li>
                 <li><strong>Noisy exploration</strong> via learnable Gaussian noise prevents premature convergence to a fixed routing pattern.</li>
                 <li><strong>Load balancing loss</strong> via $\mathcal{L}_{\text{balance}} = N \sum f_i p_i$ prevents expert collapse by penalizing non-uniform routing.</li>
             </ol>
 
-            <p>In Part 2, we implement these ideas in pure PyTorch: the Expert MLP, TopKGating with noisy exploration, MoELayer with load balancing, and a full MoE classifier ready for MNIST.</p>
+            <p>Part 2 implements all of this in pure PyTorch: Expert MLP, TopKGating, MoELayer, and a full MoE classifier for MNIST.</p>
 
         </article>
     </main>

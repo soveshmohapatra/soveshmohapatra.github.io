@@ -82,20 +82,20 @@ permalink: /projects/hopfield-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>In Part 1, we developed the mathematical foundations of Hopfield Networks. Now we translate every equation into working PyTorch code. We implement both the classical binary Hopfield network (1982) with Hebbian learning and asynchronous updates, and the modern continuous Hopfield network (2020) with log-sum-exp energy and softmax retrieval. Zero external frameworks beyond PyTorch---every operation is explicit.</p>
+                <p>We translate the math from Part 1 into working PyTorch code. Two implementations: the classical binary Hopfield network (Hebbian learning, asynchronous updates) and the modern continuous variant (log-sum-exp energy, softmax retrieval). Nothing beyond PyTorch---every operation is explicit.</p>
             </div>
 
             <h2>Implementation Overview</h2>
-            <p>Our implementation consists of two classes:</p>
+            <p>Two classes:</p>
             <ol>
                 <li><code>ClassicalHopfield</code>: Binary $\{-1, +1\}$ patterns, Hebbian weight matrix, asynchronous sign update, quadratic energy.</li>
                 <li><code>ModernHopfield</code>: Continuous $\mathbb{R}^d$ patterns, direct pattern storage, softmax-weighted retrieval, log-sum-exp energy.</li>
             </ol>
 
-            <p>Both classes expose three core operations: <code>store()</code>, <code>retrieve()</code>, and <code>energy()</code>.</p>
+            <p>Both expose three operations: <code>store()</code>, <code>retrieve()</code>, and <code>energy()</code>.</p>
 
             <h2>Classical Hopfield: Weight Matrix Construction</h2>
-            <p>The Hebbian learning rule from Part 1 translates directly:</p>
+            <p>The Hebbian learning rule from Part 1:</p>
 
 <pre><code class="language-python">def store(self, patterns: torch.Tensor) -> None:
     self.patterns = patterns.clone()
@@ -111,15 +111,15 @@ permalink: /projects/hopfield-live-code/
 
             <p>This implements $W = \frac{1}{N} \sum_{\mu=1}^P \boldsymbol{\xi}^\mu (\boldsymbol{\xi}^\mu)^\top$ with $W_{ii} = 0$.</p>
 
-            <h3>Key Design Decisions</h3>
+            <h3>Design Notes</h3>
             <ul>
-                <li><strong>Outer product loop</strong>: We iterate over patterns rather than using a batched <code>einsum</code> for clarity. The loop makes the Hebbian "accumulation" explicit.</li>
-                <li><strong>Normalization by $N$</strong>: Dividing by the number of neurons (not patterns) keeps the local field $h_i$ on the order of $\pm 1$, matching the binary state range.</li>
-                <li><strong>Zero diagonal</strong>: Prevents a neuron from reinforcing its own state, which would create trivial all-$+1$ or all-$-1$ attractors.</li>
+                <li><strong>Outer product loop</strong>: We iterate over patterns rather than batching with <code>einsum</code>. The loop makes the Hebbian accumulation explicit.</li>
+                <li><strong>Normalization by $N$</strong>: Dividing by neuron count (not pattern count) keeps the local field $h_i$ on the order of $\pm 1$.</li>
+                <li><strong>Zero diagonal</strong>: Without this, neurons reinforce their own state and the network collapses to trivial all-$+1$ or all-$-1$ attractors.</li>
             </ul>
 
             <h2>Classical Hopfield: Asynchronous Update</h2>
-            <p>Retrieval uses random asynchronous updates---one neuron at a time:</p>
+            <p>Retrieval updates one neuron at a time in random order:</p>
 
 <pre><code class="language-python">def retrieve(self, query, max_steps=20):
     state = query.clone().float()
@@ -139,20 +139,20 @@ permalink: /projects/hopfield-live-code/
     return state, energy_history</code></pre>
 
             <h3>Why Asynchronous?</h3>
-            <p>Synchronous updates (updating all neurons simultaneously) can lead to oscillations between two states. Asynchronous updates guarantee monotonic energy decrease, because each individual neuron flip is guaranteed to lower (or maintain) the energy:</p>
+            <p>Synchronous updates (all neurons at once) can oscillate between two states. Asynchronous updates guarantee monotonic energy decrease, since each individual flip can only lower or maintain the energy:</p>
 
             <div class="math-block">
                 $$ \Delta E_i = -(x_i^{\text{new}} - x_i) h_i \leq 0 $$
             </div>
 
-            <p>In our implementation, one "step" is a complete sweep through all $N$ neurons in random order. Convergence typically occurs in 2--3 sweeps for well-separated patterns.</p>
+            <p>One "step" is a full sweep through all $N$ neurons in random order. For well-separated patterns, convergence typically takes 2--3 sweeps.</p>
 
             <h2>Classical Hopfield: Energy Computation</h2>
 
 <pre><code class="language-python">def energy(self, state: torch.Tensor) -> float:
     return -0.5 * state @ self.W @ state</code></pre>
 
-            <p>This is a single line because PyTorch handles the matrix-vector products. The energy $E = -\frac{1}{2} \mathbf{x}^\top W \mathbf{x}$ is a scalar quadratic form. During retrieval, we observe energy dropping from approximately $-11$ to $-48$, confirming that the dynamics are descending the energy landscape toward a stored pattern.</p>
+            <p>One line---PyTorch handles the matrix-vector products. The energy $E = -\frac{1}{2} \mathbf{x}^\top W \mathbf{x}$ is a scalar quadratic form. During retrieval, energy drops from roughly $-11$ to $-48$, confirming descent toward a stored pattern.</p>
 
             <h2>Modern Hopfield: Energy Function</h2>
             <p>The modern energy function uses log-sum-exp:</p>
@@ -194,7 +194,7 @@ permalink: /projects/hopfield-live-code/
             <p>where $\Xi \in \mathbb{R}^{P \times d}$ is the pattern matrix. This is a weighted average of stored patterns, where the weights are softmax over similarity scores.</p>
 
             <h2>The Attention Connection: Implementation</h2>
-            <p>The <code>attention_retrieve</code> method makes the connection explicit:</p>
+            <p>The <code>attention_retrieve</code> method writes out the equivalence directly:</p>
 
 <pre><code class="language-python">def attention_retrieve(self, query, beta=1.0):
     if query.dim() == 1:
@@ -215,7 +215,7 @@ permalink: /projects/hopfield-live-code/
                 $$ \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right) V $$
             </div>
 
-            <p>Setting $\beta = 1/\sqrt{d_k}$ and $K = V = \Xi$, these are identical. The Hopfield network <em>is</em> an attention layer where keys equal values (the stored patterns) and the query is the state to be retrieved.</p>
+            <p>Set $\beta = 1/\sqrt{d_k}$ and $K = V = \Xi$, and the two are identical. The Hopfield network <em>is</em> an attention layer where keys equal values (the stored patterns) and the query is the state being retrieved.</p>
 
             <h2>Utility Functions</h2>
             <p>We also implement helper functions for benchmarking:</p>
@@ -253,7 +253,7 @@ def hamming_accuracy(original, recovered):
                 </tbody>
             </table>
 
-            <p>The entire implementation fits in under 120 lines of Python. Every operation uses standard PyTorch tensor ops---no custom CUDA kernels, no external libraries. In <strong>Part 3</strong>, we benchmark both networks, measure storage capacity, and formally demonstrate the attention equivalence with numerical experiments.</p>
+            <p>The whole thing is under 120 lines of Python, all standard PyTorch tensor ops. In <strong>Part 3</strong>, we benchmark both networks, measure storage capacity, and verify the attention equivalence numerically.</p>
 
         </article>
     </main>

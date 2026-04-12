@@ -81,15 +81,14 @@ permalink: /projects/flows-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>What if a generative model could give you the <em>exact</em> probability of any data point? Not a lower bound (like VAEs), not an implicit density (like GANs), but the true log-likelihood under the model?</p>
-                <p><strong>Normalizing Flows</strong> achieve this through a beautifully simple mathematical framework: construct an invertible mapping between a simple base distribution and a complex data distribution, and use the change of variables formula to track the exact density transformation at every step.</p>
-                <p>In this 3-part "Build in Public" series, we will deconstruct Normalizing Flows from first principles. Today, we lay the mathematical foundation: the change of variables formula, the Jacobian determinant, and the two key architectural ideas (planar flows and coupling layers) that make this computationally tractable. In Part 2, we build everything in pure PyTorch. In Part 3, we train on 2D density estimation benchmarks and analyze the results.</p>
+                <p>Most generative models give you approximate densities. VAEs optimize a lower bound. GANs give you no density at all. <strong>Normalizing Flows</strong> are different: they compute the exact log-likelihood of any data point by constructing an invertible mapping between a simple base distribution and the data distribution, using the change of variables formula to track density at every step.</p>
+                <p>This post covers the mathematical foundation: the change of variables formula, the Jacobian determinant, and the two architectural ideas -- planar flows and coupling layers -- that make the computation tractable. Part 2 implements everything in PyTorch. Part 3 trains on 2D benchmarks.</p>
             </div>
 
             <h2>The Change of Variables Formula</h2>
-            <p>The entire framework rests on one equation from probability theory. Suppose we have a random variable $z \sim p_z(z)$ drawn from a known base distribution (typically a standard Gaussian), and we apply an invertible, differentiable transformation $f: \mathbb{R}^d \to \mathbb{R}^d$ to obtain $x = f(z)$.</p>
+            <p>The whole framework comes from one equation. Take a random variable $z \sim p_z(z)$ from a known base distribution (typically a standard Gaussian), and apply an invertible, differentiable transformation $f: \mathbb{R}^d \to \mathbb{R}^d$ to get $x = f(z)$.</p>
 
-            <p>What is the density of $x$? The change of variables formula gives us:</p>
+            <p>The density of $x$ follows from the change of variables formula:</p>
 
             <div class="math-block">
                 $$ p_x(x) = p_z(f^{-1}(x)) \left| \det \frac{\partial f^{-1}}{\partial x} \right| $$
@@ -101,12 +100,12 @@ permalink: /projects/flows-theory/
                 $$ \log p_x(x) = \log p_z(f(x)) + \log \left| \det J_f(x) \right| $$
             </div>
 
-            <p>where $J_f(x) = \frac{\partial f}{\partial x}$ is the Jacobian matrix of the transformation. This is the core equation of normalizing flows. It says: to evaluate the likelihood of any data point $x$, push it through the forward mapping $f$ to get $z$, evaluate the base density at $z$, and add a correction term for how the transformation stretches or compresses volume.</p>
+            <p>where $J_f(x) = \frac{\partial f}{\partial x}$ is the Jacobian matrix. This is the core equation: to evaluate the likelihood of $x$, push it through $f$ to get $z$, evaluate the base density at $z$, and add a correction for how the transformation stretches or compresses volume.</p>
 
             <h2>The Jacobian Determinant Problem</h2>
-            <p>There is an immediate computational challenge. The Jacobian $J_f(x)$ is a $d \times d$ matrix. Computing its determinant costs $O(d^3)$ in general, which is prohibitive for high-dimensional data. The entire design challenge of normalizing flows is: <em>how do we build expressive invertible transformations whose Jacobian determinant is cheap to compute?</em></p>
+            <p>The immediate problem: the Jacobian $J_f(x)$ is a $d \times d$ matrix. Computing its determinant costs $O(d^3)$, which is prohibitive for high-dimensional data. The central design question is: <em>how do we build expressive invertible transformations whose Jacobian determinant is cheap to compute?</em></p>
 
-            <p>Two foundational solutions have been proposed: planar flows and coupling layers.</p>
+            <p>Two solutions: planar flows and coupling layers.</p>
 
             <h2>Planar Flows</h2>
             <p>Rezende and Mohamed (2015) introduced one of the simplest possible flows. A <strong>planar flow</strong> applies the transformation:</p>
@@ -143,7 +142,7 @@ permalink: /projects/flows-theory/
             <p>By stacking $K$ such planar transformations, we obtain increasingly complex densities. However, each individual planar flow can only warp the density along a single hyperplane, limiting expressiveness.</p>
 
             <h2>Affine Coupling Layers</h2>
-            <p>Dinh et al. (2015, 2017) introduced a far more powerful approach. An <strong>affine coupling layer</strong> partitions the input $x \in \mathbb{R}^d$ into two groups: $x_1$ (the first $d/2$ dimensions) and $x_2$ (the rest). The transformation is:</p>
+            <p>Dinh et al. (2015, 2017) introduced a more powerful approach. An <strong>affine coupling layer</strong> partitions the input $x \in \mathbb{R}^d$ into two groups: $x_1$ (the first $d/2$ dimensions) and $x_2$ (the rest). The transformation is:</p>
 
             <div class="math-block">
                 $$\begin{align}
@@ -184,14 +183,12 @@ permalink: /projects/flows-theory/
                 $$ \log |\det J_f| = \sum_{k=1}^{K} \log |\det J_{f_k}| $$
             </div>
 
-            <p>This additivity is what makes deep normalizing flows practical. Each layer adds a small, cheap log-det correction, and together they build up an expressive transformation.</p>
+            <p>This additivity makes deep flows practical. Each layer contributes a cheap log-det correction, and the composition builds up an expressive transformation.</p>
 
-            <h2>Next Steps: From Math to Code</h2>
-            <p>We have established the mathematical toolkit for normalizing flows: the change of variables formula for exact likelihood, the rank-1 determinant trick for planar flows, and the triangular Jacobian trick for coupling layers.</p>
+            <h2>From Math to Code</h2>
+            <p>That covers the mathematical toolkit: the change of variables formula for exact likelihood, the rank-1 determinant trick for planar flows, and the triangular Jacobian for coupling layers.</p>
 
-            <p>In <strong>Part 2</strong>, we will implement both architectures in pure PyTorch: a PlanarFlow with the softplus invertibility constraint, an AffineCouplingLayer with learned scale and translation MLPs, and a complete RealNVP model with 8 alternating coupling layers and batch normalization.</p>
-
-            <p><em>Stay tuned for the code drop as we build exact-likelihood generative models from scratch!</em></p>
+            <p>In <strong>Part 2</strong>, we implement both architectures in pure PyTorch -- PlanarFlow with the softplus invertibility constraint, AffineCouplingLayer with learned scale and translation MLPs, and a full RealNVP model with 8 alternating coupling layers and batch normalization.</p>
 
         </article>
     </main>

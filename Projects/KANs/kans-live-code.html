@@ -228,133 +228,108 @@ permalink: /projects/kans-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In Part 1 of this series, we explored the elegant mathematical foundation of Kolmogorov-Arnold
-                    Networks (KANs). We discussed how the theorem allows us to represent complex multivariate functions
-                    using sums of 1D functions, and how B-splines provide the perfect differentiable basis to learn
-                    these functions.</p>
-                <p>Theory is powerful, but implementation represents true understanding. In Part 2, we will take those
-                    continuous mathematical formulations and translate them into a discrete, highly optimized PyTorch
-                    module. Our goal is to write a single <code>KANLayer</code> that acts as a drop-in replacement for
-                    PyTorch's standard <code>nn.Linear</code>.</p>
+                <p>Part 1 covered the math: the Kolmogorov-Arnold theorem and B-spline parameterization. Now we
+                    translate those formulas into a working PyTorch module. The goal is a single
+                    <code>KANLayer</code> that can replace <code>nn.Linear</code> as a drop-in.</p>
                 <p style="margin-top: 1rem;"><a href="https://github.com/soveshmohapatra/KANs" target="_blank"
                         style="color: var(--accent-light); text-decoration: none; font-weight: 500;"><i
                             class="fab fa-github"></i> View the complete source code on GitHub</a></p>
             </div>
 
             <h2>1. The Architecture of a KAN Layer</h2>
-            <p>A standard Linear layer computes $y = Wx + b$ and then applies a trailing activation $y = \sigma(y)$. Our
-                <code>KANLayer</code> computes $y = \sum \phi(x)$.
+            <p>A standard Linear layer computes $y = Wx + b$ then applies a fixed activation $\sigma(y)$. A
+                <code>KANLayer</code> computes $y = \sum \phi(x)$, where each edge function combines a base
+                activation with a learned spline:
             </p>
-
-            <p>Following the original KAN paper, the edge function $\phi(x)$ is a combination of a base activation and a
-                spline activation:</p>
 
             <div class="math-block">
                 $$ \phi(x) = w_b \text{SiLU}(x) + \sum_{i=1}^{c} c_i B_i(x) $$
             </div>
 
-            <p>Our PyTorch module needs to manage three distinct components:</p>
+            <p>The PyTorch module manages three components:</p>
             <ol>
-                <li><strong>The Grid:</strong> A set of fixed knots that define where our B-splines are evaluated.</li>
-                <li><strong>Base Weights:</strong> $w_b$, which act similarly to a standard linear layer applied to a
-                    SiLU activation.</li>
-                <li><strong>Spline Weights:</strong> $c_i$, the coefficients that determine the shape of the learned
-                    curve on each edge.</li>
+                <li><strong>The Grid:</strong> Fixed knots defining B-spline evaluation points.</li>
+                <li><strong>Base Weights:</strong> $w_b$, a linear layer applied to SiLU-activated input.</li>
+                <li><strong>Spline Weights:</strong> $c_i$, coefficients controlling the learned curve shape on
+                    each edge.</li>
             </ol>
 
             <h2>2. Implementing B-Splines: The Cox-de Boor Algorithm</h2>
-            <p>The most complex part of the implementation is evaluating the B-spline basis functions $B_i(x)$ for a
-                batch of inputs natively in PyTorch. We want to avoid Python <code>for</code> loops over the batch or
-                feature dimensions to ensure GPU acceleration.</p>
+            <p>The hard part is evaluating B-spline basis functions $B_i(x)$ for a full batch without Python
+                <code>for</code> loops over batch or feature dimensions.</p>
 
-            <p>We use the Cox-de Boor recursion formula. We define degree 0 splines as simple indicator functions (1 if
-                the input is within a specific grid interval, 0 otherwise). Higher-degree splines are built by linearly
-                interpolating between lower-degree splines.</p>
+            <p>Cox-de Boor recursion starts from degree-0 indicator functions (1 inside a grid interval, 0 outside)
+                and builds higher-degree splines by linearly interpolating between lower-degree ones.</p>
 
-            <h3>Vectorized Code Snippet</h3>
-            <p>Here is the core logical block within our module that handles the recursion:</p>
+            <h3>Vectorized Code</h3>
 
             <pre><code class="language-python">def b_spline(self, x):
     # Add dimension for broadcasting: x becomes [batch, in_features, 1]
     x = x.unsqueeze(-1)
-    
+
     # Degree 0: Indicator functions
     bases = ((x >= self.grid[:-1]) & (x < self.grid[1:])).to(x.dtype)
-    
+
     # Cox-de Boor recursion for higher degrees
     for k in range(1, self.spline_order + 1):
         left_num = x - self.grid[:-k-1]
         left_den = self.grid[k:-1] - self.grid[:-k-1]
         left = (left_num / left_den) * bases[:, :, :-1]
-        
+
         right_num = self.grid[k+1:] - x
         right_den = self.grid[k+1:] - self.grid[1:-k]
         right = (right_num / right_den) * bases[:, :, 1:]
-        
+
         bases = left + right
-        
+
     return bases</code></pre>
 
-            <p>By utilizing PyTorch's broadcasting capabilities, we process the entire batch and all input features
-                simultaneously.</p>
+            <p>Broadcasting handles the entire batch and all input features in one pass.</p>
 
             <h2>3. The Forward Pass</h2>
-            <p>Once we have our evaluated B-spline bases, the forward pass is surprisingly simple. It reduces to a large
-                linear combination. We compute the base SiLU output, then compute the spline output by multiplying the
-                evaluated bases by our learnable spline coefficients.</p>
+            <p>With the B-spline bases evaluated, the forward pass reduces to two linear combinations:</p>
 
             <pre><code class="language-python">def forward(self, x):
     # 1. Base activation
     base_output = F.linear(F.silu(x), self.base_weight)
-    
+
     # 2. Spline activation
     splines = self.b_spline(x)
-    splines = splines.view(x.shape[0], -1) 
+    splines = splines.view(x.shape[0], -1)
     spline_weight_flat = self.spline_weight.view(self.out_features, -1)
     spline_output = F.linear(splines, spline_weight_flat)
-    
+
     # 3. Combine
     return self.scale_base * base_output + self.scale_spline * spline_output</code></pre>
 
-            <p>Notice how we flatten the splines and the spline weights. This allows us to use PyTorch's highly
-                optimized <code>F.linear</code> to perform the summation across all edges in a single matrix
-                multiplication, making the execution speed comparable to standard deep learning operations.</p>
+            <p>Flattening the splines and spline weights lets us use <code>F.linear</code> to sum across all edges
+                in a single matrix multiply.</p>
 
-            <h2>4. Common Implementation Errors & Gotchas</h2>
-            <p>While this clean 100-line implementation is functional, it is important to understand the common failure
-                modes and errors that can arise when training KANs in practice:</p>
+            <h2>4. Common Gotchas</h2>
+            <p>Three failure modes to watch for:</p>
 
             <ol>
-                <li><strong>Grid Bound Violations (Dead Gradients):</strong> Standard B-splines are only active within
-                    their defined knot vector. In our implementation, the grid spans from roughly $-1$ to $1$. If the
-                    inputs $x$ to the layer exceed this range, the spline evaluation returns exactly zero. This will
-                    immediately "kill" the gradient for that edge.<br>
-                    <em>Solution:</em> Strictly normalize inputs (e.g., LayerNorm) before passing them into a KAN Layer,
-                    or implement a dynamic grid update that expands bounds based on activation statistics.
+                <li><strong>Grid Bound Violations (Dead Gradients):</strong> B-splines are only active within
+                    their knot range (roughly $-1$ to $1$ here). Inputs outside this range produce zero spline
+                    output and kill the gradient.<br>
+                    <em>Fix:</em> Apply LayerNorm before KAN layers, or implement dynamic grid updates that track
+                    activation statistics.
                 </li>
 
-                <li><strong>Exploding Spline Variance:</strong> The spline coefficients $c_i$ represent the $y$-values
-                    of the control points. If these are initialized with high variance, the resulting curves will be
-                    extremely volatile, causing immediate <code>NaN</code> losses.<br>
-                    <em>Solution:</em> Initialize the spline weights with a very small standard deviation (e.g., $\sigma
-                    = 0.1$) to ensure the initial learning phase is dominated by the stable base SiLU activation.
+                <li><strong>Exploding Spline Variance:</strong> High-variance initialization on spline coefficients
+                    $c_i$ creates volatile curves and immediate <code>NaN</code> losses.<br>
+                    <em>Fix:</em> Initialize spline weights with small standard deviation ($\sigma = 0.1$) so the
+                    stable SiLU base dominates early training.
                 </li>
 
-                <li><strong>Division by Zero in Cox-de Boor:</strong> In scenarios involving dynamic grid updates, if
-                    two knot values become identical, the denominator in the Cox-de Boor recursion becomes zero,
-                    resulting in <code>NaN</code> values.<br>
-                    <em>Solution:</em> Ensure grids strictly monotonically increase and safely handle division.
+                <li><strong>Division by Zero in Cox-de Boor:</strong> If two knots collapse to the same value
+                    (especially during dynamic grid updates), the recursion denominators hit zero.<br>
+                    <em>Fix:</em> Enforce strictly monotonic grids and guard divisions.
                 </li>
             </ol>
 
-            <h2>Conclusion</h2>
-            <p>We have successfully built a mathematically rigorous KAN layer in under 100 lines of code. It is heavily
-                modular, GPU compatible, and exposes all mathematical levers (grid size, spline order) directly to the
-                user.</p>
-
-            <p>In Part 3, the grand finale, we will stack these <code>KANLayers</code> together and benchmark them
-                against a traditional MLP on a complex symbolic regression task to see if the parameter-efficiency
-                claims hold true.</p>
+            <p>The full implementation comes out to under 100 lines, is GPU-compatible, and exposes grid size and
+                spline order as tunable hyperparameters.</p>
 
         </article>
     </main>

@@ -117,7 +117,7 @@ permalink: /projects/flows-live-code/
             <p>A single planar flow has only $2d + 1$ parameters (5 parameters for $d=2$). We stack $K=32$ flows for a total of 160 parameters -- extremely lightweight but limited in expressiveness.</p>
 
             <h2>Component 2: Affine Coupling Layer</h2>
-            <p>The coupling layer is the workhorse of modern normalizing flows. It uses a binary mask to split the input, keeps the masked dimensions fixed, and transforms the rest using learned scale ($s$) and translation ($t$) networks.</p>
+            <p>The coupling layer does the heavy lifting in modern normalizing flows. A binary mask splits the input: masked dimensions pass through unchanged, and the rest are transformed by learned scale ($s$) and translation ($t$) networks.</p>
 
             <h3>Mask Construction</h3>
 
@@ -157,10 +157,10 @@ def inverse(self, y):
     x = (y - t) * torch.exp(-s)
     return x</code></pre>
 
-            <p>Note that the inverse uses the <em>same</em> networks $s$ and $t$ with the same parameters -- no separate inverse network is needed. This is the key advantage of the coupling architecture.</p>
+            <p>The inverse uses the same $s$ and $t$ networks with the same parameters -- no separate inverse network needed. That is the main advantage of the coupling design.</p>
 
             <h2>Component 3: Batch Normalization for Flows</h2>
-            <p>Standard batch normalization is not invertible in general. However, we can design a flow-compatible version that normalizes activations between coupling layers and contributes its own log-determinant:</p>
+            <p>Standard batch normalization is not invertible. But we can build a flow-compatible version that normalizes activations between coupling layers and contributes its own log-determinant:</p>
 
             <div class="math-block">
                 $$ y = \frac{x - \mu}{\sqrt{\sigma^2 + \epsilon}} \cdot \exp(\gamma) + \beta $$
@@ -172,7 +172,7 @@ def inverse(self, y):
                 $$ \log |\det J| = \sum_i \left( \gamma_i - \frac{1}{2} \log(\sigma_i^2 + \epsilon) \right) $$
             </div>
 
-            <p>At training time, $\mu$ and $\sigma^2$ are batch statistics; at evaluation time, we use exponential moving averages. This stabilizes training significantly for deep flow stacks.</p>
+            <p>During training, $\mu$ and $\sigma^2$ come from batch statistics; at evaluation time, we use exponential moving averages. This stabilizes training for deep flow stacks.</p>
 
             <h2>Component 4: RealNVP</h2>
             <p>The complete RealNVP model stacks 8 affine coupling layers with alternating even/odd masks, interleaved with batch normalization:</p>
@@ -185,7 +185,7 @@ def inverse(self, y):
             self.layers.append(AffineCouplingLayer(dim, hidden_dim, mask))
             self.layers.append(BatchNormFlow(dim))</code></pre>
 
-            <p>The mask alternation is essential. In even-indexed layers, dimensions $\{0, 2, 4, \ldots\}$ are fixed while $\{1, 3, 5, \ldots\}$ are transformed. In odd-indexed layers, the roles reverse. After two consecutive layers, every dimension has been transformed at least once.</p>
+            <p>Mask alternation matters. Even-indexed layers fix dimensions $\{0, 2, 4, \ldots\}$ and transform $\{1, 3, 5, \ldots\}$. Odd-indexed layers reverse the roles. After two consecutive layers, every dimension has been transformed at least once.</p>
 
             <h3>Training Objective</h3>
             <p>The training loop is pure maximum likelihood estimation:</p>
@@ -199,10 +199,10 @@ loss.backward()</code></pre>
             <h3>Architecture Summary</h3>
             <p>Our RealNVP with $d=2$, <code>hidden_dim</code>=64, and 8 coupling layers has <strong>71,744 trainable parameters</strong>. The planar flow with $K=32$ layers has only <strong>160 parameters</strong>. This $450\times$ difference in capacity will be clearly reflected in the density estimation quality in Part 3.</p>
 
-            <h2>Next Steps: Watching Gaussians Become Moons</h2>
-            <p>We now have a complete, tested implementation of two normalizing flow architectures. Every forward pass computes exact log-likelihoods. Every inverse pass generates new samples.</p>
+            <h2>Next: Training and Evaluation</h2>
+            <p>Both architectures are implemented and ready. Forward passes compute exact log-likelihoods; inverse passes generate samples.</p>
 
-            <p>In <strong>Part 3</strong>, we will train both models on 2D density estimation benchmarks (Two Moons and Two Circles), visualize the learned density heatmaps, watch Gaussian samples warp into the target distribution, and compare the expressiveness of planar flows versus affine coupling layers.</p>
+            <p>In <strong>Part 3</strong>, we train both models on Two Moons and Two Circles, visualize learned density heatmaps, and compare how planar flows and affine coupling layers handle multi-modal distributions.</p>
 
         </article>
     </main>

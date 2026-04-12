@@ -108,7 +108,7 @@ permalink: /projects/moe-live-code/
     def forward(self, x):
         return self.net(x)</code></pre>
 
-            <p>Each expert maps $\mathbb{R}^{256} \to \mathbb{R}^{128} \to \mathbb{R}^{256}$ with a bottleneck hidden dimension. With 8 experts, the total expert parameters are $8 \times 65{,}920 = 527{,}360$. The philosophy of MoE is that <em>many small specialists outperform one large generalist</em> when combined with intelligent routing.</p>
+            <p>Each expert maps $\mathbb{R}^{256} \to \mathbb{R}^{128} \to \mathbb{R}^{256}$ with a bottleneck hidden dimension. With 8 experts, the total expert parameters are $8 \times 65{,}920 = 527{,}360$.</p>
 
             <h2>Gate Computation</h2>
 
@@ -138,7 +138,7 @@ permalink: /projects/moe-live-code/
 
     return top_k_values, top_k_indices, gate_probs</code></pre>
 
-            <p>The <code>softplus</code> function ($\log(1 + e^x)$) ensures the noise scale is always positive. Note that noise is only added during training (<code>self.training</code> check). At inference time, routing is deterministic.</p>
+            <p><code>softplus</code> ($\log(1 + e^x)$) ensures the noise scale is always positive. Noise is only added during training; at inference time, routing is deterministic.</p>
 
             <h2>Top-$k$ Selection and Sparse Routing</h2>
             <p>The <code>torch.topk</code> operation is the core sparsification step. The selected gate values are then renormalized:</p>
@@ -164,7 +164,7 @@ selected_outputs = torch.gather(expert_outputs, 1, indices_expanded)
 weights = top_k_values.unsqueeze(-1)  # (batch, top_k, 1)
 output = (selected_outputs * weights).sum(dim=1)</code></pre>
 
-            <p><strong>Implementation note:</strong> In this educational implementation, we compute <em>all</em> expert outputs and then select. In production systems (e.g., Megablocks, Tutel), only the selected experts are actually computed using custom CUDA kernels.</p>
+            <p><strong>Implementation note:</strong> Here we compute <em>all</em> expert outputs and then select. Production systems (Megablocks, Tutel) only compute selected experts via custom CUDA kernels.</p>
 
             <h2>Auxiliary Load Balancing Loss</h2>
 
@@ -180,7 +180,7 @@ p = gate_probs.mean(dim=0)
 # Load balancing loss
 auxiliary_loss = self.num_experts * (f * p).sum()</code></pre>
 
-            <p>The <code>scatter_add_</code> operation efficiently builds a one-hot-like matrix indicating which experts were selected for each token in the batch.</p>
+            <p><code>scatter_add_</code> builds a one-hot-like matrix indicating which experts were selected for each token in the batch.</p>
 
             <h2>The Complete MoE Classifier</h2>
 
@@ -220,15 +220,15 @@ auxiliary_loss = self.num_experts * (f * p).sum()</code></pre>
                 </tbody>
             </table>
 
-            <h2>Summary and Next Steps</h2>
+            <h2>Summary</h2>
             <ul>
                 <li><strong>Expert</strong>: 2-layer MLP with bottleneck ($256 \to 128 \to 256$).</li>
                 <li><strong>TopKGating</strong>: Linear projection + noisy softmax + top-$k$ selection.</li>
                 <li><strong>MoELayer</strong>: Sparse routing, weighted expert combination, load balancing loss.</li>
-                <li><strong>MoEClassifier</strong>: Complete MNIST classifier with 732,946 total params and 337,426 active.</li>
+                <li><strong>MoEClassifier</strong>: 732,946 total params, 337,426 active per input.</li>
             </ul>
 
-            <p>In Part 3, we train this model on MNIST and analyze the results: accuracy compared to a dense baseline, expert specialization patterns, and parameter efficiency.</p>
+            <p>Part 3 trains this model on MNIST and compares it against a dense baseline -- accuracy, expert specialization, and parameter efficiency.</p>
 
         </article>
     </main>

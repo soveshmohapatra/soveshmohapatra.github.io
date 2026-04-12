@@ -207,10 +207,9 @@ permalink: /projects/autoencoders-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>What happens when you force 784-dimensional data through a bottleneck of just 2 dimensions? Remarkably, the data doesn't collapse into noise---it organizes itself. Similar inputs cluster together, and the bottleneck learns a compact coordinate system that captures the essential structure of the data.</p>
-                <p>This is the core idea behind <strong>autoencoders</strong>: learn to compress data into a low-dimensional representation and then reconstruct it, using reconstruction error as the sole training signal. No labels, no supervision---just the pressure of compression.</p>
-                <p>Autoencoders are among the oldest ideas in deep learning, dating back to the 1980s, yet they remain foundational. The latent spaces inside modern diffusion models, the embeddings in retrieval systems, and the bottleneck layers in Transformers all trace their lineage back to the same principle: forcing data through a narrow channel reveals its structure.</p>
-                <p>In Part 1 of this "Build in Public" mini-series, we deconstruct the mathematical foundation of autoencoders: the information bottleneck, reconstruction loss, and the manifold hypothesis. In Part 2, we implement four variants in pure PyTorch. In Part 3, we train on MNIST and visualize what the bottleneck learns.</p>
+                <p>Force 784-dimensional data through a 2-dimensional bottleneck. Instead of collapsing into noise, similar inputs cluster together and the bottleneck learns a compact coordinate system that captures the data's structure.</p>
+                <p>That is the core idea behind <strong>autoencoders</strong>: compress data into a low-dimensional representation and reconstruct it, using reconstruction error as the only training signal. No labels, no supervision---just compression pressure.</p>
+                <p>This post covers the mathematical foundation: the information bottleneck, reconstruction loss, and the manifold hypothesis. Part 2 implements four variants in PyTorch; Part 3 trains them on MNIST and visualizes what the bottleneck learns.</p>
             </div>
 
             <h2>The Information Bottleneck</h2>
@@ -222,7 +221,7 @@ permalink: /projects/autoencoders-theory/
 
             <p>The bottleneck is the constraint $d \ll n$. For MNIST images, $n = 784$ (28$\times$28 pixels). If we set $d = 32$, the encoder must compress each image by a factor of 24.5$\times$. If we set $d = 2$, the compression ratio is 392$\times$.</p>
 
-            <p>This compression is lossy by construction. The network cannot preserve every pixel value---it must learn which information <em>matters</em> for reconstruction and which can be discarded. This is what makes the bottleneck useful: it forces the network to discover compact, meaningful representations.</p>
+            <p>This compression is lossy by construction. The network cannot preserve every pixel value---it must learn which information matters for reconstruction and discard the rest.</p>
 
             <p>The full autoencoder pipeline is:</p>
 
@@ -270,9 +269,9 @@ permalink: /projects/autoencoders-theory/
 
             <p>Consider the space of all possible 28$\times$28 grayscale images: $\mathbb{R}^{784}$. The vast majority of points in this space look like random static. The set of images that look like handwritten digits occupies a vanishingly thin subspace---a manifold with far fewer intrinsic dimensions than 784.</p>
 
-            <p>Formally, if the data manifold $\mathcal{M}$ has intrinsic dimensionality $d^*$, then an autoencoder with bottleneck dimension $d \geq d^*$ can in principle achieve zero reconstruction error. When $d < d^*$, some information is necessarily lost, and the autoencoder learns to preserve the most important factors of variation.</p>
+            <p>Formally, if the data manifold $\mathcal{M}$ has intrinsic dimensionality $d^*$, then a bottleneck with $d \geq d^*$ can in principle achieve zero reconstruction error. When $d < d^*$, some information is necessarily lost.</p>
 
-            <p>This explains a key empirical observation: increasing the bottleneck dimension improves reconstruction up to a point, after which further increases yield diminishing returns. That inflection point approximates the intrinsic dimensionality of the data manifold.</p>
+            <p>This explains why increasing the bottleneck dimension improves reconstruction up to a point, then gives diminishing returns. That inflection point approximates the intrinsic dimensionality of the data.</p>
 
             <h2>Variants: Beyond Vanilla Compression</h2>
             <p>The basic autoencoder can be extended in several directions, each addressing a different limitation:</p>
@@ -302,12 +301,10 @@ permalink: /projects/autoencoders-theory/
             <h3>Convolutional Autoencoders</h3>
             <p>Replace fully-connected layers with Conv2d (encoder) and ConvTranspose2d (decoder) to preserve spatial structure. Fully-connected autoencoders flatten images into vectors, destroying the 2D spatial relationships between pixels. Convolutional autoencoders process images as 2D feature maps, enabling the network to learn spatially local features like edges and textures.</p>
 
-            <h2>Next Steps: From Math to Code</h2>
-            <p>We have established the mathematical foundation: the information bottleneck forces compression, MSE reconstruction loss drives learning, and the manifold hypothesis explains why compression produces useful representations.</p>
+            <h2>From Math to Code</h2>
+            <p>That covers the mathematical foundation: the information bottleneck forces compression, MSE reconstruction loss drives learning, and the manifold hypothesis explains why compression produces useful representations.</p>
 
-            <p>In <strong>Part 2</strong>, we implement all four variants---Vanilla, Denoising, Sparse, and Convolutional---in pure PyTorch. We will walk through the architecture choices, the noise injection mechanism, the L1 penalty, and the Conv2d/ConvTranspose2d encoder-decoder design.</p>
-
-            <p><em>Stay tuned for the code drop as we build Autoencoders from scratch!</em></p>
+            <p><strong>Part 2</strong> implements all four variants---Vanilla, Denoising, Sparse, and Convolutional---in PyTorch, covering architecture choices, noise injection, the L1 penalty, and the Conv2d/ConvTranspose2d encoder-decoder design.</p>
 
         </article>
     </main>

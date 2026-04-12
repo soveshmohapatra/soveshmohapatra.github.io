@@ -207,68 +207,68 @@ permalink: /projects/resnet-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>In 2015, a curious observation challenged deep learning orthodoxy: deeper networks should perform
-                    better, but they didn't. As networks grew beyond 20 layers, accuracy saturated and then
-                    <em>degraded</em> rapidly. This wasn't overfitting — training error also increased.</p>
-                <p><strong>Residual Networks</strong>, introduced by He et al. from Microsoft Research, solved this
-                    problem with an elegantly simple idea: instead of learning direct mappings, learn <em>residual
-                    functions</em> with reference to the layer inputs, using identity skip connections. This single idea
-                    enabled training networks with hundreds — even thousands — of layers, and won ImageNet 2015 with a
-                    3.57% top-5 error rate.</p>
-                <p>In this new 3-part "Build in Public" series, we will deconstruct Residual Networks from first
-                    principles. Today, we look at the mathematical foundation: the degradation problem, the residual
-                    learning formulation, and why skip connections enable gradient flow through arbitrarily deep
-                    networks. In Part 2, we will build the complete architecture in PyTorch. In Part 3, we will train
-                    on CIFAR-10 and visualize activation patterns.</p>
+                <p>In 2015, He et al. at Microsoft Research noticed something that shouldn't happen: a 56-layer
+                    convolutional network had <em>higher training error</em> than a 20-layer one. Not higher test
+                    error -- higher <em>training</em> error. This wasn't overfitting. The optimizer was simply failing
+                    to find a solution that provably existed.</p>
+                <p>Their fix was to stop asking layers to learn full mappings and instead have them learn
+                    <em>residuals</em> -- small corrections to the input, passed through via identity skip connections.
+                    That single change enabled networks with hundreds of layers and won ImageNet 2015 at 3.57% top-5
+                    error.</p>
+                <p>This is Part 1 of a 3-part series where I build ResNets from scratch. Here we cover the math:
+                    the degradation problem, the residual formulation, and why skip connections fix gradient flow.
+                    Part 2 is the PyTorch implementation. Part 3 is training on CIFAR-10 with activation
+                    visualizations.</p>
             </div>
 
             <h2>The Degradation Problem</h2>
-            <p>Consider stacking more layers onto a network that already works. Intuitively:</p>
+            <p>Consider stacking more layers onto a network that already works. You'd expect:</p>
             <ul>
-                <li>Deeper networks have more representational capacity</li>
-                <li>Additional layers could learn identity mappings if not needed</li>
-                <li>Performance should improve (or at least not degrade)</li>
+                <li>More layers = more representational capacity</li>
+                <li>Extra layers could just learn identity mappings if they aren't needed</li>
+                <li>Performance should at least stay the same</li>
             </ul>
 
-            <p>But empirically, deep plain networks suffer from:</p>
+            <p>In practice, deep plain networks hit three problems:</p>
             <ul>
-                <li><strong>Degradation</strong>: Training accuracy <em>decreases</em> with depth beyond ~20 layers</li>
-                <li><strong>Vanishing gradients</strong>: Gradients diminish through many multiplicative layers</li>
+                <li><strong>Degradation</strong>: Training accuracy <em>drops</em> past ~20 layers</li>
+                <li><strong>Vanishing gradients</strong>: Gradients shrink through many multiplicative layers</li>
                 <li><strong>Optimization difficulty</strong>: The loss landscape becomes harder to navigate</li>
             </ul>
 
-            <p>The key insight is that this is <em>not</em> an overfitting problem — a 56-layer network has
-                <em>higher training error</em> than a 20-layer one. The optimizer simply cannot find the solution,
-                even though it provably exists.</p>
+            <p>The important point: this is not overfitting. A 56-layer plain network has higher <em>training</em>
+                error than a 20-layer one. The solution exists (a 56-layer net could just copy the 20-layer
+                solution and set the extra 36 layers to identity), but SGD cannot find it.</p>
 
             <h2>The Residual Learning Insight</h2>
-            <p>Instead of asking each block to learn a direct mapping $H(x)$, ResNets reframe the problem: learn a
-                <em>residual function</em>:</p>
+            <p>Instead of having each block learn a direct mapping $H(x)$, ResNets reframe the problem. Learn
+                a <em>residual function</em>:</p>
 
             <div class="math-block">
                 $$ F(x) = H(x) - x $$
             </div>
 
-            <p>The layer output becomes:</p>
+            <p>So the layer output is:</p>
 
             <div class="math-block">
                 $$ y = F(x) + x $$
             </div>
 
-            <p>where $F(x)$ is the residual (what the layer needs to <em>add</em> to the input) and $x$ is the
-                identity (passed through unchanged via the skip connection).</p>
+            <p>$F(x)$ is what the layer needs to <em>add</em> to the input. $x$ passes through unchanged via the
+                skip connection.</p>
 
             <h2>Why Residual Learning Works</h2>
 
             <h3>Easier to Learn Identity</h3>
-            <p>If the optimal function is close to identity, residual learning makes this trivial:</p>
+            <p>If the optimal function is close to identity, the two formulations are not equally easy to
+                optimize:</p>
             <ul>
                 <li><strong>Plain network</strong>: Must learn $H(x) \approx x$ through nonlinear layers (non-trivial)</li>
-                <li><strong>Residual network</strong>: Learn $F(x) \approx 0$ (easy — push weights toward zero)</li>
+                <li><strong>Residual network</strong>: Learn $F(x) \approx 0$ (easy -- push weights toward zero)</li>
             </ul>
 
-            <p>This reframing explains why deeper ResNets never perform <em>worse</em> than shallower ones: extra
-                layers can simply learn zero residuals.</p>
+            <p>This is why deeper ResNets never perform <em>worse</em> than shallower ones: unnecessary layers
+                can just learn zero residuals and pass input through.</p>
 
             <h3>Gradient Highway</h3>
             <p>During backpropagation, the gradient through a residual block is:</p>
@@ -277,15 +277,14 @@ permalink: /projects/resnet-theory/
                 $$ \frac{\partial L}{\partial x} = \frac{\partial L}{\partial y} \cdot \left(\frac{\partial F}{\partial x} + 1\right) $$
             </div>
 
-            <p>The $+1$ term from the skip connection ensures gradients can <strong>always flow backward</strong>,
-                even if $\frac{\partial F}{\partial x}$ vanishes. This is the same principle as the "Constant Error
-                Carousel" in LSTMs — identity paths create gradient highways.</p>
+            <p>That $+1$ from the skip connection is the whole trick. Even if $\frac{\partial F}{\partial x}$
+                vanishes, gradients still flow backward through the identity path. Same principle as the
+                Constant Error Carousel in LSTMs.</p>
 
             <h3>Ensemble Interpretation</h3>
-            <p>Veit et al. (2016) showed that ResNets can be viewed as an ensemble of many paths of different lengths.
-                Unraveling the skip connections reveals $2^n$ possible paths through $n$ blocks. Information can bypass
-                layers through shortcuts, effectively creating an <strong>ensemble of shallower networks</strong> within
-                a deep architecture.</p>
+            <p>Veit et al. (2016) showed that unraveling the skip connections reveals $2^n$ possible paths
+                through $n$ blocks. A ResNet effectively operates as an ensemble of many shallower networks
+                of different depths -- information can bypass any subset of layers through the shortcuts.</p>
 
             <h2>The Residual Block</h2>
             <p>A basic residual block consists of:</p>
@@ -298,7 +297,7 @@ permalink: /projects/resnet-theory/
             </ol>
 
             <p>When spatial dimensions or channel counts change between blocks, a $1 \times 1$ convolution with
-                appropriate stride is used in the skip connection to match dimensions.</p>
+                appropriate stride handles the dimension mismatch in the skip path.</p>
 
             <h2>Comparison to Plain Networks</h2>
             <ul>
@@ -306,18 +305,14 @@ permalink: /projects/resnet-theory/
                 <li><strong>Residual Network</strong>: $x \rightarrow \text{Conv} \rightarrow \text{BN} \rightarrow \text{ReLU} \rightarrow \text{Conv} \rightarrow \text{BN} \rightarrow (+x) \rightarrow \text{ReLU} \rightarrow y$</li>
             </ul>
 
-            <p>The only structural difference is the addition of $x$ before the final activation. This minimal
-                change — literally one line of code — enables training networks $10\times$ deeper.</p>
+            <p>The only structural difference is adding $x$ before the final activation. One line of code.
+                That's what takes you from 20-layer ceilings to 1000+ layer networks.</p>
 
-            <h2>Next Steps: From Math to Code</h2>
-            <p>We have established the mathematical foundation of residual learning: learning deviations from identity
-                rather than direct mappings, creating gradient highways through skip connections.</p>
-
-            <p>In <strong>Part 2</strong>, we implement this exact formulation in pure PyTorch. We will build from a
-                single ResidualBlock up through BottleneckBlocks, and construct the full ResNet-18/34/50/101/152 family
-                plus a SmallResNet variant optimized for CIFAR-10.</p>
-
-            <p><em>Stay tuned for the code drop as we build ResNets from scratch!</em></p>
+            <h2>Next: From Math to Code</h2>
+            <p>That covers the mathematical foundation -- residual functions, gradient highways, and the
+                ensemble view. Part 2 turns all of this into a working PyTorch implementation: ResidualBlock,
+                BottleneckBlock, the full ResNet-18/34/50/101/152 family, and a SmallResNet variant sized
+                for CIFAR-10.</p>
 
         </article>
     </main>

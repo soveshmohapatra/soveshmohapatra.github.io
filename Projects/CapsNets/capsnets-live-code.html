@@ -83,17 +83,17 @@ permalink: /projects/capsnets-live-code/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>This second installment translates the mathematics of Capsule Networks into working PyTorch code. We implement every component from scratch: the squashing non-linearity, PrimaryCapsule layer, DigitCapsule layer with dynamic routing, margin loss, and reconstruction decoder.</p>
-                <p>Along the way, we address the implementation details that the original paper leaves implicit -- tensor shapes in the routing algorithm, gradient detachment for stability, and the careful balance between classification and reconstruction losses.</p>
+                <p>This post translates the CapsNet math from Part 1 into PyTorch. We implement every component from scratch: squashing, PrimaryCapsule, DigitCapsule with dynamic routing, margin loss, and the reconstruction decoder.</p>
+                <p>The paper glosses over several implementation details -- tensor shapes inside routing, gradient detachment, loss weighting -- so we walk through those here.</p>
             </div>
 
             <h2>Architecture Overview</h2>
-            <p>The full CapsNet architecture for MNIST consists of four stages:</p>
+            <p>The CapsNet for MNIST has four stages:</p>
             <ol>
-                <li><strong>Conv1</strong>: <code>Conv2d(1, 256, kernel_size=9, stride=1)</code> + ReLU. Input: $(B, 1, 28, 28)$ to Output: $(B, 256, 20, 20)$</li>
+                <li><strong>Conv1</strong>: <code>Conv2d(1, 256, kernel_size=9, stride=1)</code> + ReLU. $(B, 1, 28, 28) \to (B, 256, 20, 20)$</li>
                 <li><strong>PrimaryCapsule</strong>: <code>Conv2d(256, 256, kernel_size=9, stride=2)</code> + Reshape + Squash. Output: $(B, 1152, 8)$ -- 1,152 capsules of dimension 8</li>
                 <li><strong>DigitCapsule</strong>: Dynamic routing with learned weight matrices. Output: $(B, 10, 16)$ -- 10 class capsules of dimension 16</li>
-                <li><strong>Decoder</strong>: <code>Linear(16 -> 512 -> 1024 -> 784)</code> with masking. Reconstructs the input image from the winning capsule</li>
+                <li><strong>Decoder</strong>: <code>Linear(16 -> 512 -> 1024 -> 784)</code> with masking. Reconstructs the input from the winning capsule</li>
             </ol>
             <p>Total parameters: <strong>8,141,840</strong>.</p>
 
@@ -105,18 +105,18 @@ permalink: /projects/capsnets-live-code/
     scale = squared_norm / (1.0 + squared_norm)
     return scale * s / safe_norm</code></pre>
 
-            <p>Key implementation detail: the <code>1e-8</code> inside the square root prevents division by zero when a capsule has near-zero activation. Without this, gradients become <code>NaN</code> during backpropagation.</p>
+            <p>The <code>1e-8</code> inside the square root prevents division by zero when a capsule has near-zero activation. Without it, gradients go to <code>NaN</code>.</p>
 
-            <p>The function computes:</p>
+            <p>Mathematically:</p>
 
             <div class="math-block">
                 $$ \mathbf{v} = \underbrace{\frac{\|\mathbf{s}\|^2}{1 + \|\mathbf{s}\|^2}}_{\text{scale factor}} \cdot \underbrace{\frac{\mathbf{s}}{\|\mathbf{s}\|}}_{\text{unit vector}} $$
             </div>
 
-            <p>The <code>keepdim=True</code> argument is essential -- it ensures the scaling factor broadcasts correctly against the input tensor.</p>
+            <p><code>keepdim=True</code> is essential so the scaling factor broadcasts correctly against the input tensor.</p>
 
             <h2>PrimaryCapsule Layer</h2>
-            <p>The PrimaryCapsule layer converts standard convolutional features into capsule vectors.</p>
+            <p>Converts convolutional features into capsule vectors.</p>
 
             <pre><code class="language-python">class PrimaryCapsule(nn.Module):
     def __init__(self, in_channels=256, num_types=32,
@@ -138,14 +138,14 @@ permalink: /projects/capsnets-live-code/
             <h3>Shape Walkthrough</h3>
             <ul>
                 <li>Input: $(B, 256, 20, 20)$ from Conv1.</li>
-                <li>After <code>Conv2d(256, 256, 9, stride=2)</code>: spatial size $(20-9)/2+1 = 6$, giving $(B, 256, 6, 6)$.</li>
-                <li>The 256 channels encode 32 capsule types $\times$ 8 dimensions each.</li>
-                <li>Reshape and permute to get $(B, 1152, 8)$: 1,152 capsules ($32 \times 6 \times 6$) of dimension 8.</li>
-                <li>Squash: ensure each capsule has length $\in [0, 1)$.</li>
+                <li>After <code>Conv2d(256, 256, 9, stride=2)</code>: spatial size $(20-9)/2+1 = 6$, so $(B, 256, 6, 6)$.</li>
+                <li>256 channels = 32 capsule types $\times$ 8 dimensions.</li>
+                <li>Reshape and permute to $(B, 1152, 8)$: that's $32 \times 6 \times 6 = 1{,}152$ capsules, each 8D.</li>
+                <li>Squash to enforce length $\in [0, 1)$.</li>
             </ul>
 
             <h2>DigitCapsule Layer and Dynamic Routing</h2>
-            <p>This is the core innovation. Each of the 1,152 primary capsules must route to one of 10 digit capsules.</p>
+            <p>Each of the 1,152 primary capsules routes to one of 10 digit capsules. This is where the architecture gets interesting.</p>
 
             <h3>Weight Matrix</h3>
 
@@ -154,7 +154,7 @@ self.W = nn.Parameter(
     torch.randn(1, 1152, 10, 16, 8) * 0.01
 )</code></pre>
 
-            <p>This 5D tensor contains $1{,}152 \times 10$ transformation matrices, each of size $16 \times 8$. For each primary capsule $i$ and digit capsule $j$, $\mathbf{W}_{ij}$ transforms the 8D primary vector to a 16D prediction vector:</p>
+            <p>A 5D tensor holding $1{,}152 \times 10$ transformation matrices, each $16 \times 8$. For primary capsule $i$ and digit capsule $j$, $\mathbf{W}_{ij}$ transforms the 8D input to a 16D prediction:</p>
 
             <div class="math-block">
                 $$ \hat{\mathbf{u}}_{j|i} = \mathbf{W}_{ij} \, \mathbf{u}_i $$
@@ -169,7 +169,7 @@ u = u.unsqueeze(2).unsqueeze(4)
 # -> u_hat: (B, 1152, 10, 16, 1) -> squeeze -> (B, 1152, 10, 16)
 u_hat = torch.matmul(self.W, u).squeeze(-1)</code></pre>
 
-            <p>Broadcasting handles the batch dimension and the 10-class dimension simultaneously. The result is 1,152 prediction vectors of dimension 16 for each of 10 classes.</p>
+            <p>Broadcasting handles the batch and 10-class dimensions in one shot. Result: 1,152 prediction vectors of dimension 16 for each of 10 classes.</p>
 
             <h3>Dynamic Routing Implementation</h3>
 
@@ -191,20 +191,13 @@ u_hat = torch.matmul(self.W, u).squeeze(-1)</code></pre>
 
     return v  # (B, 10, 16)</code></pre>
 
-            <h3>Critical Detail: Gradient Detachment</h3>
-            <p>For routing iterations 1 and 2, we use <code>u_hat_detached</code> -- the prediction vectors with gradients detached. Only on the <strong>final iteration</strong> do we use <code>u_hat</code> with gradients intact.</p>
+            <h3>Gradient Detachment</h3>
+            <p>Iterations 1 and 2 use <code>u_hat_detached</code> -- prediction vectors with gradients cut off. Only the <strong>final iteration</strong> uses <code>u_hat</code> with live gradients.</p>
 
-            <p>Why? Backpropagating through all routing iterations creates deep computation graphs that:</p>
-            <ul>
-                <li>Cause vanishing/exploding gradients through the iterative process.</li>
-                <li>Dramatically increase memory usage.</li>
-                <li>Yield unstable training without improving convergence.</li>
-            </ul>
-
-            <p>The final iteration alone provides sufficient gradient signal to learn the weight matrices.</p>
+            <p>Backpropagating through all routing iterations builds a deep computation graph that causes vanishing/exploding gradients, high memory usage, and unstable training with no convergence benefit. The last iteration alone gives enough gradient signal to learn the weights.</p>
 
             <h2>Margin Loss</h2>
-            <p>Classification uses a per-class margin loss:</p>
+            <p>Per-class margin loss for classification:</p>
 
             <div class="math-block">
                 $$ L_c = T_c \max(0,\; m^+ - \|\mathbf{v}_c\|)^2 + \lambda_{\text{neg}} (1 - T_c) \max(0,\; \|\mathbf{v}_c\| - m^-)^2 $$
@@ -220,15 +213,14 @@ present = T * F.relu(0.9 - v_length)**2
 absent  = 0.5 * (1-T) * F.relu(v_length - 0.1)**2
 margin_loss = (present + absent).sum(dim=1).mean()</code></pre>
 
-            <p><strong>Interpretation:</strong></p>
             <ul>
-                <li>For the correct class: penalize if $\|\mathbf{v}_c\| < 0.9$ (push length up).</li>
-                <li>For incorrect classes: penalize if $\|\mathbf{v}_c\| > 0.1$ (push length down).</li>
-                <li>The $0.5$ factor down-weights the absent-class loss to prevent the network from killing all capsules early in training.</li>
+                <li>Correct class: penalize if $\|\mathbf{v}_c\| < 0.9$ (push length up).</li>
+                <li>Wrong classes: penalize if $\|\mathbf{v}_c\| > 0.1$ (push length down).</li>
+                <li>The $0.5$ down-weight on absent classes prevents the network from killing all capsules early in training.</li>
             </ul>
 
             <h2>Reconstruction Decoder</h2>
-            <p>The decoder serves as a regularizer, forcing the 16D capsule vectors to encode enough information to reconstruct the input image.</p>
+            <p>The decoder regularizes training by forcing the 16D capsule vectors to retain enough information to reconstruct the input.</p>
 
             <pre><code class="language-python">self.decoder = nn.Sequential(
     nn.Linear(16, 512),
@@ -239,15 +231,15 @@ margin_loss = (present + absent).sum(dim=1).mean()</code></pre>
     nn.Sigmoid()
 )</code></pre>
 
-            <p>During training, only the correct class capsule is fed to the decoder (all others are masked to zero). During inference, the capsule with the largest length is used.</p>
+            <p>During training, only the correct class capsule feeds into the decoder (others masked to zero). At inference, the longest capsule is used.</p>
 
-            <p>The reconstruction loss is MSE, weighted by $\lambda_{\text{recon}} = 0.0005$:</p>
+            <p>Reconstruction loss is MSE, weighted by $\lambda_{\text{recon}} = 0.0005$:</p>
 
             <div class="math-block">
                 $$ L = L_{\text{margin}} + 0.0005 \times L_{\text{recon}} $$
             </div>
 
-            <p>The small weight ensures reconstruction serves as regularization without overwhelming the margin loss.</p>
+            <p>The small weight keeps reconstruction as a regularizer without drowning out the margin loss.</p>
 
             <h2>Putting It All Together</h2>
 
@@ -274,14 +266,14 @@ margin_loss = (present + absent).sum(dim=1).mean()</code></pre>
             <h3>Training Configuration</h3>
             <ul>
                 <li><strong>Dataset</strong>: MNIST, 5,000-image training subset.</li>
-                <li><strong>Optimizer</strong>: Adam with learning rate 0.001.</li>
+                <li><strong>Optimizer</strong>: Adam, lr = 0.001.</li>
                 <li><strong>Batch size</strong>: 64.</li>
                 <li><strong>Epochs</strong>: 20.</li>
                 <li><strong>Routing iterations</strong>: 3.</li>
             </ul>
 
-            <h2>Looking Ahead</h2>
-            <p>With the implementation complete, Part 3 presents the experimental results: MNIST classification accuracy on standard and rotated digits, reconstruction quality from 16D capsule representations, and a direct comparison with a simple CNN baseline quantifying the rotation robustness advantage.</p>
+            <h2>Next</h2>
+            <p>Part 3 tests the trained CapsNet: standard MNIST accuracy, reconstruction quality from 16D vectors, and rotation robustness compared to a simple CNN baseline.</p>
 
         </article>
     </main>

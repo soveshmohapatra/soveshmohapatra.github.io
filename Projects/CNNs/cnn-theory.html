@@ -209,25 +209,24 @@ permalink: /projects/cnn-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>Before Convolutional Neural Networks, computer vision relied on hand-crafted features — SIFT, HOG,
+                <p>Before CNNs, computer vision relied on hand-crafted features — SIFT, HOG,
                     and edge detectors designed by human experts. These methods were brittle, domain-specific, and
                     failed to generalize.</p>
-                <p>CNNs changed everything by <strong>learning features directly from data</strong>. Instead of manually
-                    designing filters, CNNs learn them automatically through backpropagation, discovering hierarchical
+                <p>CNNs changed the game by <strong>learning features directly from data</strong>. Instead of manually
+                    designing filters, the network learns them through backpropagation, building up hierarchical
                     representations from edges to textures to object parts.</p>
-                <p>In this new 3-part "Build in Public" series, we will deconstruct Convolutional Neural Networks from
-                    first principles. Today, we look at the mathematical foundation: the convolution operation, pooling,
-                    and the architectural principles that make CNNs powerful. In Part 2, we will build complete CNN
-                    architectures in pure PyTorch. In Part 3, we will train on MNIST and visualize the learned filters
-                    and feature maps.</p>
+                <p>This is part 1 of a 3-part series where I deconstruct CNNs from first principles. Here we cover
+                    the math: convolution, pooling, and the architectural principles that give CNNs their edge.
+                    Part 2 builds the architectures in PyTorch. Part 3 trains on MNIST and visualizes what the
+                    filters actually learn.</p>
             </div>
 
             <h2>The Intuition Behind Convolution</h2>
-            <p>Imagine sliding a small window (called a <em>kernel</em> or <em>filter</em>) across an image. At each
-                position, you compute a weighted sum of pixel values. This operation detects specific patterns — vertical
-                edges, horizontal edges, or color contrasts — depending on the kernel's weights.</p>
+            <p>Slide a small window (a <em>kernel</em> or <em>filter</em>) across an image. At each
+                position, compute a weighted sum of pixel values. Depending on the kernel weights, this picks up
+                vertical edges, horizontal edges, color contrasts, and so on.</p>
 
-            <p>The magic of CNNs is that these kernel weights are <strong>learned</strong> during training, not
+            <p>The key insight: these kernel weights are <strong>learned</strong> during training, not
                 hand-designed.</p>
 
             <h2>The Convolution Operation</h2>
@@ -239,87 +238,60 @@ permalink: /projects/cnn-theory/
 
             <p>where $I$ is the input image and $K$ is the kernel.</p>
 
-            <p>In practice, we use <em>cross-correlation</em> (no flipping), which is simpler and learns equivalently:</p>
+            <p>In practice, we use <em>cross-correlation</em> (no kernel flipping), which is simpler and learns equivalently:</p>
 
             <div class="math-block">
                 $$ (I \star K)_{i,j} = \sum_m \sum_n I_{i+m, j+n} \cdot K_{m,n} $$
             </div>
 
-            <p>For an input of size $H \times W$ with a kernel of size $k$, the output spatial dimensions are:</p>
-
-            <div class="math-block">
-                $$ H_{out} = \left\lfloor\frac{H + 2 \cdot \text{padding} - \text{dilation} \cdot (k - 1) - 1}{\text{stride}} + 1\right\rfloor $$
-            </div>
-
             <h2>Key Architectural Principles</h2>
 
             <h3>Local Connectivity</h3>
-            <p>Unlike fully connected layers, convolutional neurons only connect to a <strong>local region</strong> of
-                the input. This captures the intuition that nearby pixels are more related than distant ones. A single
-                neuron in a convolutional layer sees only a small $k \times k$ patch, not the entire image.</p>
+            <p>Unlike fully connected layers, each convolutional neuron only sees a <strong>local region</strong> of
+                the input — a small $k \times k$ patch, not the entire image. This encodes the prior that nearby
+                pixels matter more than distant ones.</p>
 
             <h3>Weight Sharing</h3>
-            <p>The same kernel slides across the entire image. This dramatically reduces parameters and enables
+            <p>The same kernel slides across the entire image, which cuts parameters drastically and gives you
                 <strong>translation invariance</strong> — a feature detected in one location can be detected anywhere.
-                A 3x3 convolution with 64 input and output channels has only:</p>
+                For example, a 3x3 convolution with 64 input and 64 output channels has only:</p>
 
             <div class="math-block">
                 $$ 64 \times 64 \times 3 \times 3 = 36{,}864 \text{ parameters} $$
             </div>
 
-            <p>Compare this to a fully connected layer with the same dimensions, which would have millions.</p>
+            <p>A fully connected layer connecting the same dimensions would need millions.</p>
 
             <h3>Pooling</h3>
-            <p>Pooling layers reduce spatial dimensions, providing:</p>
-            <ul>
-                <li>Computational efficiency</li>
-                <li>Translation invariance</li>
-                <li>Expanded receptive fields for deeper layers</li>
-            </ul>
+            <p>Pooling layers reduce spatial dimensions, providing computational efficiency, translation invariance,
+                and expanded receptive fields for deeper layers.</p>
 
-            <p>Max pooling, the most common variant, selects the maximum value in each window:</p>
+            <p>Max pooling selects the maximum value in each window:</p>
 
             <div class="math-block">
                 $$ \text{MaxPool}(x)_{i,j} = \max_{(m,n) \in \text{window}} x_{i+m, j+n} $$
             </div>
 
-            <p>Average pooling instead computes the mean, smoothing the representation rather than preserving the
-                strongest activations.</p>
+            <p>Average pooling computes the mean instead, smoothing the representation.</p>
 
             <h2>Hierarchical Feature Learning</h2>
-            <p>Deep CNNs learn a hierarchy of features through stacked convolutional layers:</p>
+            <p>Stacked convolutional layers learn a hierarchy of features:</p>
             <ul>
-                <li><strong>Early layers</strong>: Detect edges, corners, and simple textures</li>
-                <li><strong>Middle layers</strong>: Combine edges into motifs and patterns</li>
-                <li><strong>Deep layers</strong>: Recognize object parts and semantic concepts</li>
+                <li><strong>Early layers</strong>: Edges, corners, simple textures</li>
+                <li><strong>Middle layers</strong>: Combinations of edges into motifs and patterns</li>
+                <li><strong>Deep layers</strong>: Object parts and semantic concepts</li>
             </ul>
 
-            <p>This hierarchical representation is what makes CNNs so powerful for visual recognition. Each layer builds
-                on the abstractions of the previous one, composing simple features into increasingly complex detectors.</p>
+            <p>Each layer composes the abstractions of the previous one. This compositionality is what makes
+                CNNs effective for visual recognition.</p>
 
-            <h2>Activation Functions</h2>
-            <p>After each convolution, a non-linear activation function is applied. The ReLU (Rectified Linear Unit) is
-                the default choice in modern CNNs:</p>
+            <h2>What Comes Next</h2>
+            <p>Convolution plus weight sharing plus hierarchical processing gives CNNs an inductive bias well-matched
+                to visual data: <strong>locality</strong>, <strong>translation equivariance</strong>, and
+                <strong>compositionality</strong>.</p>
 
-            <div class="math-block">
-                $$ \text{ReLU}(x) = \max(0, x) $$
-            </div>
-
-            <p>ReLU introduces non-linearity while avoiding the vanishing gradient problem that plagued earlier
-                activations like sigmoid and tanh. It creates <strong>sparse activations</strong> — most neurons are
-                inactive for any given input — which is both computationally efficient and may aid generalization.</p>
-
-            <h2>Next Steps: From Math to Code</h2>
-            <p>The convolution operation, combined with weight sharing and hierarchical processing, provides CNNs with
-                an inductive bias perfectly suited for visual data. These three principles — <strong>locality</strong>,
-                <strong>translation equivariance</strong>, and <strong>compositionality</strong> — encode powerful
-                assumptions about the structure of images.</p>
-
-            <p>In <strong>Part 2</strong>, we will implement these concepts in pure PyTorch. We will build a custom
-                Conv2D layer, pooling operations, and complete CNN architectures including LeNet-5 and a VGG-style
-                deep network.</p>
-
-            <p><em>Stay tuned for the code drop as we build CNNs from scratch!</em></p>
+            <p>Part 2 implements all of this in PyTorch — custom Conv2D layers, pooling, and full architectures
+                including LeNet-5 and a VGG-style deep network.</p>
 
         </article>
     </main>

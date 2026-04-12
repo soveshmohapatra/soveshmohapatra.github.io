@@ -81,13 +81,13 @@ permalink: /projects/capsnets-benchmark/
 
             <div class="abstract-box">
                 <div class="abstract-title">Introduction</div>
-                <p>The theoretical promise of Capsule Networks is equivariant representations that handle viewpoint changes more gracefully than standard CNNs. This final installment puts that claim to the test. We evaluate our from-scratch CapsNet on MNIST classification accuracy, reconstruction quality, and -- critically -- robustness to rotations never seen during training. We compare directly against a simple CNN baseline trained on identical data, quantifying exactly where and how much capsule representations help.</p>
+                <p>CapsNets promise equivariant representations that handle viewpoint changes better than standard CNNs. This post tests that claim. We evaluate our from-scratch CapsNet on MNIST accuracy, reconstruction quality, and robustness to rotations never seen during training, comparing directly against a CNN baseline trained on the same data.</p>
             </div>
 
             <h2>Experimental Setup</h2>
 
             <h3>Training Configuration</h3>
-            <p>Both models were trained on identical data with comparable optimization:</p>
+            <p>Both models trained on identical data with the same optimizer settings:</p>
 
             <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
                 <thead>
@@ -109,7 +109,7 @@ permalink: /projects/capsnets-benchmark/
             </table>
 
             <h3>Rotation Test Protocol</h3>
-            <p>After training on <strong>unrotated</strong> images only, we evaluate both models on the full 10,000-image test set at four rotation angles: $0^\circ$, $15^\circ$, $30^\circ$, and $45^\circ$. Rotations are applied via affine transformation with zero-padding.</p>
+            <p>Both models trained on <strong>unrotated</strong> images only. We then evaluate on the full 10,000-image test set at $0^\circ$, $15^\circ$, $30^\circ$, and $45^\circ$ rotations applied via affine transformation with zero-padding.</p>
 
             <h2>MNIST Classification Results</h2>
 
@@ -129,17 +129,17 @@ permalink: /projects/capsnets-benchmark/
                 </tbody>
             </table>
 
-            <p>Both models achieve strong performance, with CapsNet holding a 2.03 percentage point advantage. Even on standard benchmarks, capsule representations provide a measurable edge -- and the benefit grows dramatically under transformation.</p>
+            <p>CapsNet leads by 2.03 percentage points on standard data. The gap widens under rotation.</p>
 
             <h2>Reconstruction Quality</h2>
-            <p>The reconstruction decoder takes the 16-dimensional capsule vector of the predicted class and attempts to reconstruct the original $28 \times 28$ image. This serves both as a regularizer during training and as evidence that the capsule representation captures meaningful structure.</p>
+            <p>The decoder takes the 16D capsule vector of the predicted class and reconstructs the original $28 \times 28$ image. It acts as a regularizer during training and confirms that the capsule representation carries meaningful structure.</p>
 
-            <p>Qualitative observation: the reconstructed digits are clearly recognizable, preserving the overall shape, stroke width, and slant of the originals. Some fine details (sharp edges, thin strokes) are slightly smoothed, which is expected given the bottleneck through a 16D vector.</p>
+            <p>Reconstructed digits are clearly recognizable -- shape, stroke width, and slant are preserved. Fine details (sharp edges, thin strokes) get slightly smoothed, which is expected from a 16D bottleneck.</p>
 
-            <p>The reconstruction MSE on the test set was approximately 0.052, corresponding to an average per-pixel error of about 0.23 (on $[0,1]$ scale). For reference, a trivial reconstruction (all zeros) would have MSE approximately 0.13 on MNIST, so the decoder is capturing substantial structure.</p>
+            <p>Test-set reconstruction MSE was about 0.052 (per-pixel error ~0.23 on $[0,1]$ scale). For comparison, an all-zeros reconstruction gives MSE ~0.13 on MNIST, so the decoder captures most of the image structure.</p>
 
             <h2>Rotation Robustness</h2>
-            <p>This is the central experiment. Neither model saw any rotated images during training. We evaluate on the full test set rotated by $15^\circ$, $30^\circ$, and $45^\circ$.</p>
+            <p>Neither model saw any rotated images during training.</p>
 
             <table style="width:100%; border-collapse:collapse; margin:1.5rem 0;">
                 <thead>
@@ -159,23 +159,23 @@ permalink: /projects/capsnets-benchmark/
             </table>
 
             <h3>Analysis</h3>
-            <p>The key finding: <strong>the CapsNet advantage grows monotonically with rotation angle</strong>. At $0^\circ$, CapsNet already leads by +2.03%. At $45^\circ$, CapsNet outperforms the CNN by 21.13 percentage points.</p>
+            <p><strong>The CapsNet advantage grows monotonically with rotation angle.</strong> At $0^\circ$: +2.03%. At $45^\circ$: +21.13 percentage points.</p>
 
-            <p><strong>Degradation Rates:</strong></p>
+            <p>Degradation over the full $45^\circ$ range:</p>
             <ul>
-                <li><strong>CapsNet</strong>: 98.34% to 58.17% = <strong>40.17 points</strong> lost over $45^\circ$.</li>
-                <li><strong>Simple CNN</strong>: 96.31% to 37.04% = <strong>59.27 points</strong> lost over $45^\circ$.</li>
+                <li><strong>CapsNet</strong>: 98.34% $\to$ 58.17% = 40.17 points lost.</li>
+                <li><strong>Simple CNN</strong>: 96.31% $\to$ 37.04% = 59.27 points lost.</li>
             </ul>
-            <p>The CNN loses 47% more accuracy than the CapsNet under the same rotational perturbation.</p>
+            <p>The CNN loses 47% more accuracy than the CapsNet under the same perturbation.</p>
 
-            <p><strong>Why CapsNets Are More Robust:</strong> The capsule representation encodes pose in the vector orientation. When an input digit rotates:</p>
+            <p>Why? Capsule vectors encode pose in their orientation. When an input digit rotates:</p>
             <ol>
-                <li>The primary capsule vectors change orientation (representing the new pose).</li>
-                <li>The routing algorithm still finds agreement -- rotated parts still agree on a rotated whole.</li>
-                <li>The digit capsule vector rotates correspondingly, but its <em>length</em> (classification confidence) remains relatively stable.</li>
+                <li>Primary capsule vectors change orientation to represent the new pose.</li>
+                <li>Routing still finds agreement -- rotated parts still agree on a rotated whole.</li>
+                <li>The digit capsule vector rotates correspondingly, but its <em>length</em> (classification confidence) stays relatively stable.</li>
             </ol>
 
-            <p>In contrast, the CNN's max-pooled features are designed to be invariant to small translations, but rotations shift features across spatial locations in ways that pooling cannot absorb.</p>
+            <p>The CNN's max-pooled features handle small translations, but rotations shift features across spatial locations in ways pooling can't absorb.</p>
 
             <h2>The Cost of Capsules</h2>
 
@@ -195,34 +195,34 @@ permalink: /projects/capsnets-benchmark/
                 </tbody>
             </table>
 
-            <p>CapsNets are nearly $20\times$ larger and $43\times$ slower than the simple CNN. The iterative routing algorithm is the primary bottleneck -- each forward pass requires three iterations of the full routing computation.</p>
+            <p>CapsNets are ~$20\times$ larger and ~$43\times$ slower. The bottleneck is iterative routing -- three full passes through 1,152 capsules on every forward call.</p>
 
-            <h2>Discussion and Broader Perspective</h2>
+            <h2>Discussion</h2>
 
-            <h3>What Capsule Networks Get Right</h3>
+            <h3>What Works</h3>
             <ol>
-                <li><strong>Equivariant representations</strong>: Capsule vectors encode pose information that scalar activations cannot represent.</li>
-                <li><strong>Part-whole reasoning</strong>: Dynamic routing implements a soft attention mechanism where parts vote on wholes -- a form of compositional understanding.</li>
-                <li><strong>Reconstruction as regularization</strong>: Forcing the capsule to reconstruct the input ensures the representation is information-rich, not just discriminative.</li>
+                <li><strong>Equivariant representations</strong>: Capsule vectors encode pose information that scalar activations can't.</li>
+                <li><strong>Part-whole reasoning</strong>: Routing is a soft attention mechanism where parts vote on wholes.</li>
+                <li><strong>Reconstruction regularization</strong>: Forcing reconstruction keeps the representation information-rich, not just discriminative.</li>
             </ol>
 
-            <h3>What Capsule Networks Get Wrong (or at Least Hard)</h3>
+            <h3>What Doesn't (Yet)</h3>
             <ol>
-                <li><strong>Scalability</strong>: The routing algorithm scales quadratically with the number of capsules. CapsNets have not been successfully scaled to ImageNet-scale tasks.</li>
-                <li><strong>Computational cost</strong>: The iterative routing makes both forward and backward passes expensive.</li>
-                <li><strong>Training stability</strong>: The routing algorithm can be sensitive to initialization and hyperparameters.</li>
-                <li><strong>Marginal gains on standard benchmarks</strong>: On unrotated data, the advantage over well-tuned CNNs is small.</li>
+                <li><strong>Scalability</strong>: Routing scales quadratically with capsule count. CapsNets haven't reached ImageNet scale.</li>
+                <li><strong>Compute cost</strong>: Iterative routing makes forward and backward passes expensive.</li>
+                <li><strong>Training stability</strong>: Routing is sensitive to initialization and hyperparameters.</li>
+                <li><strong>Standard benchmarks</strong>: On unrotated data, the advantage over well-tuned CNNs is modest.</li>
             </ol>
 
             <h2>Conclusion</h2>
-            <p>This three-part series deconstructed Capsule Networks from first principles:</p>
+            <p>Across this three-part series:</p>
             <ol>
-                <li><strong>Part 1</strong>: The math -- why pooling loses spatial information, how capsule vectors encode equivariant pose, and how routing by agreement enables compositional reasoning.</li>
-                <li><strong>Part 2</strong>: The implementation -- squashing, primary capsules, digit capsules with dynamic routing, margin loss, and reconstruction decoder, all in pure PyTorch.</li>
-                <li><strong>Part 3</strong>: The results -- 98.34% test accuracy on MNIST, recognizable reconstructions from 16D vectors, and a growing robustness advantage over CNNs that reaches +21.13 percentage points at $45^\circ$ rotation.</li>
+                <li><strong>Part 1</strong> covered the math -- pooling's information loss, capsule vectors for equivariant pose encoding, routing by agreement.</li>
+                <li><strong>Part 2</strong> implemented the full CapsNet in PyTorch -- squashing, primary capsules, digit capsules with routing, margin loss, decoder.</li>
+                <li><strong>Part 3</strong> showed the results -- 98.34% on MNIST, recognizable 16D reconstructions, and a rotation robustness advantage that reaches +21.13 points at $45^\circ$.</li>
             </ol>
 
-            <p>Capsule Networks are not the dominant paradigm in deep learning today. But the core insight -- that neural representations should encode <em>how</em> something appears, not just <em>that</em> it appears -- remains one of the most important ideas in the field.</p>
+            <p>CapsNets aren't the dominant paradigm today. But the core idea -- that neural representations should encode <em>how</em> something appears, not just <em>that</em> it appears -- remains worth understanding.</p>
 
         </article>
     </main>

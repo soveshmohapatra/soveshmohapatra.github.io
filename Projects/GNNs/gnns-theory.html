@@ -207,11 +207,11 @@ permalink: /projects/gnns-theory/
 
             <div class="abstract-box">
                 <div class="abstract-title">Abstract</div>
-                <p>Graph Neural Networks extend deep learning beyond grids and sequences to arbitrary relational structures. This first installment develops the mathematical foundations: how graphs are represented for computation, why spectral convolutions motivate the GCN layer, and how attention mechanisms generalize fixed aggregation. Every equation maps directly to the pure-PyTorch implementation in Part 2.</p>
+                <p>Graph Neural Networks extend deep learning beyond grids and sequences to arbitrary relational structures. This post covers the mathematical foundations: graph representations, the spectral motivation for the GCN layer, and how attention generalizes fixed aggregation. Every equation maps directly to the pure-PyTorch implementation in Part 2.</p>
             </div>
 
             <h2>Why Graphs?</h2>
-            <p>Convolutional Neural Networks assume data lives on a regular grid (images). Recurrent networks assume a sequential ordering (text, audio). But many of the most interesting datasets are <em>graphs</em>:</p>
+            <p>Convolutional Neural Networks assume data lives on a regular grid (images). Recurrent networks assume a sequential ordering (text, audio). But plenty of real-world data is neither -- it is a <em>graph</em>:</p>
             <ul>
                 <li>Social networks -- nodes are people, edges are friendships</li>
                 <li>Molecules -- nodes are atoms, edges are chemical bonds</li>
@@ -355,7 +355,7 @@ permalink: /projects/gnns-theory/
             </table>
 
             <h2>Looking Ahead</h2>
-            <p>In <strong>Part 2</strong>, we implement both layers in pure PyTorch -- no graph libraries. We will see how the normalized adjacency matrix and attention scores translate to ~150 lines of actual code.</p>
+            <p>In <strong>Part 2</strong>, we implement both layers in pure PyTorch -- no graph libraries. The normalized adjacency matrix and attention scores translate to ~150 lines of code.</p>
 
             <p>In <strong>Part 3</strong>, we train both models on Zachary's Karate Club (34 nodes, 78 edges) with only 4 labeled nodes and compare convergence, accuracy, and the learned representations.</p>
 
