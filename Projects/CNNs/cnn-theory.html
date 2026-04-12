@@ -244,6 +244,21 @@ permalink: /projects/cnn-theory/
                 $$ (I \star K)_{i,j} = \sum_m \sum_n I_{i+m, j+n} \cdot K_{m,n} $$
             </div>
 
+            <h3>Output Dimensions</h3>
+            <p>The spatial dimensions of the output depend on the kernel size $k$, stride $s$, and padding $p$.
+                For an input of size $W$:</p>
+
+            <div class="math-block">
+                $$ W_{\text{out}} = \left\lfloor \frac{W - k + 2p}{s} \right\rfloor + 1 $$
+            </div>
+
+            <p>A 28x28 MNIST image convolved with a 3x3 kernel at stride 1 and padding 1 produces
+                a 28x28 output -- the spatial dimensions are preserved. Without padding, the output
+                shrinks to 26x26 because the kernel cannot center on border pixels. Stacking
+                several unpadded convolutions compounds this shrinkage, so most architectures
+                use <code>padding = kernel_size // 2</code> to maintain resolution until an
+                explicit pooling layer halves it.</p>
+
             <h2>Key Architectural Principles</h2>
 
             <h3>Local Connectivity</h3>
@@ -272,7 +287,19 @@ permalink: /projects/cnn-theory/
                 $$ \text{MaxPool}(x)_{i,j} = \max_{(m,n) \in \text{window}} x_{i+m, j+n} $$
             </div>
 
-            <p>Average pooling computes the mean instead, smoothing the representation.</p>
+            <p>Average pooling computes the mean instead, smoothing the representation. LeNet-5 (1998)
+                originally used average pooling, but max pooling dominates modern architectures
+                because it preserves the strongest activations and tends to produce sharper gradients
+                during backpropagation.</p>
+
+            <h3>Receptive Fields</h3>
+            <p>The <strong>receptive field</strong> of a neuron is the region of the original input that
+                influences its activation. In a single 3x3 convolutional layer, each output neuron sees a 3x3
+                patch. Stack two such layers and the effective receptive field grows to 5x5. Stack three and
+                it reaches 7x7. Pooling layers accelerate this expansion -- a 2x2 max pool doubles the
+                effective receptive field of every subsequent layer. This is why deep CNNs can capture
+                global context despite using small local kernels: each layer aggregates information from a
+                progressively wider region of the input.</p>
 
             <h2>Hierarchical Feature Learning</h2>
             <p>Stacked convolutional layers learn a hierarchy of features:</p>
@@ -283,7 +310,11 @@ permalink: /projects/cnn-theory/
             </ul>
 
             <p>Each layer composes the abstractions of the previous one. This compositionality is what makes
-                CNNs effective for visual recognition.</p>
+                CNNs effective for visual recognition. A network does not need to learn a "7" detector
+                from scratch -- it learns vertical strokes and horizontal bars in early layers, then
+                composes them into angle and intersection detectors, which together fire for the digit 7.
+                This compositional reuse is also why CNNs generalize across variations in handwriting
+                style, scale, and position.</p>
 
             <h2>What Comes Next</h2>
             <p>Convolution plus weight sharing plus hierarchical processing gives CNNs an inductive bias well-matched

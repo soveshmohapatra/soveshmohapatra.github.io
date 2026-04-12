@@ -232,7 +232,11 @@ permalink: /projects/diffusion-live-code/
 
             <h2>The Noise Schedule</h2>
             <p>We precompute the forward/reverse coefficients for $T=1000$ timesteps. Linear schedule from
-                $\beta = 10^{-4}$ to $\beta = 0.02$.</p>
+                $\beta = 10^{-4}$ to $\beta = 0.02$. We also precompute the cumulative product
+                $\bar{\alpha}_t = \prod_{s=1}^t (1 - \beta_s)$ and its square root, since these are the
+                coefficients we need for the reparameterization trick during training. The posterior variance
+                $\tilde{\beta}_t = \beta_t \cdot \frac{1 - \bar{\alpha}_{t-1}}{1 - \bar{\alpha}_t}$ is
+                precomputed as well -- we will need it for the reverse sampling step.</p>
 
             <pre><code class="language-python">class LinearNoiseSchedule:
     def __init__(self, num_timesteps=1000, beta_start=1e-4, beta_end=2e-2):
@@ -249,8 +253,17 @@ permalink: /projects/diffusion-live-code/
                     $t$</strong>, and outputs predicted noise $\epsilon_\theta$. The network needs $t$ because the
                 noise scale changes drastically between $t=1$ and $t=1000$.</p>
 
-            <p>We encode $t$ with a <strong>Sinusoidal Position Embedding</strong> (same idea as in Transformers),
-                project it through an MLP, and add it to the bottleneck feature maps.</p>
+            <p>We encode $t$ with a <strong>Sinusoidal Position Embedding</strong> -- the same mechanism used
+                in Transformers to encode token position. The scalar timestep $t$ is mapped into a 256-dimensional
+                continuous vector using sine and cosine functions at geometrically spaced frequencies, then
+                projected through a linear layer with GELU activation. This embedding is added to the bottleneck
+                feature maps, giving every layer downstream access to the noise level.</p>
+
+            <p>The UNet itself follows the classic encoder-decoder pattern with skip connections. The encoder
+                has two downsampling stages (28 to 14 to 7), the bottleneck operates at 7x7 with 128 channels,
+                and the decoder mirrors the encoder with transposed convolutions. Skip connections concatenate
+                encoder features with decoder features at matching resolutions. The whole model is 324,705
+                parameters -- small enough to train on a laptop.</p>
 
             <pre><code class="language-python">class SimpleUNet(nn.Module):
     def __init__(self):
@@ -301,12 +314,64 @@ loss.backward()
 optimizer.step()</code></pre>
 
             <p>That is the whole thing. The network learns to separate structure from noise across all 1,000
-                corruption levels.</p>
+                corruption levels. Each batch samples fresh random timesteps, so over the course of training, every
+                noise level gets roughly equal coverage.</p>
 
             <h2>The Sampling Loop (Reverse Process)</h2>
             <p>Generation starts from pure Gaussian noise $\mathcal{N}(0, \mathbf{I})$. At each step from $T$ down
-                to 0, we subtract a scaled fraction of the predicted noise and add a small amount of Langevin noise
-                to prevent mode collapse. Part 3 shows what comes out.</p>
+                to 0, we compute the predicted mean of the reverse posterior, then add a controlled amount of noise
+                to maintain stochasticity. At the final step ($t=0$), we return the mean directly with no added noise.</p>
+
+            <p>Here is the actual reverse step from our implementation:</p>
+
+            <pre><code class="language-python">@torch.no_grad()
+def p_sample(self, model, x, t, t_index):
+    """Reverse step: Sample x_{t-1} given x_t"""
+    betas_t = self.schedule.extract(self.schedule.betas, t, x.shape)
+    sqrt_one_minus_alphas_cumprod_t = self.schedule.extract(
+        self.schedule.sqrt_one_minus_alphas_cumprod, t, x.shape
+    )
+    sqrt_recip_alphas_t = 1.0 / torch.sqrt(
+        self.schedule.extract(self.schedule.alphas, t, x.shape)
+    )
+
+    # Compute the predicted mean (Eq. 11 from Ho et al.)
+    model_mean = sqrt_recip_alphas_t * (
+        x - betas_t * model(x, t) / sqrt_one_minus_alphas_cumprod_t
+    )
+
+    if t_index == 0:
+        return model_mean
+    else:
+        posterior_variance_t = self.schedule.extract(
+            self.schedule.posterior_variance, t, x.shape
+        )
+        noise = torch.randn_like(x)
+        return model_mean + torch.sqrt(posterior_variance_t) * noise</code></pre>
+
+            <p>The key line is the mean computation. The network predicts $\epsilon_\theta(x_t, t)$, and we
+                plug that into the closed-form expression for the reverse posterior mean:
+                $\mu_\theta = \frac{1}{\sqrt{\alpha_t}} \left( x_t - \frac{\beta_t}{\sqrt{1 - \bar{\alpha}_t}} \epsilon_\theta \right)$.
+                The added noise term $\sqrt{\tilde{\beta}_t} \cdot z$ keeps the samples from collapsing to a
+                single deterministic output.</p>
+
+            <p>The full generation loop calls <code>p_sample</code> 1,000 times in sequence, stepping from
+                $T=999$ down to $0$:</p>
+
+            <pre><code class="language-python">@torch.no_grad()
+def sample(self, model, shape, device='cpu'):
+    """Full reverse loop: Generate samples from pure noise"""
+    x = torch.randn(shape, device=device)
+
+    for i in reversed(range(0, self.schedule.num_timesteps)):
+        t = torch.full((shape[0],), i, device=device, dtype=torch.long)
+        x = self.p_sample(model, x, t, i)
+
+    return x</code></pre>
+
+            <p>That is the complete generation pipeline. Start with random static, run 1,000 denoising steps,
+                get a sample from the learned distribution. Part 3 shows the results -- and they are
+                surprisingly good for a 324K-parameter model trained for 15 epochs.</p>
 
         </article>
     </main>

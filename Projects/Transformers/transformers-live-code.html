@@ -90,7 +90,7 @@ permalink: /projects/transformers-live-code/
             </div>
 
             <h2>Implementing Scaled Dot-Product Attention</h2>
-            <p>The attention mechanism requires projecting our inputs, performing batched matrix multiplications, and applying masking.</p>
+            <p>The attention mechanism requires projecting our inputs, performing batched matrix multiplications, and applying masking. Here is the core module:</p>
 
             <div class="code-block-container">
                 <div class="code-header">
@@ -101,16 +101,52 @@ permalink: /projects/transformers-live-code/
     def forward(self, q, k, v, mask=None):
         d_k = q.size(-1)
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(d_k)
-        
+
         if mask is not None:
             scores = scores.masked_fill(mask == 0, -1e9)
-            
+
         attention_weights = F.softmax(scores, dim=-1)
         output = torch.matmul(attention_weights, v)
         return output, attention_weights</code></pre>
             </div>
 
-            <p>Notice the use of <code>-1e9</code> when applying the mask. When we pass this tensor through the softmax activation, those values accurately converge to zero, ensuring the model cannot attend to padded or future tokens.</p>
+            <p>Notice the use of <code>-1e9</code> when applying the mask. When we pass this tensor through the softmax activation, those values accurately converge to zero, ensuring the model cannot attend to padded or future tokens. We return both the output and the raw attention weights -- the weights become critical in Part 3 when we extract and visualize the cross-attention maps.</p>
+
+            <h2>Multi-Head Attention: The Reshape Trick</h2>
+            <p>The multi-head mechanism does not literally instantiate separate attention modules. Instead, we project once into the full $d_{model}$ space, then reshape the tensor to split it across heads. This is where the dimension management gets precise:</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>multihead.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads):
+        super().__init__()
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+
+        self.W_q = nn.Linear(d_model, d_model)
+        self.W_k = nn.Linear(d_model, d_model)
+        self.W_v = nn.Linear(d_model, d_model)
+        self.W_o = nn.Linear(d_model, d_model)
+        self.attention = ScaledDotProductAttention()
+
+    def forward(self, q, k, v, mask=None):
+        batch_size = q.size(0)
+        # Project and reshape: (batch, seq, d_model) -> (batch, heads, seq, d_k)
+        q = self.W_q(q).view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
+        k = self.W_k(k).view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
+        v = self.W_v(v).view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
+
+        out, weights = self.attention(q, k, v, mask)
+        # Concatenate heads: (batch, heads, seq, d_k) -> (batch, seq, d_model)
+        out = out.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
+        return self.W_o(out), weights</code></pre>
+            </div>
+
+            <p>The <code>.view()</code> and <code>.transpose()</code> calls are doing all the heavy lifting. We reshape from <code>(batch, seq_len, d_model)</code> to <code>(batch, num_heads, seq_len, d_k)</code>, run attention in parallel across all heads, then concatenate the results back. With <code>d_model = 64</code> and <code>num_heads = 4</code>, each head operates in a 16-dimensional subspace. The final <code>W_o</code> projection recombines these subspaces into a single representation.</p>
 
             <h2>Constructing the Encoder and Decoder Layers</h2>
             <p>The Transformer architecture is symmetric, built of layered building blocks.</p>
@@ -121,7 +157,8 @@ permalink: /projects/transformers-live-code/
                 <li>Position-wise Feed-Forward Network</li>
                 <li>Residual Connection & Layer Normalization</li>
             </ol>
-            <p>The <strong>Decoder Layer</strong> is slightly more complex. It adds a <em>Cross-Attention</em> block in the middle, which acts as the bridge between the encoder and the decoder. In cross-attention, the Queries come from the previous Decoder layer, while the Keys and Values are provided by the Encoder's final output.</p>
+            <p>The residual connections are essential. Without them, gradients must flow through the attention and feed-forward blocks sequentially, and deep stacks of layers would suffer from vanishing gradients. By adding the input directly to the output of each sub-layer, the gradient has a shortcut path back through the network. Layer normalization then stabilizes the scale of activations at each layer.</p>
+            <p>The <strong>Decoder Layer</strong> is slightly more complex. It adds a <em>Cross-Attention</em> block in the middle, which acts as the bridge between the encoder and the decoder. In cross-attention, the Queries come from the previous Decoder layer, while the Keys and Values are provided by the Encoder's final output. This asymmetry is what allows the decoder to "read" the encoded input while generating its own sequence.</p>
 
             <h2>The Future-Blind Mask</h2>
             <p>One of the trickiest parts of the implementation is the Look-Ahead Mask (or causal mask) in the decoder. When generating text sequentially, the model must be blind to future tokens during training (teacher forcing). We achieve this by applying a lower-triangular boolean mask matrix to the self-attention scores in the decoder.</p>
@@ -134,8 +171,10 @@ permalink: /projects/transformers-live-code/
                 <pre><code class="language-python">tgt_lookahead_mask = torch.tril(torch.ones((tgt_len, tgt_len))).bool()</code></pre>
             </div>
 
+            <p>For a target sequence of length 5, this produces a 5x5 matrix where position 0 can only see position 0, position 1 can see positions 0-1, and so on. Combined with the padding mask (which zeros out attention to <code>&lt;PAD&gt;</code> tokens), this ensures the decoder respects both causality and sequence boundaries during training. Getting these two masks to broadcast correctly across the batch and head dimensions was one of the more subtle debugging challenges in the implementation.</p>
+
             <h2>What's Next</h2>
-            <p>The model compiles and runs, but does it actually learn? <a href="{{ site.baseurl }}/projects/transformers-benchmark/">Part 3</a> trains it on a sequence-reversal task and cracks open the cross-attention tensors to see how the model routes information.</p>
+            <p>The model compiles and runs -- all 169,933 parameters -- but does it actually learn? <a href="{{ site.baseurl }}/projects/transformers-benchmark/">Part 3</a> trains it on a sequence-reversal task and cracks open the cross-attention tensors to see how the model routes information.</p>
 
         </article>
     </main>

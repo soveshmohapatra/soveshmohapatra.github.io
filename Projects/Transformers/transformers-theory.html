@@ -96,6 +96,7 @@ permalink: /projects/transformers-theory/
 
             <h2>The Intuition Behind Attention</h2>
             <p>Imagine reading a sentence. When you look at the word "bank," you subconsciously check the surrounding words (e.g., "river" vs. "money") to determine its context. Self-Attention allows a neural network to do exactly this mathematically. It computes a weighted representation of each word based on its relevance to every other word in the sequence.</p>
+            <p>The key departure from prior work is that attention operates over the entire sequence simultaneously. An LSTM must compress everything it has seen into a single hidden vector, creating a bottleneck that grows worse as sequences get longer. Self-Attention sidesteps this entirely: every token has a direct connection to every other token, and the model learns which connections matter.</p>
 
             <h2>Queries, Keys, and Values</h2>
             <p>For each word in the sequence, the model projects its embedding into three distinct vectors:</p>
@@ -105,12 +106,14 @@ permalink: /projects/transformers-theory/
                 <li><strong>Value (V)</strong>: What is the actual content/meaning of this word?</li>
             </ul>
             <p>The relevance between two words is computed via the dot product of their respective Query and Key vectors.</p>
+            <p>Concretely, given an input embedding matrix $X \in \mathbb{R}^{n \times d_{model}}$, we obtain these projections through learned weight matrices: $Q = XW^Q$, $K = XW^K$, $V = XW^V$, where each $W$ matrix has shape $d_{model} \times d_k$. The parameter count here is $3 \times d_{model} \times d_k$ per head -- in our implementation with $d_{model} = 64$, that is 12,288 parameters just for the attention projections across 4 heads.</p>
 
             <h2>Scaled Dot-Product Attention</h2>
             <p>Matrix-multiplying $Q$ and $K$ produces a raw attention score matrix. Large dot products push softmax into saturation, so we scale by $\sqrt{d_k}$. After softmax normalizes the scores into probabilities, we multiply by $V$:</p>
             <div class="math-block">
                 $$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V $$
             </div>
+            <p>Why $\sqrt{d_k}$ specifically? Consider two random vectors of dimension $d_k$. Their dot product has mean 0 and variance $d_k$. As $d_k$ grows, the dot products grow in magnitude, pushing softmax outputs toward one-hot vectors. Dividing by $\sqrt{d_k}$ normalizes the variance back to 1, keeping gradients healthy throughout training. Without this scaling, we observed attention weights collapsing to near-deterministic distributions early in training, starving the model of gradient signal.</p>
 
             <h2>Multi-Head Attention</h2>
             <p>Instead of computing attention once, the Transformer splits the vectors into multiple "heads." This allows the model to jointly attend to information from different representation subspaces at different positions.</p>
@@ -118,6 +121,7 @@ permalink: /projects/transformers-theory/
                 $$ \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)W^O $$
             </div>
             <p>where $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$.</p>
+            <p>Each head operates on a reduced dimensionality of $d_k = d_{model} / h$. With $d_{model} = 64$ and $h = 4$ heads, each head works in a 16-dimensional subspace. One head might learn to attend to syntactic relationships (subject-verb agreement), while another captures semantic similarity. The final linear projection $W^O$ learns to combine these diverse attention patterns into a single unified representation. The total parameter cost of multi-head attention remains identical to single-head attention with the same $d_{model}$ -- the parallelism comes for free.</p>
 
             <h2>Injecting Order: Positional Encodings</h2>
             <p>Unlike RNNs, the attention mechanism has no inherent notion of order; processing "A B C" is treated the same as "C B A". To fix this, we inject positional encodings directly into the input embeddings. Using a combination of sine and cosine functions of different frequencies, the model learns absolute and relative positional relationships:</p>
@@ -126,6 +130,7 @@ permalink: /projects/transformers-theory/
                 <br>
                 $$ PE_{(pos, 2i+1)} = \cos(pos / 10000^{2i/d_{model}}) $$
             </div>
+            <p>The choice of sinusoidal functions is deliberate. For any fixed offset $k$, $PE_{pos+k}$ can be expressed as a linear function of $PE_{pos}$, which means the model can learn relative positions through simple linear transformations. Each dimension $i$ operates at a different frequency, creating a unique signature for every position -- much like how binary digits represent integers, but in a continuous space. The encoding is added (not concatenated) to the input embeddings, so it does not increase the model dimension.</p>
 
             <h2>What's Next</h2>
             <p>That covers the engine. <a href="{{ site.baseurl }}/projects/transformers-live-code/">Part 2</a> turns these equations into a working PyTorch Encoder-Decoder.</p>

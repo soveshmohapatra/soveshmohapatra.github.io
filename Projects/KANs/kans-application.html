@@ -219,10 +219,16 @@ permalink: /projects/kans-application/
             <h2>1. The Experiment: Symbolic Regression</h2>
             <p>Symbolic regression means finding the mathematical expression that fits a dataset. MLPs struggle here
                 because ReLU-based piecewise linear approximations can't efficiently capture high-frequency
-                oscillations or multiplicative interactions without large width and depth.</p>
+                oscillations or multiplicative interactions without large width and depth. A ReLU network
+                approximates curves by stitching together straight-line segments -- to trace a smooth sinusoid
+                with reasonable fidelity, you need many neurons contributing many breakpoints, which means
+                large hidden layers and high parameter counts.</p>
 
             <p>KANs represent data with localized polynomial splines, which are a natural fit for tracing symbolic
-                curves.</p>
+                curves. Each B-spline basis function is active only within a small interval of the input domain,
+                and the learnable coefficients control the shape of the curve locally. This means a KAN
+                does not need to coordinate hundreds of neurons to approximate a smooth function -- a handful
+                of spline segments can trace it directly.</p>
 
             <h3>The Target Function</h3>
             <p>We fit the following target:</p>
@@ -232,7 +238,10 @@ permalink: /projects/kans-application/
             </div>
 
             <p>This combines high-frequency localized oscillations (the $\cos(5x)$ term, damped by exponential decay)
-                with a lower-frequency global wave (the $\sin(3x)$ term).</p>
+                with a lower-frequency global wave (the $\sin(3x)$ term). The exponential decay means the
+                high-frequency component is only significant near $x = 0$ and vanishes in the tails -- exactly
+                the kind of localized structure that splines handle well and ReLU networks struggle to
+                isolate without overparameterization.</p>
 
             <h2>2. Model Architecture & Parameters</h2>
             <p>Parameters are distributed very differently in MLPs vs. KANs, so matching parameter counts matters
@@ -254,26 +263,52 @@ permalink: /projects/kans-application/
             </ul>
             <p>Total: $\approx \mathbf{112}$ parameters -- roughly <strong>10x fewer</strong> than the MLP.</p>
 
+            <p>The parameter distribution itself is telling. In the MLP, 1,056 of 1,150 parameters
+                (92%) sit in a single 32x32 weight matrix in the second layer -- a dense block of
+                scalar multipliers. In the KAN, every parameter is a spline coefficient that directly
+                shapes a 1D function on an edge. There are no "dead" parameters: each one controls
+                a visible segment of a curve you can plot and inspect.</p>
+
             <h2>3. Results</h2>
             <p>Both networks trained with Adam (lr $= 0.001$), MSE loss, for 10,000 epochs.</p>
 
             <ul>
                 <li><strong>MLP:</strong> Loss plateaued around $0.0057$ MSE. The ReLU activations produced jagged
-                    approximations of the smooth target and couldn't resolve the high-frequency peaks.</li>
+                    approximations of the smooth target and couldn't resolve the high-frequency peaks. Around
+                    the origin, where the $\cos(5x) \cdot \exp(-x^2)$ term oscillates rapidly, the MLP's
+                    piecewise linear segments were too coarse to follow the curve faithfully.</li>
                 <li><strong>KAN:</strong> Converged to $\approx 0.00015$ MSE. The B-spline edge functions warped
                     to match the symbolic curve shape directly, locking onto local features that the MLP missed
-                    entirely.</li>
+                    entirely. Each of the 4 hidden-layer splines specialized to capture a different component
+                    of the target -- some tracing the $\sin(3x)$ backbone, others honing in on the
+                    damped high-frequency oscillation near the origin.</li>
             </ul>
 
-            <p>With 10x fewer parameters, the KAN achieved roughly 38x lower test loss.</p>
+            <p>With 10x fewer parameters, the KAN achieved roughly <strong>38x lower test loss</strong>. This
+                is not a marginal improvement -- it is a qualitative difference between "approximately right"
+                and "functionally exact."</p>
 
             <h2>4. Takeaways</h2>
             <p>For scientific computing -- PDEs, physical system modeling, symbolic tasks -- KANs offer a clear
-                win in parameter efficiency and interpretability over MLPs.</p>
+                win in parameter efficiency and interpretability over MLPs. The interpretability angle is
+                particularly valuable: because each edge function is a 1D spline, you can literally plot
+                it and inspect what the network has learned. If the target contains a $\sin$ component, you
+                will see a sinusoidal curve on the corresponding edge. Try extracting that kind of insight
+                from a 32x32 weight matrix.</p>
+
+            <p>KANs also support <strong>grid extension</strong> -- after training on a coarse grid
+                (say 10 knots), you can increase the grid resolution to 20 or 50 knots without retraining
+                from scratch. The existing spline coefficients are interpolated onto the finer grid,
+                providing a warm start for higher-fidelity refinement. This is analogous to adaptive mesh
+                refinement in numerical PDE solvers, and has no natural counterpart in MLP training.</p>
 
             <p>The main limitation is throughput. B-spline evaluation is slower on current hardware than dense matrix
-                multiplies, so KANs are not yet competitive for billion-parameter language models. That gap will
-                narrow as CUDA kernels for spline operations improve.</p>
+                multiplies, so KANs are not yet competitive for billion-parameter language models. The core
+                bottleneck is that spline evaluation involves per-edge lookups and recursion steps that
+                do not map as cleanly to GPU warp-level parallelism as a single large <code>GEMM</code>
+                call. That gap will narrow as CUDA kernels for spline operations improve, but
+                for now KANs are best suited to small-to-medium scientific models where parameter
+                efficiency and interpretability matter more than raw throughput.</p>
 
         </article>
     </main>

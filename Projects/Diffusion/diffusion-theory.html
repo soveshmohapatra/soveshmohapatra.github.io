@@ -228,8 +228,15 @@ permalink: /projects/diffusion-theory/
             </div>
 
             <p>Scaling the mean by $\sqrt{1-\beta_t}$ keeps the variance of $x_t$ bounded near 1.0 throughout the
-                chain. By $t = T$, the image $x_T$ is indistinguishable from isotropic Gaussian noise
+                chain. This is a subtle but essential design choice: without the scaling factor, each step would
+                inflate the variance and the process would diverge instead of converging to a known distribution.
+                By $t = T$, the image $x_T$ is indistinguishable from isotropic Gaussian noise
                 $\mathcal{N}(0, \mathbf{I})$.</p>
+
+            <p>In our implementation, $\beta$ follows a <strong>linear schedule</strong> from $\beta_1 = 10^{-4}$
+                to $\beta_T = 0.02$. The early steps add almost imperceptible noise, while the later steps are
+                more aggressive. This gradual ramp matters: it gives the reverse process a smooth gradient of
+                difficulty to learn from, rather than an abrupt jump from clean to destroyed.</p>
 
             <h2>The Reparameterization Trick: Sampling at Arbitrary Timesteps</h2>
             <p>Training on timestep $t=500$ by applying the transition equation 500 times in sequence is not
@@ -250,7 +257,13 @@ permalink: /projects/diffusion-theory/
             </div>
 
             <p>This is the engine of diffusion training. Pick any image $x_0$, any timestep $t$, and you can instantly
-                produce the corrupted $x_t$ along with the exact noise $\epsilon$ that created it.</p>
+                produce the corrupted $x_t$ along with the exact noise $\epsilon$ that created it. No sequential
+                simulation, no iterating through intermediate steps. One multiplication, one addition, done.</p>
+
+            <p>Note the behavior at the extremes. When $t$ is small, $\bar{\alpha}_t \approx 1$, so $x_t \approx x_0$ --
+                the image is barely touched. When $t$ is large, $\bar{\alpha}_t \approx 0$, so $x_t \approx \epsilon$ --
+                the image is pure noise. The cumulative product $\bar{\alpha}_t$ acts as a smooth interpolation
+                between the original data and Gaussian static.</p>
 
             <h2>The Reverse Process and the ELBO</h2>
             <p>The forward process $q(x_t \mid x_{t-1})$ destroys structure. The <strong>reverse process</strong>
@@ -261,10 +274,18 @@ permalink: /projects/diffusion-theory/
             </div>
 
             <p>We train $\theta$ by maximizing log-likelihood. Since exact likelihood is intractable,
-                we optimize a Variational Lower Bound -- the <strong>Evidence Lower Bound (ELBO)</strong>. Ho et al.
-                (2020) showed that after simplification, the ELBO reduces to a direct objective: rather than predicting
-                the clean image $x_0$, the network should predict <strong>the noise $\epsilon$ that was added to $x_t$
-                    at timestep $t$</strong>.</p>
+                we optimize a Variational Lower Bound -- the <strong>Evidence Lower Bound (ELBO)</strong>. The full
+                ELBO decomposes into a sum of KL divergences between the learned reverse transitions
+                $p_\theta(x_{t-1} \mid x_t)$ and the tractable posterior $q(x_{t-1} \mid x_t, x_0)$.
+                Ho et al. (2020) showed that after simplification, the ELBO reduces to a direct objective: rather
+                than predicting the clean image $x_0$, the network should predict <strong>the noise $\epsilon$ that
+                was added to $x_t$ at timestep $t$</strong>.</p>
+
+            <p>This is an elegant result. The posterior $q(x_{t-1} \mid x_t, x_0)$ is itself Gaussian with a mean
+                that depends on $x_0$ and $x_t$. By reparameterizing $x_0$ in terms of $x_t$ and $\epsilon$ (inverting
+                the forward process equation), the optimal $\mu_\theta$ turns out to be a function of the predicted
+                noise. The network does not need to reconstruct the full image -- it only needs to identify what
+                does not belong.</p>
 
             <h2>The Simplified Objective</h2>
             <p>The loss function is MSE between the true noise $\epsilon$ and the network's prediction
@@ -277,8 +298,14 @@ permalink: /projects/diffusion-theory/
 
             <h2>From Math to Code</h2>
             <p>That is it. We reduced an intractable stochastic process to: noise an image, predict the noise,
-                minimize MSE. Part 2 implements this in PyTorch -- the noise schedule, a time-conditioned UNet, and
-                the training loop.</p>
+                minimize MSE. The entire training algorithm is five lines of pseudocode: sample an image $x_0$,
+                pick a random $t$, sample noise $\epsilon$, compute $x_t$ via the reparameterization trick,
+                and backpropagate $\|\epsilon - \epsilon_\theta(x_t, t)\|^2$.</p>
+
+            <p>Part 2 implements this in PyTorch -- the linear noise schedule with precomputed $\bar{\alpha}_t$
+                coefficients, a time-conditioned UNet that injects sinusoidal position embeddings at the
+                bottleneck, and the training loop that runs this procedure over 60,000 MNIST images for 15
+                epochs.</p>
 
         </article>
     </main>

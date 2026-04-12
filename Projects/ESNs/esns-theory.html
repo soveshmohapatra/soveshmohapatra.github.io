@@ -211,20 +211,36 @@ permalink: /projects/esns-theory/
 
             <h2>The Trappings of BPTT</h2>
             <p>In a standard RNN, every weight matrix--input weights $W_{in}$, hidden weights $W_{rec}$, and output weights $W_{out}$--is learned via gradient descent. Computing the gradient at time $t=0$ requires multiplying through $W_{rec}$ at every intervening step. Over 1,000 timesteps, eigenvalues of $W_{rec}$ slightly below 1 drive the gradient to zero; slightly above 1, and it explodes.</p>
+            <p>Concretely, the gradient of the loss at time $T$ with respect to the hidden state at time $t$ involves a product of Jacobians:</p>
+
+            <div class="math-block">
+                $$ \frac{\partial h_T}{\partial h_t} = \prod_{k=t}^{T-1} \frac{\partial h_{k+1}}{\partial h_k} $$
+            </div>
+
+            <p>Each factor in that product is bounded by the spectral norm of $W_{rec}$. After $T - t$ multiplications, the norm either shrinks exponentially (vanishing) or grows exponentially (exploding). LSTMs and GRUs mitigate this with gating, but they still require unrolling the full computation graph through time and storing activations at every step for the backward pass. That means memory usage scales linearly with sequence length, and wall-clock time grows with both sequence length and number of training epochs.</p>
 
             <h2>Enter the Reservoir</h2>
             <p>ESNs sidestep this entirely. Instead of training $W_{in}$ and $W_{rec}$, we randomly initialize them--typically large (hundreds to thousands of neurons) and sparse--and <strong>freeze them</strong>. This frozen random RNN is the <strong>Reservoir</strong>.</p>
-            <p>We feed the input sequence through the reservoir and record its activation states over time. The large, random connectivity produces a high-dimensional, non-linear temporal expansion of the input signal.</p>
+            <p>We feed the input sequence through the reservoir and record its activation states over time. The large, random connectivity produces a high-dimensional, non-linear temporal expansion of the input signal. A 500-neuron reservoir with 5% sparsity contains only about 12,500 active connections, yet it projects a 1-dimensional input into a 500-dimensional state space at every timestep. Each neuron responds to a different random combination of inputs and recurrent feedback, so the reservoir collectively generates a rich basis of nonlinear temporal features without any learning.</p>
+
+            <h2>The Leaky Integrator Dynamics</h2>
+            <p>The reservoir state update follows the <strong>leaky integrator</strong> equation, which controls how quickly the network forgets its previous state:</p>
+
+            <div class="math-block">
+                $$ x(t) = (1 - \alpha) \, x(t-1) + \alpha \, \tanh\!\bigl(W_{in} \, u(t) + W_{rec} \, x(t-1)\bigr) $$
+            </div>
+
+            <p>Here $\alpha \in (0, 1]$ is the <strong>leak rate</strong>. When $\alpha = 1$, the state is fully replaced at each step (standard ESN). When $\alpha$ is small, the state changes slowly, giving the reservoir a longer effective memory. The tanh nonlinearity ensures bounded activations and introduces the nonlinear mixing that makes the reservoir useful as a feature extractor.</p>
 
             <h2>The Echo State Property & Spectral Radius</h2>
-            <p>The whole approach depends on the <strong>Echo State Property (ESP)</strong>: the requirement that the influence of past inputs decays over time, so the reservoir neither blows up nor rings indefinitely.</p>
+            <p>The whole approach depends on the <strong>Echo State Property (ESP)</strong>: the requirement that the influence of past inputs decays over time, so the reservoir neither blows up nor rings indefinitely. More precisely, the ESP requires that for any two initial states $x(0)$ and $x'(0)$, the reservoir states converge to the same trajectory as $t \to \infty$ when driven by the same input sequence. The network's current state becomes a function of its input history alone--previous states are "echoed out."</p>
             <p>Enforcing the ESP comes down to one constraint on the reservoir matrix $W_{rec}$: its <strong>Spectral Radius</strong> (the largest absolute eigenvalue, $\rho$) must be strictly less than 1.</p>
 
             <div class="math-block">
-                $$ \rho(W_{rec}) < 1 $$
+                $$ \rho(W_{rec}) = \max_i |\lambda_i(W_{rec})| < 1 $$
             </div>
 
-            <p>Scaling the random matrix to $\rho = 0.9$ guarantees a stable, fading-memory system.</p>
+            <p>In practice, we generate a sparse random matrix $W$, compute its eigenvalues via <code>torch.linalg.eigvals</code>, find the current spectral radius, and rescale: $W_{rec} = W \cdot (\rho_{\text{target}} / \rho_{\text{current}})$. Setting $\rho = 0.9$ gives a stable, fading-memory system with moderate temporal reach. Values closer to 1.0 extend memory but approach instability; values closer to 0.5 make the reservoir forget faster.</p>
 
             <h2>Closed-Form Readout</h2>
             <p>If we don't backpropagate, how does training work?</p>
@@ -235,7 +251,8 @@ permalink: /projects/esns-theory/
                 $$ W_{out} = Y X^T (X X^T + \lambda \mathbf{I})^{-1} $$
             </div>
 
-            <p>No epochs, no learning rate schedule--just a matrix solve.</p>
+            <p>The regularization parameter $\lambda$ (typically $10^{-4}$ to $10^{-2}$) prevents overfitting and ensures numerical stability when inverting $X X^T$. In our implementation, we actually solve the equivalent system $(X^T X + \lambda I) W_{out}^T = X^T Y$ using <code>torch.linalg.solve</code>, which avoids explicitly computing the inverse and is numerically more stable.</p>
+            <p>The extended state matrix $S$ concatenated during readout includes a bias column of ones and the raw input $u(t)$ alongside the reservoir states, giving the readout access to $1 + d_{\text{input}} + d_{\text{hidden}}$ features per timestep. No epochs, no learning rate schedule, no gradient tape--just a single deterministic matrix solve that finishes in milliseconds.</p>
 
         </article>
     </main>

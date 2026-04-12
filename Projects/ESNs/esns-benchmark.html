@@ -196,6 +196,23 @@ permalink: /projects/esns-benchmark/
         }
     </style>
 
+    <!-- MathJax injected to render LaTeX syntax -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                tags: 'ams'
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+        </script>
+
 </head>
 
 <body>
@@ -238,14 +255,20 @@ permalink: /projects/esns-benchmark/
             </div>
 
             <h2>The Chaotic Time Series</h2>
-            <p>The Mackey-Glass equation is a nonlinear time-delay differential system used to model physiological dynamics. It is chaotic: small deviations in initial conditions amplify rapidly, which makes long-horizon prediction hard.</p>
-            <p>We generate a 3,000-step sequence, train on the first 2,000 steps, and evaluate on the remaining 1,000 unseen steps.</p>
+            <p>The Mackey-Glass equation is a nonlinear time-delay differential system originally proposed to model physiological dynamics like white blood cell production. It is governed by:</p>
+
+            <div class="math-block">
+                $$ \frac{dx}{dt} = \beta \frac{x(t - \tau)}{1 + x(t - \tau)^n} - \gamma \, x(t) $$
+            </div>
+
+            <p>We use the standard chaotic parameterization: $\beta = 0.2$, $\gamma = 0.1$, $n = 10$, and delay $\tau = 17$. With $\tau > 17$, the system exhibits deterministic chaos--trajectories are bounded but never repeat, and nearby initial conditions diverge exponentially. This makes it a standard benchmark for time series models: if a model can track the Mackey-Glass attractor, it can handle real-world nonlinear dynamics.</p>
+            <p>We generate a 3,000-step sequence using Euler integration with $dt = 1.0$, normalize to zero mean and unit variance, train on the first 2,000 steps, and evaluate on the remaining 1,000 unseen steps. The task is single-step prediction: given $x(t)$, predict $x(t+1)$.</p>
 
             <h2>The Training Paradigm</h2>
             <p>The two models train in fundamentally different ways:</p>
             <ul>
-                <li><strong>LSTM (BPTT)</strong> -- 150 epochs of Adam, unrolling the full recurrence graph and computing gradients at every timestep.</li>
-                <li><strong>ESN (Ridge Regression)</strong> -- <strong>one forward pass</strong> through a sparse 500-neuron reservoir, followed by a single matrix solve for the readout weights.</li>
+                <li><strong>LSTM (BPTT)</strong> -- A standard PyTorch LSTM with 64 hidden units and a linear readout, trained for 150 epochs with Adam (lr = 0.01). Each epoch unrolls the full 2,000-step recurrence graph, computes gradients at every timestep via backpropagation through time, and updates all parameters. The first 100 steps are excluded from the loss to match the ESN's washout.</li>
+                <li><strong>ESN (Ridge Regression)</strong> -- A 500-neuron reservoir with 5% sparsity, spectral radius 0.9, and leak rate 1.0. <strong>One forward pass</strong> harvests the internal states, 100 washout steps are discarded, and a single <code>torch.linalg.solve</code> call fits the readout weights with $\lambda = 10^{-4}$. No optimizer, no epochs, no gradient computation.</li>
             </ul>
 
             <h2>Benchmark Results</h2>
@@ -255,6 +278,7 @@ permalink: /projects/esns-benchmark/
                     <tr>
                         <th>Model</th>
                         <th>Training Method</th>
+                        <th>Train MSE</th>
                         <th>Test MSE</th>
                         <th>Training Time</th>
                     </tr>
@@ -263,29 +287,41 @@ permalink: /projects/esns-benchmark/
                     <tr>
                         <td>LSTM (BPTT)</td>
                         <td>Adam (150 epochs)</td>
-                        <td>0.0059</td>
+                        <td>0.000948</td>
+                        <td>0.005883</td>
                         <td>24.33 seconds</td>
                     </tr>
                     <tr>
                         <td>ESN</td>
                         <td>Ridge Regression</td>
+                        <td>0.000354</td>
                         <td>0.2663</td>
                         <td><strong>73.91 milliseconds</strong></td>
                     </tr>
                 </tbody>
             </table>
 
+            <p>An interesting detail from the logs: the ESN actually achieves a <strong>lower training MSE</strong> than the LSTM (0.000354 vs. 0.000948). The closed-form Ridge Regression finds the optimal linear projection of the 502-dimensional extended state onto the target, and it does so exactly--no stochastic approximation involved. The gap between the ESN's training and test error (0.000354 vs. 0.2663) reveals the real challenge: the linear readout overfits to the specific reservoir trajectory seen during training, and it does not generalize as well to the shifted dynamics of the unseen test window.</p>
+
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/esns/esn_vs_lstm_forecast.png" alt="ESN vs LSTM forecast on Mackey-Glass.">
-                <p class="figure-caption">ESN and LSTM forecasts on 1,000 unseen steps of the Mackey-Glass system. The ESN tracks the chaotic oscillations without any gradient-based training.</p>
+                <p class="figure-caption">ESN and LSTM forecasts on 500 unseen steps of the Mackey-Glass system. The ESN tracks the chaotic oscillations without any gradient-based training.</p>
             </div>
 
             <h2>Speed vs. Precision</h2>
-            <p>The ESN captures the chaotic attractor and oscillation frequency. The LSTM, after 150 epochs of optimization, gets a tighter fit and a lower test MSE (0.0059 vs. 0.2663).</p>
-            <p>But the ESN trained <strong>329x faster</strong>--73.91 ms vs. 24.33 seconds. For applications that need low-latency retraining (edge robotics, real-time signal processing, online adaptation), that gap matters more than a fraction of MSE.</p>
+            <p>The ESN captures the chaotic attractor and oscillation frequency. The LSTM, after 150 epochs of optimization, gets a tighter fit and a lower test MSE (0.005883 vs. 0.2663).</p>
+            <p>But the ESN trained <strong>329x faster</strong>--73.91 ms vs. 24.33 seconds. That is not a marginal improvement. It is the difference between a model that retrains in real time and one that requires a dedicated training loop. For applications that need low-latency retraining--edge robotics, high-frequency signal processing, online adaptation in non-stationary environments--that gap matters more than a fraction of MSE.</p>
+
+            <h2>Where Each Architecture Wins</h2>
+            <p>The benchmark reveals a clear regime separation:</p>
+            <ul>
+                <li><strong>ESN regime:</strong> When you need to retrain continuously (streaming data, concept drift), when compute budget is tiny (microcontrollers, embedded systems), or when you need a quick baseline on a new time series. The 73 ms training time means you can retrain hundreds of times per second.</li>
+                <li><strong>LSTM regime:</strong> When you have a fixed dataset, can afford offline training, and need the tightest possible fit. The LSTM's learned nonlinear readout generalizes better across the test distribution, and 24 seconds is acceptable for a train-once-deploy scenario.</li>
+            </ul>
+            <p>Hybrid approaches also exist: use an ESN for fast initial deployment, then distill into an LSTM if higher accuracy is needed. Or use the ESN as a feature extractor and train a small nonlinear head on top of the reservoir states.</p>
 
             <h2>Conclusion</h2>
-            <p>ESNs show that random projections, sparsity, and a single linear solve can handle nonlinear chaotic sequences at a fraction of the computational cost of BPTT. The tradeoff is clear: the LSTM wins on raw accuracy, but the ESN wins on speed by two orders of magnitude. Which matters more depends on the deployment scenario.</p>
+            <p>ESNs show that random projections, sparsity, and a single linear solve can handle nonlinear chaotic sequences at a fraction of the computational cost of BPTT. The tradeoff is clear: the LSTM wins on generalization to unseen test data, but the ESN wins on speed by two orders of magnitude and achieves a tighter training fit via exact closed-form optimization. Which matters more depends entirely on the deployment scenario.</p>
 
         </article>
     </main>

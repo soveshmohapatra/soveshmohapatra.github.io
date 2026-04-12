@@ -233,7 +233,7 @@ permalink: /projects/gans-theory/
                 $$ \text{JSD}(p_{\text{data}} \| p_g) = \frac{1}{2} D_{\text{KL}}\left(p_{\text{data}} \;\middle\|\; \frac{p_{\text{data}} + p_g}{2}\right) + \frac{1}{2} D_{\text{KL}}\left(p_g \;\middle\|\; \frac{p_{\text{data}} + p_g}{2}\right) $$
             </div>
 
-            <p>JSD has two useful properties that KL divergence lacks: it is symmetric, and it is bounded ($0 \leq \text{JSD} \leq \log 2$). $\text{JSD} = 0$ iff $p_g = p_{\text{data}}$.</p>
+            <p>JSD has two useful properties that KL divergence lacks: it is symmetric, and it is bounded ($0 \leq \text{JSD} \leq \log 2$). $\text{JSD} = 0$ iff $p_g = p_{\text{data}}$. The symmetry matters practically --- KL divergence penalizes $G$ differently depending on whether it places mass where the data has none (mode invention) versus ignores modes that exist in the data (mode dropping). JSD treats both failure cases equally, which aligns better with the adversarial training dynamic where both players have symmetric roles.</p>
 
             <h2>The Optimal Discriminator</h2>
             <p>For a fixed $G$, the optimal $D^*$ has a closed form. Take the functional derivative of $V(D, G)$ with respect to $D(x)$ and set it to zero:</p>
@@ -242,7 +242,7 @@ permalink: /projects/gans-theory/
                 $$ D^*(x) = \frac{p_{\text{data}}(x)}{p_{\text{data}}(x) + p_g(x)} $$
             </div>
 
-            <p>So the optimal discriminator outputs the density ratio between the two distributions. When $p_g = p_{\text{data}}$, $D^*(x) = \frac{1}{2}$ everywhere --- the discriminator is reduced to a coin flip.</p>
+            <p>So the optimal discriminator outputs the density ratio between the two distributions. When $p_g = p_{\text{data}}$, $D^*(x) = \frac{1}{2}$ everywhere --- the discriminator is reduced to a coin flip. This closed-form result is what connects the GAN game to a well-defined divergence minimization problem. Without it, the value function would just be an arbitrary two-player loss with no guarantee that $G$ is learning anything meaningful about the data distribution.</p>
 
             <p>Substituting $D^*$ back into the value function:</p>
 
@@ -264,6 +264,13 @@ permalink: /projects/gans-theory/
             </ul>
 
             <p>A practical fix from the original paper: instead of having $G$ minimize $\log(1 - D(G(z)))$, have it maximize $\log(D(G(z)))$. This gives stronger gradients early on when $D(G(z)) \approx 0$.</p>
+
+            <h2>The Non-Saturating Loss and Gradient Behavior</h2>
+            <p>The gradient issue is worth unpacking. Under the original minimax objective, when $D$ is confident that a generated sample is fake ($D(G(z)) \approx 0$), the gradient of $\log(1 - D(G(z)))$ with respect to $G$'s parameters becomes vanishingly small. The Generator receives almost no learning signal precisely when it needs the most guidance --- early in training when its outputs look nothing like real data.</p>
+
+            <p>The non-saturating alternative $-\log(D(G(z)))$ fixes this. Its gradient is $-1 / D(G(z))$, which is large when $D(G(z))$ is small. The Generator gets its strongest kick exactly when the Discriminator is most confident about rejecting fakes. Importantly, the equilibrium point is the same --- both objectives drive $G$ toward $p_g = p_{\text{data}}$ --- but the gradient landscape en route to that equilibrium is far more navigable.</p>
+
+            <p>This distinction between equivalent optima and different optimization landscapes is a recurring theme in deep learning: the loss you train with is not just about what it converges to, but how it behaves during the journey.</p>
 
             <h2>Up Next</h2>
             <p>In <strong>Part 2</strong>, we implement these ideas in PyTorch --- a Vanilla GAN with fully-connected layers and a DCGAN with convolutional structure, paying close attention to the architectural details that determine whether training converges or falls apart.</p>

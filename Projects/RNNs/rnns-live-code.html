@@ -100,21 +100,36 @@ permalink: /projects/rnns-live-code/
             </div>
 
             <h2>The RNN Cell</h2>
-            <p>Our RNNCell class implements the core recurrence:</p>
+            <p>Our <code>RNNCell</code> class implements the core recurrence from Part 1 as a proper PyTorch module. Two linear layers handle the input-to-hidden and hidden-to-hidden projections, and a tanh squashes the result:</p>
 
             <div class="code-block-container">
                 <div class="code-header">
-                    <span>rnn_cell.py</span>
+                    <span>rnn.py</span>
                     <i class="fab fa-python"></i>
                 </div>
-                <pre><code class="language-python">h_new = torch.tanh(W_xh @ x + W_hh @ h_prev + b)</code></pre>
+                <pre><code class="language-python">class RNNCell(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, bias: bool = True):
+        super().__init__()
+        self.Wxh = nn.Linear(input_size, hidden_size, bias=bias)
+        self.Whh = nn.Linear(hidden_size, hidden_size, bias=bias)
+        self._init_weights()
+
+    def _init_weights(self):
+        nn.init.xavier_uniform_(self.Wxh.weight)
+        nn.init.xavier_uniform_(self.Whh.weight)
+        if self.Wxh.bias is not None:
+            nn.init.zeros_(self.Wxh.bias)
+            nn.init.zeros_(self.Whh.bias)
+
+    def forward(self, x, h_prev):
+        return torch.tanh(self.Wxh(x) + self.Whh(h_prev))</code></pre>
             </div>
 
             <p>Key design choices:</p>
             <ul>
-                <li>Separate weight matrices for input and hidden projections</li>
-                <li>Xavier initialization to stabilize training</li>
-                <li>Optional bias terms</li>
+                <li>Separate weight matrices for input and hidden projections -- this keeps the two signal sources decoupled and easier to reason about</li>
+                <li>Xavier initialization to stabilize training by keeping variance roughly constant across layers</li>
+                <li>Biases initialized to zero so the cell starts with no directional preference</li>
             </ul>
 
             <h2>Multi-Layer RNNs</h2>
@@ -125,79 +140,94 @@ permalink: /projects/rnns-live-code/
                 <li>Each additional layer learns higher-level temporal patterns</li>
             </ul>
 
+            <p>The multi-layer <code>RNN</code> class stores cells in a <code>ModuleList</code> and loops through both time steps and layers. At each time step, the input passes through every layer, with the output of each layer becoming the input to the next:</p>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>rnn.py -- forward loop</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">for t in range(seq_len):
+    x_t = x[:, t, :]  # Input at time t
+    for layer in range(self.num_layers):
+        hidden_states[layer] = self.cells[layer](x_t, hidden_states[layer])
+        x_t = hidden_states[layer]
+        if self.dropout is not None and layer < self.num_layers - 1:
+            x_t = self.dropout(x_t)
+    outputs.append(hidden_states[-1].unsqueeze(1))</code></pre>
+            </div>
+
+            <p>Notice that dropout is applied <em>between</em> layers, never across time steps within a layer. Dropping activations across time would break the recurrence and corrupt the hidden state trajectory.</p>
+
             <h2>Architecture Variants</h2>
 
             <h3>Sequence Classifier</h3>
-            <p>Many-to-one architecture:</p>
+            <p>Many-to-one architecture. The RNN reads the entire sequence and the final hidden state -- which is a compressed summary of the full input -- gets projected through a linear layer to produce class logits:</p>
             <div class="code-block-container">
                 <div class="code-header">
-                    <span>Architecture</span>
-                    <i class="fas fa-cogs"></i>
+                    <span>rnn_architectures.py</span>
+                    <i class="fab fa-python"></i>
                 </div>
-                <pre><code class="language-plaintext">Input:  (batch, seq_len, input_size)
-Output: (batch, num_classes)</code></pre>
+                <pre><code class="language-python">class SequenceClassifier(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes,
+                 num_layers=2, dropout=0.2):
+        super().__init__()
+        self.rnn = RNN(input_size, hidden_size, num_layers, dropout=dropout)
+        self.fc = nn.Linear(hidden_size, num_classes)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        outputs, h_final = self.rnn(x)
+        h_final = self.dropout(h_final[-1])  # last layer
+        return self.fc(h_final)</code></pre>
             </div>
-            <p>Uses the final hidden state for classification.</p>
+            <p>This is the architecture we train in Part 3 -- a 2-layer RNN with hidden size 64, totaling 13,314 parameters.</p>
 
             <h3>Sequence Tagger</h3>
-            <p>Many-to-many architecture:</p>
-            <div class="code-block-container">
-                <div class="code-header">
-                    <span>Architecture</span>
-                    <i class="fas fa-cogs"></i>
-                </div>
-                <pre><code class="language-plaintext">Input:  (batch, seq_len, input_size)
-Output: (batch, seq_len, num_tags)</code></pre>
-            </div>
-            <p>Outputs a prediction at each time step.</p>
+            <p>Many-to-many architecture. Instead of collapsing to a single output, the tagger keeps every hidden state and projects each one independently. The input shape is <code>(batch, seq_len, input_size)</code> and the output is <code>(batch, seq_len, num_tags)</code> -- one prediction per time step. This is the setup you would use for tasks like part-of-speech tagging or named entity recognition.</p>
 
             <h3>CharRNN</h3>
-            <p>Character-level language model:</p>
-            <ul>
-                <li>Embedding layer for character tokens</li>
-                <li>Multi-layer RNN for sequence processing</li>
-                <li>Output projection to vocabulary logits</li>
-                <li>Autoregressive generation via sampling</li>
-            </ul>
+            <p>Character-level language model. An embedding layer maps character indices to dense vectors, a 3-layer RNN processes the embedded sequence, and a final linear layer projects back to vocabulary logits. Generation uses temperature-scaled sampling in an autoregressive loop:</p>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>rnn_architectures.py -- generate()</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">next_logits = logits[:, -1, :] / temperature
+probs = F.softmax(next_logits, dim=-1)
+next_token = torch.multinomial(probs, 1)</code></pre>
+            </div>
+            <p>Higher temperature flattens the probability distribution and produces more varied (but less coherent) output. Lower temperature sharpens it toward greedy decoding.</p>
 
             <h3>Bidirectional RNN</h3>
-            <p>Processes sequences in both directions:</p>
-            <ul>
-                <li>Forward RNN: Past to future</li>
-                <li>Backward RNN: Future to past</li>
-                <li>Concatenate both representations</li>
-            </ul>
-            <p>This captures context from both directions, crucial for tasks like named entity recognition.</p>
+            <p>Two separate RNN instances process the sequence in opposite directions. The backward RNN receives the input flipped along the time axis. After both passes complete, the forward and backward hidden states at each position are concatenated, doubling the representation size:</p>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span>rnn_architectures.py</span>
+                    <i class="fab fa-python"></i>
+                </div>
+                <pre><code class="language-python">fwd_outputs, _ = self.forward_rnn(x)
+bwd_outputs, _ = self.backward_rnn(x.flip(dims=[1]))
+bwd_outputs = bwd_outputs.flip(dims=[1])
+outputs = torch.cat([fwd_outputs, bwd_outputs], dim=-1)</code></pre>
+            </div>
+            <p>This gives each position access to context from both the past and the future, which is essential for tasks like NER where the label for a word depends on the words around it in both directions.</p>
 
             <h2>Implementation Details</h2>
 
             <h3>Batch-First vs Time-First</h3>
-            <p>We use batch-first tensors <code>(B, T, D)</code> for compatibility with PyTorch conventions, but internally process time step by time step.</p>
-
-            <h3>Dropout Regularization</h3>
-            <p>Applied between RNN layers (not across time) to prevent overfitting:</p>
-
-            <div class="code-block-container">
-                <div class="code-header">
-                    <span>rnn.py</span>
-                    <i class="fab fa-python"></i>
-                </div>
-                <pre><code class="language-python">if dropout > 0:
-    self.dropout = nn.Dropout(dropout)</code></pre>
-            </div>
+            <p>We use batch-first tensors <code>(B, T, D)</code> for compatibility with PyTorch conventions, but internally process time step by time step. If the caller passes time-first input, the forward method transposes it before the main loop and transposes back before returning.</p>
 
             <h3>Hidden State Initialization</h3>
-            <p>Hidden states are initialized to zero at the start of each sequence:</p>
-            <div class="math-block">
-                $$ h_0 = \mathbf{0} $$
-            </div>
+            <p>Hidden states are initialized to zero at the start of each sequence: $h_0 = \mathbf{0}$. This is the standard convention. The caller can also pass in a custom initial state, which is useful for continuing generation from a previous context or for warm-starting the hidden state in streaming applications.</p>
 
             <h2>Training Strategy</h2>
-            <p>We train on synthetic sequence tasks:</p>
+            <p>We train the <code>SequenceClassifier</code> on a synthetic binary classification task. The data generation is simple: random Gaussian sequences of length 20 with input dimension 10, labeled by whether the mean value across the sequence is positive or negative. The training setup uses:</p>
             <ul>
-                <li>Sequence classification: Predict label from entire sequence</li>
-                <li>Cross-entropy loss</li>
-                <li>Adam optimizer with learning rate scheduling</li>
+                <li>5,000 training samples and 1,000 test samples</li>
+                <li>Cross-entropy loss with Adam optimizer (lr = 0.001)</li>
+                <li>Step learning rate scheduler: halves the rate every 20 epochs</li>
+                <li>Mini-batches of size 32</li>
             </ul>
 
             <h2>What Comes Next</h2>

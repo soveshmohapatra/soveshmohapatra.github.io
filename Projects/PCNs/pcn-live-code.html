@@ -259,11 +259,22 @@ permalink: /projects/pcn-live-code/
         return self.prediction_error</code></pre>
 
             <p>We use <code>torch.tanh</code> instead of <code>ReLU</code>. In iterative PCNs, ReLU's zero gradient
-                for negative inputs causes latent states to die during inference, stalling learning entirely.</p>
+                for negative inputs causes latent states to die during inference, stalling learning entirely. During
+                MNIST classification, ReLU flatlined accuracy at exactly 10% -- random guessing -- because negative
+                latent states received zero gradient and could never recover during the inference walk. Tanh avoids
+                this by providing a smooth, nonzero gradient across the entire real line.</p>
+
+            <p>Weight initialization matters too. We apply Xavier/Glorot uniform initialization to the generative
+                weight matrices and zero-initialize the biases. Because the PCN's top-down predictions must initially
+                be reasonable enough for the inference phase to converge, poor initialization can cause the energy
+                landscape to be too flat or too chaotic for the latent states to settle.</p>
 
             <h2>Phase 1: The Inference Walk</h2>
             <p>PCNs do not compute output in one forward pass. Instead, all latent states undergo gradient descent to
-                minimize total prediction error. Weights stay frozen throughout.</p>
+                minimize total prediction error. Weights stay frozen throughout. This is the fundamental departure from
+                standard neural networks: where a feed-forward net computes its output in a single sweep,
+                a PCN enters an iterative relaxation loop that may run for 20 to 50 steps before producing a stable
+                internal representation.</p>
 
             <pre><code class="language-python">def inference_step(self, inference_lr):
     total_energy = 0.0
@@ -297,8 +308,12 @@ permalink: /projects/pcn-live-code/
 
     return total_energy.item()</code></pre>
 
-            <p><code>autograd.grad</code> computes gradients of the energy with respect to latent nodes only.
-                No <code>optimizer.step()</code> touches the weights here.</p>
+            <p>We deliberately use <code>autograd.grad</code> instead of the standard <code>loss.backward()</code>.
+                The difference is critical: <code>backward()</code> accumulates gradients on every parameter in the
+                graph, including weights. <code>autograd.grad</code> lets us target only the latent states, keeping
+                weights completely frozen. We also pass <code>create_graph=False</code> because we do not need
+                second-order gradients -- the inference walk is pure first-order gradient descent on the energy
+                surface, and skipping the higher-order graph saves significant memory.</p>
 
             <h2>Phase 2: The Hebbian Weight Update</h2>
             <p>After the inference phase runs (e.g., $T=50$ iterations) and the latent states settle, we update
@@ -320,6 +335,17 @@ permalink: /projects/pcn-live-code/
             layer.W.weight.add_(learning_rate * delta_W)
             if layer.W.bias is not None:
                 layer.W.bias.add_(learning_rate * delta_bias)</code></pre>
+
+            <h2>Supervised Learning: Label Clamping</h2>
+            <p>To use a PCN for classification, we clamp the top layer's latent state to the one-hot encoded label
+                and freeze it (<code>requires_grad = False</code>). During the inference walk, the label information
+                propagates downward through the generative weights, shaping the internal representations of every
+                hidden layer. This is the opposite of a feed-forward net, where label information only enters at the
+                loss function after the forward pass is complete.</p>
+
+            <p>At prediction time, we leave the top layer unclamped and let the entire network relax freely. The
+                top layer's settled state becomes the network's "belief" about the input's class. We read it out
+                with a softmax to get class probabilities.</p>
 
             <h2>Next: Benchmarks</h2>
             <p>The PCN learns via local energy minimization. <a href="{{ site.baseurl }}/projects/pcn-benchmark/">Part

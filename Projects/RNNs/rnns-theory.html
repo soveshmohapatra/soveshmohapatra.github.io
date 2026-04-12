@@ -98,6 +98,8 @@ permalink: /projects/rnns-theory/
             <h2>The Intuition Behind Recurrence</h2>
             <p>Think about reading a sentence one word at a time. Each word shifts your understanding based on everything you have read so far. RNNs do something analogous: they maintain a <em>hidden state</em> vector that gets updated at each time step, accumulating information as the sequence progresses.</p>
 
+            <p>A feedforward network maps a fixed-size input to a fixed-size output. It has no notion of order or history. An RNN, by contrast, processes inputs sequentially and threads a state vector through the entire sequence. That state vector is what gives the network memory -- it is a compressed summary of everything the network has seen up to the current step.</p>
+
             <h2>The Recurrence Relation</h2>
             <p>At each time step $t$, an RNN:</p>
             <ul>
@@ -122,13 +124,14 @@ permalink: /projects/rnns-theory/
                 <li>The model can generalize to sequences of different lengths</li>
                 <li>The number of parameters is independent of sequence length</li>
             </ol>
+            <p>This is a fundamentally different strategy from, say, a 1D convolution with a fixed receptive field, or a fully connected layer that has separate parameters for each position. Our implementation in PyTorch uses just 13,314 trainable parameters to process sequences of length 20 -- and the same weights would work on sequences of length 100 or 1,000 without any architectural change.</p>
 
             <h2>Backpropagation Through Time (BPTT)</h2>
             <p>Training RNNs requires computing gradients through the entire sequence. The chain rule applied across time steps gives:</p>
             <div class="math-block">
                 $$ \frac{\partial L}{\partial W_{hh}} = \sum_t \frac{\partial L}{\partial h_t} \cdot \frac{\partial h_t}{\partial W_{hh}} $$
             </div>
-            <p>Because $h_t$ depends on $h_{t-1}$, which depends on $h_{t-2}$, and so on, gradients must flow backward through the entire chain of dependencies.</p>
+            <p>Because $h_t$ depends on $h_{t-1}$, which depends on $h_{t-2}$, and so on, gradients must flow backward through the entire chain of dependencies. This is what makes RNN training fundamentally different from training feedforward networks: the computational graph is unrolled across time, and every time step introduces another node that gradients must pass through.</p>
 
             <h2>The Vanishing Gradient Problem</h2>
             <p>When we unroll the recurrence, we see the issue:</p>
@@ -136,6 +139,8 @@ permalink: /projects/rnns-theory/
                 $$ \frac{\partial h_t}{\partial h_0} = \prod_{k=1}^{t} \frac{\partial h_k}{\partial h_{k-1}} = \prod_{k=1}^{t} W_{hh}^T \cdot \text{diag}(1 - \tanh^2(\cdot)) $$
             </div>
             <p>When the eigenvalues of $W_{hh}$ sit below 1, this product shrinks exponentially with sequence length. The result: gradients from early time steps effectively disappear, and the network cannot learn long-range dependencies.</p>
+
+            <p>The flip side exists too. If the eigenvalues exceed 1, gradients explode -- they grow exponentially and destabilize training. Gradient clipping can mitigate exploding gradients, but there is no equally clean fix for the vanishing case. This asymmetry is what makes vanilla RNNs unreliable on long sequences and is the core motivation behind gated architectures like LSTMs and GRUs.</p>
 
             <h2>Why RNNs Still Matter</h2>
             <p>Despite being overshadowed by Transformers, RNNs remain relevant:</p>

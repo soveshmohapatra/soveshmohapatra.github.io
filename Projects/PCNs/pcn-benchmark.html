@@ -240,8 +240,11 @@ permalink: /projects/pcn-benchmark/
 
             <h2>Experiment 1: Non-Linear Regression</h2>
             <p>We fit a noisy sine wave using both a standard MLP and a PCN, each with architecture
-                <code>1 -> 32 -> 32 -> 1</code>. The MLP used Adam with standard backprop. The PCN ran 20
-                inference steps per sample before applying the local Hebbian weight update.</p>
+                <code>1 -> 32 -> 32 -> 1</code>. The training data consisted of 1,000 points sampled uniformly
+                from $[0, 4\pi]$ with Gaussian noise ($\sigma = 0.1$) added to the true sine values, trained
+                in mini-batches of 32 over 50 epochs. The MLP used Adam (lr = 0.01) with standard backprop. The PCN ran 20
+                inference steps per sample (inference lr = 0.05) before applying the local Hebbian weight update
+                (weight lr = 0.005). Both networks used Tanh activations.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/pcn/pcn_vs_mlp_regression.png"
@@ -258,11 +261,22 @@ permalink: /projects/pcn-benchmark/
                 <li><strong>PCN:</strong> Approximated the sine wave but with a noisier training curve. The noise
                     comes from the inference phase: if latent nodes do not fully minimize their local prediction
                     errors before the weight update, the subsequent gradient is misaligned. Inference learning rate
-                    tuning is critical.</li>
+                    tuning is critical. We also ran 30 inference steps at evaluation time (compared to 20 during
+                    training) to give the latent states more time to settle, which noticeably improved prediction
+                    quality on held-out regions of the sine curve.</li>
             </ul>
 
+            <p>Despite the noisier trajectory, the PCN's final regression fit was visually comparable to the
+                MLP's. The key takeaway is not that local learning matches backprop on a smooth 1-D function --
+                it is that the PCN converged at all without any global gradient signal. Every weight update was
+                computed from purely local variables: the pre-synaptic activation and the post-synaptic prediction
+                error at each layer.</p>
+
             <h2>Experiment 2: Image Classification (MNIST)</h2>
-            <p>Architecture: <code>784 -> 128 -> 10</code>, classifying MNIST digits.</p>
+            <p>Architecture: <code>784 -> 128 -> 10</code>, classifying a 5,000-image subset of MNIST digits
+                in batches of 64 over 10 epochs. The MLP used Adam (lr = 0.001) with cross-entropy loss. The PCN
+                used 50 inference steps per batch (inference lr = 0.1, weight lr = 0.005) with supervised label
+                clamping -- the top layer was fixed to the one-hot encoded target during the inference walk.</p>
 
             <div class="figure-container">
                 <img src="{{ site.baseurl }}/assets/projects/pcn/pcn_vs_mlp_mnist.png"
@@ -290,10 +304,17 @@ permalink: /projects/pcn-benchmark/
             <p><strong>2. Neuromorphic Hardware:</strong> Current GPU architectures are optimized for the backward
                 pass -- global matrix multiplications and synchronous memory access. PCNs need none of that. Their
                 local weight updates map directly onto <strong>neuromorphic chips</strong> (IBM NorthPole, analog
-                crossbar arrays), where variable-resistance synapses update in place.</p>
+                crossbar arrays), where variable-resistance synapses update in place. Each synapse only needs
+                access to its own pre- and post-synaptic signals -- no bus carrying a global error vector back
+                through the network. This maps naturally to massively parallel analog hardware where
+                millions of synapses can update simultaneously without waiting for a sequential backward pass.</p>
 
             <p><strong>3. Generative by Default:</strong> PCNs predict each layer's state from above, making them
-                bidirectional. A trained PCN can run in reverse -- fix a label and generate plausible inputs.</p>
+                inherently bidirectional. A trained PCN can run in reverse -- fix a label at the top layer and let
+                the inference walk relax downward to generate plausible inputs. This is not a retrofitted trick;
+                it falls directly out of the top-down generative architecture. The same weights that learn to
+                classify can also hallucinate, making PCNs a natural fit for tasks that require both
+                discrimination and generation.</p>
 
         </article>
     </main>

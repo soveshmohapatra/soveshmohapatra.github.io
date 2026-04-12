@@ -271,6 +271,78 @@ class LiquidLayer(nn.Module):
                 it learns to modulate $\tau_{sys}$ through $f$: fast-changing inputs shrink the time constant for
                 quick adaptation; stable inputs raise it to hold memory longer.</p>
 
+            <h3>Parameter Count Breakdown</h3>
+            <p>Consider a concrete example: <code>input_size=1</code> and <code>state_size=8</code>. The linear
+                layer <code>self.fc</code> maps from <code>input_size + state_size = 9</code> to <code>state_size = 8</code>,
+                giving us $9 \times 8 + 8 = 80$ parameters (weights + bias). Then <code>self.A</code> adds 8 parameters and
+                <code>self.tau</code> adds 8 more. That totals <strong>96 learnable parameters</strong> for the liquid
+                layer itself. Add a final output head (<code>nn.Linear(8, 1)</code> = 9 parameters) and you reach
+                <strong>105 parameters</strong> for a complete sequence-to-prediction model.</p>
+
+            <p>Compare that to a standard <code>nn.LSTM</code> with the same hidden size of 8. An LSTM has four
+                internal gates (input, forget, cell, output), each with its own weight matrix for input and hidden
+                state plus a bias. That works out to $4 \times (1 \times 8 + 8 \times 8 + 8) = 4 \times 80 = 1{,}224$
+                parameters for the recurrent cell alone, plus 9 for the output head: <strong>1,233 total</strong>.
+                The LSTM needs roughly 12x more parameters than the Liquid layer to process the same input.</p>
+
+            <h3>Why Softplus on Tau?</h3>
+            <p>The base time constant <code>self.tau</code> is initialized to ones, but the raw parameter can drift
+                negative during training. We apply <code>softplus</code> to guarantee a strictly positive value:</p>
+            <div class="math-block">
+                $$ \text{softplus}(\tau) = \ln(1 + e^{\tau}) $$
+            </div>
+            <p>This is smoother than <code>ReLU</code> near zero and avoids the dead-neuron problem. The resulting
+                <code>tau_val</code> is always positive, which is physically necessary--a negative time constant
+                would cause the ODE to diverge exponentially instead of settling toward an attractor.</p>
+
+            <h3>The Euler Step in Detail</h3>
+            <p>The forward pass executes a single forward Euler step. Walking through it line by line:</p>
+            <ol>
+                <li><strong>Concatenation:</strong> the current input $x$ and the previous hidden state are
+                    concatenated into one vector. This gives the nonlinear mapping $f$ access to both the external
+                    signal and the network's own memory.</li>
+                <li><strong>Sigmoid activation:</strong> $f = \sigma(W \cdot [x, \text{state}] + b)$. The sigmoid
+                    bounds $f$ to $(0, 1)$, which keeps $\tau_{sys}$ well-behaved. If $f$ were unbounded, the dynamic
+                    time constant could collapse to zero and blow up the $-\text{state}/\tau_{sys}$ term.</li>
+                <li><strong>Dynamic time constant:</strong> $\tau_{sys} = \tau_{\text{val}} / (1 + \tau_{\text{val}} \cdot f)$.
+                    When $f \to 0$ (stable input), $\tau_{sys} \approx \tau_{\text{val}}$ and the neuron changes slowly.
+                    When $f \to 1$ (volatile input), $\tau_{sys}$ shrinks, making the neuron react faster.</li>
+                <li><strong>Derivative + step:</strong> the ODE derivative $dx/dt = -\text{state}/\tau_{sys} + A \cdot f$
+                    combines a leak term (pulling state toward zero) and a drive term (pushing state toward the attractor
+                    $A$). Multiplying by <code>self.dt</code> and adding to the current state completes the Euler update.</li>
+            </ol>
+
+            <h3>Choosing the Step Size dt</h3>
+            <p>The default <code>dt = 0.1</code> is a balance between accuracy and compute cost. Smaller values
+                (e.g., 0.01) give a tighter approximation of the true ODE solution but require more sub-steps per
+                sequence element. Larger values risk numerical instability--the Euler method is only first-order
+                accurate, and if <code>dt</code> exceeds the fastest time scale in the system, the integration
+                oscillates or diverges. For our chaotic benchmark task, <code>dt = 0.1</code> was stable and
+                converged without needing higher-order solvers like Runge-Kutta 4.</p>
+
+            <h2>Wrapping the Layer into a Full Model</h2>
+            <p>The <code>LiquidLayer</code> processes one time step at a time. To handle a full sequence, we loop
+                over time steps, feeding the output state of each step as the input state to the next:</p>
+
+            <pre><code class="language-python">class LiquidNet(nn.Module):
+    def __init__(self, input_size, state_size, output_size):
+        super().__init__()
+        self.liquid = LiquidLayer(input_size, state_size)
+        self.head = nn.Linear(state_size, output_size)
+        self.state_size = state_size
+
+    def forward(self, x_seq):
+        batch = x_seq.size(0)
+        state = torch.zeros(batch, self.state_size, device=x_seq.device)
+        for t in range(x_seq.size(1)):
+            state = self.liquid(x_seq[:, t, :], state)
+        return self.head(state)</code></pre>
+
+            <p>The hidden state starts at zero and accumulates the trajectory's dynamics step by step through the
+                ODE. At the final time step, the accumulated state passes through a single linear head to produce
+                the prediction. This is the full model architecture used in the Part 3 benchmark--105 parameters
+                total, ready to go head-to-head with an LSTM.</p>
+
         </article>
     </main>
 

@@ -244,7 +244,10 @@ permalink: /projects/snns-live-code/
             </div>
 
             <p>This peaks at $V = V_{th}$ and decays to zero away from the threshold. The sharpness $k$ controls how
-                tightly the surrogate hugs the true step; we use $k = 10$.</p>
+                tightly the surrogate hugs the true step; we use $k = 10$. At the threshold, the surrogate gradient
+                equals 1---full signal passes through. A few units away, it drops to near zero. The gradient is
+                strongest exactly where the neuron is "about to fire," which makes biological sense: small changes
+                in synaptic weight should matter most when the neuron is close to its decision boundary.</p>
 
             <h2>Implementing the Surrogate in PyTorch</h2>
             <p>PyTorch's <code>torch.autograd.Function</code> lets us define separate forward and backward logic:</p>
@@ -292,8 +295,16 @@ permalink: /projects/snns-live-code/
         return spike, new_membrane</code></pre>
 
             <p>The decay factor $\beta$ is learnable per neuron, constrained to $(0,1)$ via sigmoid. The network
-                learns how much memory each neuron retains--similar to the adaptive time constant in Liquid Neural
-                Networks.</p>
+                learns how much memory each neuron retains---similar to the adaptive time constant in Liquid Neural
+                Networks. Concretely, the raw parameter is stored as a logit (via the inverse sigmoid), and the
+                effective decay is recovered as <code>torch.sigmoid(self._decay_logit)</code>. This
+                reparameterization ensures unconstrained gradient-based optimization while guaranteeing the decay
+                stays in the valid $(0,1)$ range throughout training.</p>
+
+            <p>The soft reset in step 3 is worth noting: rather than hard-resetting the membrane to zero after
+                a spike, we subtract the threshold value. If a neuron received a very strong input that pushed
+                it well past threshold, the excess charge carries over into the next timestep. This preserves
+                information that would otherwise be lost and tends to produce more stable training dynamics.</p>
 
             <h2>Assembling the SNN Classifier</h2>
             <p>The full classifier alternates linear projections with LIF layers. The same input is presented at each
@@ -319,7 +330,18 @@ permalink: /projects/snns-live-code/
         return accumulator</code></pre>
 
             <p>Each timestep replicates the input, spikes through both hidden layers, and adds to the accumulator.
-                The predicted class is the argmax of the accumulated logits.</p>
+                The predicted class is the argmax of the accumulated logits. This is rate coding in action: the
+                network presents the same static input at every one of the $T = 25$ timesteps, and the output
+                neurons that fire most frequently---or accumulate the largest raw logits---determine the predicted
+                class. The temporal unrolling is conceptually similar to running a recurrent network for $T$
+                steps, except the recurrent state is the membrane potential and the nonlinearity is a binary spike
+                rather than a tanh or sigmoid.</p>
+
+            <p>One architectural note: the readout layer (<code>fc_out</code>) accumulates raw logits from the
+                second LIF layer's spikes, not additional spikes. This avoids the information bottleneck of
+                forcing the output to be binary, and it lets us apply standard <code>CrossEntropyLoss</code>
+                directly on the accumulated output. The model has 269,834 trainable parameters---nearly identical
+                to a comparable 2-layer MLP (269,322 params), ensuring a fair benchmark in Part 3.</p>
 
             <h2>Why Spikes Save Energy</h2>
             <p>On GPUs, every ANN weight interaction is a floating-point <strong>Multiply-Accumulate (MAC)</strong>.
@@ -332,9 +354,19 @@ permalink: /projects/snns-live-code/
                 <li><strong>Sparsity:</strong> silent neurons generate zero operations.</li>
             </ol>
 
-            <p>In Part 3 we measure this directly. The trained SNN fires at a 9.7% average rate--meaning 90% of
-                neurons are silent at any given timestep--and achieves 51.7% lower effective energy than the ANN
-                while losing only 0.47 percentage points of accuracy on MNIST.</p>
+            <p>In Part 3 we measure this directly. The trained SNN fires at a 9.7% average rate---meaning 90.3% of
+                neurons are completely silent at any given timestep. Their synaptic weights are never read; no
+                current accumulates; no energy is spent. The effective energy cost is computed by converting SOPs
+                to MAC-equivalent units:</p>
+
+            <div class="math-block">
+                $$ \text{SNN effective energy} = \frac{\text{SOPs}}{5} = \frac{649{,}765}{5} \approx 129{,}953 \text{ MAC-equivalents} $$
+            </div>
+
+            <p>Compared to the ANN's 268,800 MACs, this is a 51.7% energy reduction---the SNN uses just 48% of the
+                energy while losing only 0.47 percentage points of accuracy on MNIST. These gains compound at
+                scale: wider networks have more neurons that can stay silent, and temporal coding techniques can
+                push the average firing rate below 5%, amplifying efficiency further.</p>
 
             <h2>What Comes Next</h2>
             <p>Part 3 puts this SNN head-to-head against a parameter-matched MLP on MNIST for 10 epochs: accuracy

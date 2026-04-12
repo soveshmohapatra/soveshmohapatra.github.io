@@ -104,7 +104,7 @@ permalink: /projects/rnns-benchmark/
                 <li>Best test accuracy: 93.70% at epoch 42</li>
             </ul>
 
-            <p>Most of the learning happens in the first 10 epochs, with train accuracy jumping from 50% to 88%. After that, gains are incremental -- the model plateaus around 93% test accuracy by epoch 20 and fluctuates there for the remaining 30 epochs.</p>
+            <p>Most of the learning happens in the first 10 epochs, with train accuracy jumping from 50.31% to 87.81% and test loss dropping from 0.6670 to 0.2036. After that, gains are incremental -- the model plateaus around 93% test accuracy by epoch 20 and fluctuates there for the remaining 30 epochs. The learning rate scheduler halves the rate at epoch 20, which briefly tightens the loss curves, but the network is already near its capacity on this task.</p>
 
             <figure class="benchmark-figure">
                 <img src="{{ site.baseurl }}/assets/projects/rnns/training_curves.png" alt="Training Loss and Accuracy Curves" class="benchmark-img">
@@ -122,12 +122,13 @@ permalink: /projects/rnns-benchmark/
             </figure>
 
             <h3>Temporal Integration</h3>
-            <p>Three broad behaviors show up across the hidden units:</p>
+            <p>Three broad behaviors show up across the 64 hidden units:</p>
             <ul>
-                <li><strong>Transient response</strong> -- units that fire briefly at specific inputs then decay</li>
-                <li><strong>Accumulation</strong> -- units that build up a running signal over multiple steps</li>
-                <li><strong>Oscillation</strong> -- units that alternate between positive and negative activation</li>
+                <li><strong>Transient response</strong> -- units that fire briefly at specific inputs then decay back toward zero within a few steps</li>
+                <li><strong>Accumulation</strong> -- units that build up a running signal over multiple steps, effectively tracking a cumulative statistic of the input</li>
+                <li><strong>Oscillation</strong> -- units that alternate between positive and negative activation, potentially encoding periodic patterns</li>
             </ul>
+            <p>The classification task requires computing a global mean, so the accumulator units are doing most of the heavy lifting. They approximate a running average, and the final-step readout extracts the sign of that average for the binary label. The transient and oscillatory units likely encode finer-grained patterns that help with boundary cases.</p>
 
             <h2>The Vanishing Gradient Problem in Practice</h2>
 
@@ -138,7 +139,7 @@ permalink: /projects/rnns-benchmark/
                 $$ \frac{\partial L}{\partial W} = \sum_t \frac{\partial L}{\partial h_t} \cdot \frac{\partial h_t}{\partial W} $$
             </div>
 
-            <p>In practice, the contributions from early time steps are orders of magnitude smaller than those from later steps.</p>
+            <p>In practice, the contributions from early time steps are orders of magnitude smaller than those from later steps. Each backward step multiplies by $W_{hh}^T \cdot \text{diag}(1 - \tanh^2(\cdot))$, and with tanh derivatives bounded between 0 and 1, the product shrinks rapidly.</p>
 
             <h3>What This Looks Like in Practice</h3>
             <p>The consequence is straightforward:</p>
@@ -147,6 +148,7 @@ permalink: /projects/rnns-benchmark/
                 <li>The network barely updates its weights based on early inputs</li>
                 <li>The effective context window is shorter than the actual sequence length</li>
             </ul>
+            <p>For our 20-step sequences this is manageable -- the network still reaches 93.7% test accuracy. But scale up to sequences of length 100 or 500, and the model would struggle to learn dependencies that span the full input. The training loss would stall at a higher value, and early-sequence information would be effectively invisible to the optimizer.</p>
 
             <h2>Why LSTMs and GRUs Were Invented</h2>
             <p>The vanishing gradient problem motivated gated architectures:</p>

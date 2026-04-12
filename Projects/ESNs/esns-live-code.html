@@ -223,15 +223,31 @@ permalink: /projects/esns-live-code/
                 </p>
             </div>
 
+            <h2>The Constructor: Wiring the ESN</h2>
+            <p>The <code>EchoStateNetwork</code> class extends <code>nn.Module</code> but uses <code>requires_grad=False</code> on every parameter except the readout. The constructor takes seven arguments: <code>input_size</code>, <code>hidden_size</code>, <code>output_size</code>, <code>spectral_radius</code> (default 0.9), <code>sparsity</code> (default 0.1), <code>input_scaling</code> (default 1.0), and <code>leaky_rate</code> (default 1.0).</p>
+
+            <pre><code class="language-python">class EchoStateNetwork(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size,
+                 spectral_radius=0.9, sparsity=0.1,
+                 input_scaling=1.0, leaky_rate=1.0):
+        super().__init__()
+        # Input weights: uniform [-input_scaling, input_scaling]
+        self.W_in = nn.Parameter(
+            (torch.rand(hidden_size, input_size) * 2 - 1) * input_scaling,
+            requires_grad=False
+        )</code></pre>
+
+            <p>The input weight matrix $W_{in}$ maps from the input dimension to the reservoir dimension. It is drawn uniformly in $[-\text{input\_scaling}, +\text{input\_scaling}]$ and frozen. The scaling factor controls how strongly the input drives the reservoir dynamics.</p>
+
             <h2>Initializing the Sparse Reservoir</h2>
-            <p>The reservoir matrix $W_{res}$ is the core data structure. It needs to be large (hundreds to thousands of neurons) and sparse.</p>
+            <p>The reservoir matrix $W_{res}$ is the core data structure. It needs to be large (hundreds to thousands of neurons) and sparse. Sparsity keeps the matrix computationally manageable and introduces structural diversity--each neuron receives input from only a small random subset of other neurons.</p>
 
             <pre><code class="language-python"># 1. Initialize sparse random matrix
 W = torch.rand(hidden_size, hidden_size) - 0.5
 mask = torch.rand(hidden_size, hidden_size) < sparsity
 W = W * mask</code></pre>
 
-            <p>An unscaled random matrix will either explode or vanish. To enforce the Echo State Property, we compute the current spectral radius and rescale to a target value below 1.</p>
+            <p>With <code>sparsity=0.05</code> (5%), a 500-neuron reservoir has about 12,500 non-zero entries out of 250,000 total. An unscaled random matrix will either explode or vanish. To enforce the Echo State Property, we compute the current spectral radius and rescale to a target value below 1.</p>
 
             <pre><code class="language-python"># 2. Scale W_res to achieve the desired Spectral Radius
 eigenvalues = torch.linalg.eigvals(W)
@@ -242,24 +258,34 @@ if current_sr > 0:
 
 self.W_res = nn.Parameter(W, requires_grad=False)</code></pre>
 
-            <p>Setting <code>requires_grad=False</code> tells PyTorch this matrix is frozen--no gradients will ever flow through it.</p>
+            <p>Setting <code>requires_grad=False</code> tells PyTorch this matrix is frozen--no gradients will ever flow through it. The output weight matrix <code>W_out</code> is initialized to zeros with shape <code>(output_size, hidden_size + 1 + input_size)</code>--the extra dimensions accommodate a bias term and the raw input, which are concatenated into the readout features.</p>
 
             <h2>The State Harvesting Loop</h2>
-            <p>Since there is no BPTT, the <code>forward</code> pass just pushes input through the frozen reservoir and records the resulting states $X$ at each timestep.</p>
+            <p>Since there is no BPTT, the <code>forward</code> pass just pushes input through the frozen reservoir and records the resulting states $X$ at each timestep. The update follows the leaky integrator equation from Part 1:</p>
 
             <pre><code class="language-python"># Leaky integrator ESN state update
 update = torch.tanh(u_t @ self.W_in.T + state @ self.W_res.T)
 state = (1 - leaky_rate) * state + leaky_rate * update
 states.append(state)</code></pre>
 
+            <p>The state is initialized to zeros. At each timestep $t$, the input $u(t)$ is projected through $W_{in}$, the previous state is multiplied by $W_{res}$, and the sum passes through tanh. The leak rate $\alpha$ then blends the old state with the new activation. After the loop, states are stacked into a tensor of shape <code>(seq_len, hidden_size)</code> and concatenated with a bias column and the raw input to form the extended state matrix:</p>
+
+            <pre><code class="language-python"># Construct extended state: [1, u(t), x(t)]
+bias = torch.ones(b, seq_len, 1, device=inputs.device)
+extended_states = torch.cat([bias, inputs, states], dim=-1)
+outputs = extended_states @ self.W_out.T</code></pre>
+
+            <h2>Washout: Discarding the Transient</h2>
+            <p>The reservoir starts from a zero state, which means the first several timesteps reflect initial transient dynamics rather than the true input-driven response. The <code>fit()</code> method accepts a <code>washout</code> parameter (default 100) and discards that many initial states before solving the regression. This is essential--including the transient corrupts the readout fit.</p>
+
             <h2>Closed-Form Ridge Regression Readout</h2>
-            <p>The <code>fit()</code> method is where training happens. Given harvested states $X$ and targets $Y$, we solve for $W_{out}$ via the Ridge Regression normal equations:</p>
+            <p>The <code>fit()</code> method is where training happens. Given harvested states $X$ and targets $Y$ (both after washout), we solve for $W_{out}$ via the Ridge Regression normal equations:</p>
 
             <div class="math-block">
                 $$ W_{out} = Y^T X (X^T X + \lambda \mathbf{I})^{-1} $$
             </div>
 
-            <p>In PyTorch, <code>torch.linalg.solve</code> handles this efficiently:</p>
+            <p>Rather than computing the matrix inverse explicitly, we reformulate this as a linear system and use <code>torch.linalg.solve</code>, which is numerically more stable:</p>
 
             <pre><code class="language-python"># Add a bias term to the harvested states
 S = torch.cat([bias, U, X], dim=1)
@@ -275,7 +301,9 @@ W_out_T = torch.linalg.solve(STS + ridge_lambda * identity, STY)
 # Assign parameters instantly
 self.W_out.data = W_out_T.T</code></pre>
 
-            <p>That is the entire training procedure: one forward pass to harvest states, one matrix solve to fit the readout. No epochs, no learning rate, no gradient tape.</p>
+            <p>The regularization term $\lambda I$ (with $\lambda = 10^{-4}$ by default) prevents overfitting when the reservoir is very large relative to the training sequence. The matrix $S^T S$ has dimensions $(1 + d_{\text{input}} + d_{\text{hidden}}) \times (1 + d_{\text{input}} + d_{\text{hidden}})$--for our 500-neuron reservoir, that is a $502 \times 502$ system. Solving it takes milliseconds on any modern CPU.</p>
+
+            <p>That is the entire training procedure: one forward pass to harvest states, one matrix solve to fit the readout. No epochs, no learning rate, no gradient tape. The implementation includes unit tests verifying that the spectral radius is correctly scaled, output shapes are correct, and fitting actually reduces prediction error on a simple sine-wave task.</p>
 
         </article>
     </main>

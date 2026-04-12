@@ -228,12 +228,21 @@ permalink: /projects/snns-theory/
             <h2>The Biological Neuron</h2>
             <p>A biological neuron integrates electrical charge from thousands of synaptic inputs through its
                 dendrites. This charge gradually builds the neuron's <em>membrane potential</em> $V_m$. If $V_m$
-                crosses a threshold $V_{th}$, the neuron fires a spike—a stereotyped 1--2 ms voltage pulse—which
+                crosses a threshold $V_{th}$, the neuron fires a spike---a stereotyped 1--2 ms voltage pulse---which
                 travels down the axon to stimulate or inhibit downstream neurons.</p>
 
-            <p>After firing, the potential resets and briefly hyperpolarizes (drops below resting potential) during
-                a short refractory period. Information is not encoded in spike amplitude—they are all the same
-                height. It is encoded in <em>timing</em> and <em>rate</em>: when and how often the neuron fires.</p>
+            <p>After firing, the potential is rapidly reset and then hyperpolarized---driven <em>below</em>
+                resting potential---for a short refractory period. During this window the neuron is effectively
+                silent, leaking charge back toward its resting state before it can integrate new input. This
+                refractory mechanism prevents runaway firing and enforces a natural sparsity: even heavily
+                stimulated neurons have an upper bound on their firing rate.</p>
+
+            <p>Information is not encoded in spike amplitude---they are all the same height. It is encoded in
+                <em>timing</em> and <em>rate</em>: when and how often the neuron fires. This is a radically
+                different communication protocol from the continuous-valued activations in standard neural
+                networks, and it is the reason biological neural circuits are so energy-efficient. A neuron
+                that does not fire consumes almost no energy. Its downstream synapses are never activated, and
+                the corresponding weights are never read.</p>
 
             <h2>The Leaky Integrate-and-Fire (LIF) Model</h2>
             <p>The <strong>Leaky Integrate-and-Fire (LIF)</strong> model is the simplest and most widely used
@@ -269,7 +278,12 @@ permalink: /projects/snns-theory/
             </div>
 
             <p>where $\Theta(\cdot)$ is the Heaviside step function, and the final equation implements the <em>soft
-                    reset</em>: after a spike, the membrane drops by $V_{th}$.</p>
+                    reset</em>: after a spike, the membrane drops by $V_{th}$. The decay factor $\beta$ controls the
+                neuron's memory. A value close to 1 means the neuron retains charge across many timesteps, integrating
+                information over a long temporal window. A value close to 0 means the neuron is memoryless---it responds
+                only to the current input. In our PyTorch implementation (Part 2), $\beta$ is a <em>learnable</em>
+                parameter per neuron, constrained to $(0,1)$ via a sigmoid, so the network discovers the right
+                time constant for each neuron during training.</p>
 
             <h2>Rate Coding vs. Temporal Coding</h2>
             <p>Two paradigms for encoding information in spikes:</p>
@@ -286,13 +300,22 @@ permalink: /projects/snns-theory/
                 spikes over $T$ steps.</p>
 
             <h2>The Gradient Problem</h2>
-            <p>Here is where SNNs diverge from standard deep learning. The spike emission $S[t] =
+            <p>Here is where SNNs diverge sharply from standard deep learning. The spike emission $S[t] =
                 \Theta(V[t] - V_{th})$ is a Heaviside step function. Its derivative is a Dirac delta: zero almost
                 everywhere, undefined at the threshold. Backpropagation requires $\frac{\partial S}{\partial V}$ at
-                every neuron—and with the true gradient, the chain rule collapses to zero.</p>
+                every neuron---and with the true gradient, the entire chain rule collapses to zero.</p>
 
-            <p>For decades this made SNNs appear untrainable via gradient descent. The fix is the <strong>surrogate
-                gradient</strong> trick, which we implement in Part 2.</p>
+            <p>This is not a minor inconvenience. In a multi-layer SNN, every layer contains a spiking
+                nonlinearity. The gradient must pass through all of them during backpropagation, and each one
+                multiplies the signal by zero. The result: no weight in the network receives any useful learning
+                signal. For decades, this made SNNs appear fundamentally untrainable via gradient descent.</p>
+
+            <p>The solution is the <strong>surrogate gradient</strong> trick: keep the forward pass exact (hard
+                Heaviside threshold), but substitute a smooth, differentiable approximation during the backward
+                pass only. The surrogate we use is the derivative of the fast sigmoid, $\frac{1}{(1 + k|V -
+                V_{th}|)^2}$, which peaks at the threshold and smoothly decays to zero away from it. The sharpness
+                factor $k$ controls how closely the surrogate approximates the true step---we use $k = 10$.
+                This is implemented in Part 2 via a custom <code>torch.autograd.Function</code>.</p>
 
             <h2>What Comes Next</h2>
             <p>Part 2 takes these equations and turns them into a trainable PyTorch module: a custom
