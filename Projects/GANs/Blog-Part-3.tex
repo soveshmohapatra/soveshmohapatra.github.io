@@ -1,0 +1,118 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry}
+\geometry{a4paper, margin=1in}
+
+\title{\textbf{GANs from Scratch: Part 3 -- Watching Noise Become Digits}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-3-Banner.png}
+\end{center}
+
+\section{Introduction}
+Welcome to the grand finale of our 3-part series on building GANs from first principles!
+
+In Part 1, we derived the minimax objective and proved that GAN training minimizes the Jensen-Shannon divergence between the real and generated distributions. In Part 2, we implemented both a Vanilla GAN and a DCGAN in pure PyTorch, navigating critical architectural choices like LeakyReLU, BatchNorm placement, and weight initialization.
+
+Now it is time to train these models and watch noise become handwriting.
+
+\section{Experimental Setup}
+We trained both architectures on a 5,000-image subset of MNIST for 50 epochs with the following configuration:
+\begin{itemize}
+    \item Batch size: 64 (78 batches per epoch)
+    \item Optimizer: Adam with $\text{lr} = 0.0002$, $\beta_1 = 0.5$, $\beta_2 = 0.999$
+    \item Loss: Binary Cross-Entropy (BCELoss)
+    \item Noise dimension: $z \in \mathbb{R}^{100}$, sampled from $\mathcal{N}(0, 1)$
+    \item Data normalization: $[-1, 1]$ to match Tanh output
+\end{itemize}
+
+The Vanilla GAN has 1,489,936 Generator parameters and 533,505 Discriminator parameters. The DCGAN has 1,948,545 Generator parameters but only 138,817 Discriminator parameters --- nearly 4$\times$ fewer than the Vanilla GAN's Discriminator.
+
+\section{Training Dynamics: Vanilla GAN}
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{VanillaGAN_training_curves.png}
+\end{center}
+
+The Vanilla GAN's training curves tell the story of an adversarial tug-of-war. In the first epoch, the Generator loss starts at 0.7260 while the Discriminator loss is 1.3190 --- the Discriminator is uncertain, and the Generator's random outputs happen to produce moderately low loss due to the initial weight distribution.
+
+Between epochs 1--10, the losses oscillate dramatically. The Generator loss swings from 0.73 to 1.30, and the Discriminator loss ranges from 1.14 to 1.37. This is the hallmark of early adversarial training: the two networks are each adapting to the other's latest strategy, creating oscillatory dynamics.
+
+By epoch 20, the system begins to stabilize. The Generator loss settles around 1.1--1.3, and the Discriminator loss converges near 1.16--1.23. Interestingly, the Generator loss \textit{decreases} through epochs 25--50 (from $\sim$1.15 to 1.01), suggesting the Generator continues improving even as the Discriminator's loss slowly drifts upward to 1.28. This indicates the Generator is gradually winning the adversarial game.
+
+Final values: $D_{\text{loss}} = 1.2590$, $G_{\text{loss}} = 1.0170$.
+
+\section{Training Dynamics: DCGAN}
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{DCGAN_training_curves.png}
+\end{center}
+
+The DCGAN exhibits a strikingly different training trajectory. At epoch 1, the Discriminator dominates entirely: $D_{\text{loss}} = 0.4209$ (nearly perfect classification) while $G_{\text{loss}} = 2.8038$ (the Generator's random convolutional outputs are trivially detected).
+
+But the convolutional architecture recovers remarkably fast. By epoch 4, the Generator loss has plummeted to 0.9791, and by epoch 10 both losses have converged to the $\sim$1.05--1.10 range. From epoch 15 onward, the training curves are nearly flat and remarkably stable: $D_{\text{loss}}$ hovers around 1.12--1.14, and $G_{\text{loss}}$ stays near 1.05--1.09.
+
+Final values: $D_{\text{loss}} = 1.1260$, $G_{\text{loss}} = 1.0936$.
+
+This smoother convergence is a direct consequence of the convolutional architecture. The spatial inductive bias means the Generator and Discriminator are working in a more constrained, better-structured parameter space, which reduces the oscillatory dynamics that plague fully-connected GANs.
+
+\section{Generated Sample Quality}
+
+\subsection{Vanilla GAN}
+\begin{center}
+    \includegraphics[width=0.7\textwidth]{VanillaGAN_final_grid.png}
+\end{center}
+
+The Vanilla GAN produces recognizable handwritten digits after 50 epochs. You can clearly identify 0s, 1s, 3s, 5s, 7s, and other digit classes across the 8$\times$8 grid. However, the samples exhibit characteristic artifacts of fully-connected generation:
+\begin{itemize}
+    \item \textbf{Speckling noise}: Random bright pixels scattered across the dark background, because the fully-connected layers have no concept of spatial locality.
+    \item \textbf{Fuzzy edges}: Digit strokes lack crisp boundaries, appearing blurred and diffuse.
+    \item \textbf{Inconsistent thickness}: Stroke widths vary erratically within single digits.
+\end{itemize}
+
+These artifacts arise because the Generator must independently predict each of the 784 pixels. Without convolutional structure, there is no mechanism enforcing that neighboring pixels should have similar values.
+
+\subsection{DCGAN}
+\begin{center}
+    \includegraphics[width=0.7\textwidth]{DCGAN_final_grid.png}
+\end{center}
+
+The DCGAN samples are dramatically better. The generated digits feature:
+\begin{itemize}
+    \item \textbf{Clean strokes}: Well-defined edges with consistent thickness, closely resembling real handwriting.
+    \item \textbf{Diverse classes}: All 10 digit classes (0--9) are represented, with natural variation in style.
+    \item \textbf{Dark backgrounds}: Minimal noise or artifacts in the non-digit regions.
+    \item \textbf{Spatial coherence}: Digits are centered and properly proportioned, thanks to the transposed convolution's spatial awareness.
+\end{itemize}
+
+The DCGAN achieves this superior quality with a Discriminator that is nearly 4$\times$ smaller than the Vanilla GAN's (138K vs.\ 533K parameters). The convolutional structure provides such a strong inductive bias that fewer parameters are needed to learn the real-vs-fake classification.
+
+\section{Mode Collapse Analysis}
+One of the most feared failure modes of GANs is \textit{mode collapse}: the Generator learns to produce only a small subset of the data distribution, ignoring entire classes or styles.
+
+In our experiments, neither model exhibits severe mode collapse. Both grids show diversity across digit classes. However, the Vanilla GAN shows mild mode preference --- certain digits (like 7 and 1) appear more frequently than others (like 2 and 6). The DCGAN's distribution is more uniform.
+
+This can be understood through the lens of the minimax objective. Mode collapse occurs when the Generator finds a small set of outputs that reliably fool the Discriminator, and the Discriminator is too slow to adapt. The DCGAN's faster convergence and more stable dynamics reduce the window for this failure mode.
+
+\section{Connections to Other Generative Models}
+GANs occupy a unique position in the landscape of generative models:
+
+\begin{itemize}
+    \item \textbf{VAEs} (Variational Autoencoders) optimize a tractable lower bound on the log-likelihood and produce blurry samples, but have stable training and a meaningful latent space.
+    \item \textbf{GANs} produce sharper samples by optimizing an adversarial objective, but suffer from training instability and lack a density estimate.
+    \item \textbf{Diffusion Models} iteratively denoise Gaussian noise and achieve state-of-the-art quality, but require hundreds of forward passes at inference time.
+    \item \textbf{Normalizing Flows} provide exact likelihood computation via invertible transformations, but are constrained by the requirement of bijectivity.
+\end{itemize}
+
+The adversarial training principle from GANs has influenced all of these --- adversarial losses are now commonly combined with reconstruction losses in hybrid architectures, and the Discriminator idea has evolved into critic networks (WGAN) and classifier-free guidance (in Diffusion models).
+
+\section{Conclusion}
+Through these 3 posts, we have demystified Generative Adversarial Networks from the ground up. We derived the math showing that GAN training minimizes the Jensen-Shannon divergence. We implemented two architectures in pure PyTorch, revealing how seemingly small design choices (LeakyReLU, BatchNorm, weight init) determine whether training converges or collapses. And we trained both models on real data, watching a 100-dimensional noise vector learn to draw recognizable handwritten digits without ever seeing a single real image.
+
+The adversarial principle --- learning through competition rather than supervision --- remains one of the most elegant ideas in deep learning.
+
+Stay tuned for the next series!
+
+\end{document}

@@ -1,0 +1,152 @@
+============================================================
+GANs from Scratch — Training Script
+============================================================
+Device: cpu
+Subset size: 5000
+Batch size: 64
+Epochs: 50
+Learning rate: 0.0002
+Z dimension: 100
+
+Dataset loaded: 5000 images, 78 batches per epoch
+
+============================================================
+Training VanillaGAN
+============================================================
+Generator params:     1,489,936
+Discriminator params: 533,505
+
+[VanillaGAN] Epoch   1/50 | D_loss: 1.3190 | G_loss: 0.7260
+[VanillaGAN] Epoch   2/50 | D_loss: 1.1432 | G_loss: 1.0698
+[VanillaGAN] Epoch   3/50 | D_loss: 1.3688 | G_loss: 0.7527
+[VanillaGAN] Epoch   4/50 | D_loss: 1.2787 | G_loss: 0.9833
+[VanillaGAN] Epoch   5/50 | D_loss: 1.1919 | G_loss: 1.1244
+[VanillaGAN] Epoch   6/50 | D_loss: 1.3204 | G_loss: 0.8898
+[VanillaGAN] Epoch   7/50 | D_loss: 1.2656 | G_loss: 0.9632
+[VanillaGAN] Epoch   8/50 | D_loss: 1.1808 | G_loss: 1.0577
+[VanillaGAN] Epoch   9/50 | D_loss: 1.1618 | G_loss: 1.1275
+[VanillaGAN] Epoch  10/50 | D_loss: 1.1436 | G_loss: 1.1643
+[VanillaGAN] Epoch  11/50 | D_loss: 1.1843 | G_loss: 1.1323
+[VanillaGAN] Epoch  12/50 | D_loss: 1.1829 | G_loss: 1.2269
+[VanillaGAN] Epoch  13/50 | D_loss: 1.1855 | G_loss: 1.2207
+[VanillaGAN] Epoch  14/50 | D_loss: 1.1395 | G_loss: 1.1881
+[VanillaGAN] Epoch  15/50 | D_loss: 1.1863 | G_loss: 1.1683
+[VanillaGAN] Epoch  16/50 | D_loss: 1.1882 | G_loss: 1.1791
+[VanillaGAN] Epoch  17/50 | D_loss: 1.1827 | G_loss: 1.2674
+[VanillaGAN] Epoch  18/50 | D_loss: 1.1920 | G_loss: 1.3015
+[VanillaGAN] Epoch  19/50 | D_loss: 1.1879 | G_loss: 1.1555
+[VanillaGAN] Epoch  20/50 | D_loss: 1.1699 | G_loss: 1.1514
+[VanillaGAN] Epoch  21/50 | D_loss: 1.2309 | G_loss: 1.1177
+[VanillaGAN] Epoch  22/50 | D_loss: 1.2598 | G_loss: 1.0789
+[VanillaGAN] Epoch  23/50 | D_loss: 1.2372 | G_loss: 1.1188
+[VanillaGAN] Epoch  24/50 | D_loss: 1.1819 | G_loss: 1.1360
+[VanillaGAN] Epoch  25/50 | D_loss: 1.1954 | G_loss: 1.1463
+[VanillaGAN] Epoch  26/50 | D_loss: 1.2132 | G_loss: 1.0986
+[VanillaGAN] Epoch  27/50 | D_loss: 1.2312 | G_loss: 1.1230
+[VanillaGAN] Epoch  28/50 | D_loss: 1.2514 | G_loss: 1.1063
+[VanillaGAN] Epoch  29/50 | D_loss: 1.2046 | G_loss: 1.1083
+[VanillaGAN] Epoch  30/50 | D_loss: 1.2261 | G_loss: 1.0811
+[VanillaGAN] Epoch  31/50 | D_loss: 1.2383 | G_loss: 1.0933
+[VanillaGAN] Epoch  32/50 | D_loss: 1.2291 | G_loss: 1.0692
+[VanillaGAN] Epoch  33/50 | D_loss: 1.1995 | G_loss: 1.0827
+[VanillaGAN] Epoch  34/50 | D_loss: 1.2586 | G_loss: 1.0204
+[VanillaGAN] Epoch  35/50 | D_loss: 1.2383 | G_loss: 1.0369
+[VanillaGAN] Epoch  36/50 | D_loss: 1.2485 | G_loss: 1.0262
+[VanillaGAN] Epoch  37/50 | D_loss: 1.2566 | G_loss: 1.0358
+[VanillaGAN] Epoch  38/50 | D_loss: 1.2442 | G_loss: 1.0359
+[VanillaGAN] Epoch  39/50 | D_loss: 1.2154 | G_loss: 1.0865
+[VanillaGAN] Epoch  40/50 | D_loss: 1.2405 | G_loss: 1.0653
+[VanillaGAN] Epoch  41/50 | D_loss: 1.2375 | G_loss: 1.0477
+[VanillaGAN] Epoch  42/50 | D_loss: 1.2563 | G_loss: 1.0442
+[VanillaGAN] Epoch  43/50 | D_loss: 1.2390 | G_loss: 1.0016
+[VanillaGAN] Epoch  44/50 | D_loss: 1.2427 | G_loss: 1.0194
+[VanillaGAN] Epoch  45/50 | D_loss: 1.2185 | G_loss: 1.0593
+[VanillaGAN] Epoch  46/50 | D_loss: 1.2519 | G_loss: 1.0397
+[VanillaGAN] Epoch  47/50 | D_loss: 1.2422 | G_loss: 1.0274
+[VanillaGAN] Epoch  48/50 | D_loss: 1.2591 | G_loss: 1.0382
+[VanillaGAN] Epoch  49/50 | D_loss: 1.2368 | G_loss: 1.0156
+[VanillaGAN] Epoch  50/50 | D_loss: 1.2590 | G_loss: 1.0170
+
+============================================================
+Training DCGAN
+============================================================
+Generator params:     1,948,545
+Discriminator params: 138,817
+
+[DCGAN] Epoch   1/50 | D_loss: 0.4209 | G_loss: 2.8038
+[DCGAN] Epoch   2/50 | D_loss: 0.9582 | G_loss: 1.3343
+[DCGAN] Epoch   3/50 | D_loss: 1.1368 | G_loss: 1.0459
+[DCGAN] Epoch   4/50 | D_loss: 1.1745 | G_loss: 0.9791
+[DCGAN] Epoch   5/50 | D_loss: 1.1126 | G_loss: 1.0180
+[DCGAN] Epoch   6/50 | D_loss: 1.0182 | G_loss: 1.1251
+[DCGAN] Epoch   7/50 | D_loss: 0.9019 | G_loss: 1.2449
+[DCGAN] Epoch   8/50 | D_loss: 0.8498 | G_loss: 1.3525
+[DCGAN] Epoch   9/50 | D_loss: 0.9197 | G_loss: 1.3139
+[DCGAN] Epoch  10/50 | D_loss: 0.9990 | G_loss: 1.2114
+[DCGAN] Epoch  11/50 | D_loss: 1.0598 | G_loss: 1.1217
+[DCGAN] Epoch  12/50 | D_loss: 1.0936 | G_loss: 1.0816
+[DCGAN] Epoch  13/50 | D_loss: 1.1094 | G_loss: 1.0714
+[DCGAN] Epoch  14/50 | D_loss: 1.1366 | G_loss: 1.0522
+[DCGAN] Epoch  15/50 | D_loss: 1.1484 | G_loss: 1.0535
+[DCGAN] Epoch  16/50 | D_loss: 1.1353 | G_loss: 1.0619
+[DCGAN] Epoch  17/50 | D_loss: 1.1235 | G_loss: 1.0558
+[DCGAN] Epoch  18/50 | D_loss: 1.1213 | G_loss: 1.0455
+[DCGAN] Epoch  19/50 | D_loss: 1.1219 | G_loss: 1.0572
+[DCGAN] Epoch  20/50 | D_loss: 1.1018 | G_loss: 1.0759
+[DCGAN] Epoch  21/50 | D_loss: 1.1077 | G_loss: 1.0948
+[DCGAN] Epoch  22/50 | D_loss: 1.1158 | G_loss: 1.0782
+[DCGAN] Epoch  23/50 | D_loss: 1.0866 | G_loss: 1.0731
+[DCGAN] Epoch  24/50 | D_loss: 1.1180 | G_loss: 1.1061
+[DCGAN] Epoch  25/50 | D_loss: 1.1022 | G_loss: 1.0807
+[DCGAN] Epoch  26/50 | D_loss: 1.1163 | G_loss: 1.0799
+[DCGAN] Epoch  27/50 | D_loss: 1.1154 | G_loss: 1.0932
+[DCGAN] Epoch  28/50 | D_loss: 1.1078 | G_loss: 1.0908
+[DCGAN] Epoch  29/50 | D_loss: 1.0954 | G_loss: 1.0851
+[DCGAN] Epoch  30/50 | D_loss: 1.1162 | G_loss: 1.0923
+[DCGAN] Epoch  31/50 | D_loss: 1.1218 | G_loss: 1.0871
+[DCGAN] Epoch  32/50 | D_loss: 1.1163 | G_loss: 1.0830
+[DCGAN] Epoch  33/50 | D_loss: 1.1049 | G_loss: 1.0795
+[DCGAN] Epoch  34/50 | D_loss: 1.1381 | G_loss: 1.0809
+[DCGAN] Epoch  35/50 | D_loss: 1.1453 | G_loss: 1.0852
+[DCGAN] Epoch  36/50 | D_loss: 1.1139 | G_loss: 1.0605
+[DCGAN] Epoch  37/50 | D_loss: 1.1080 | G_loss: 1.0867
+[DCGAN] Epoch  38/50 | D_loss: 1.1351 | G_loss: 1.0984
+[DCGAN] Epoch  39/50 | D_loss: 1.1315 | G_loss: 1.0796
+[DCGAN] Epoch  40/50 | D_loss: 1.1315 | G_loss: 1.0983
+[DCGAN] Epoch  41/50 | D_loss: 1.1301 | G_loss: 1.0920
+[DCGAN] Epoch  42/50 | D_loss: 1.1154 | G_loss: 1.0673
+[DCGAN] Epoch  43/50 | D_loss: 1.1233 | G_loss: 1.0736
+[DCGAN] Epoch  44/50 | D_loss: 1.1418 | G_loss: 1.0773
+[DCGAN] Epoch  45/50 | D_loss: 1.1205 | G_loss: 1.0840
+[DCGAN] Epoch  46/50 | D_loss: 1.1176 | G_loss: 1.0796
+[DCGAN] Epoch  47/50 | D_loss: 1.1099 | G_loss: 1.0963
+[DCGAN] Epoch  48/50 | D_loss: 1.1238 | G_loss: 1.0795
+[DCGAN] Epoch  49/50 | D_loss: 1.1215 | G_loss: 1.0822
+[DCGAN] Epoch  50/50 | D_loss: 1.1260 | G_loss: 1.0936
+
+============================================================
+TRAINING COMPLETE — FINAL SUMMARY
+============================================================
+
+--- Vanilla GAN ---
+  Final G_loss: 1.0170
+  Final D_loss: 1.2590
+  Min G_loss:   0.7260 (Epoch 1)
+  Min D_loss:   1.1395 (Epoch 14)
+
+--- DCGAN ---
+  Final G_loss: 1.0936
+  Final D_loss: 1.1260
+  Min G_loss:   0.9791 (Epoch 4)
+  Min D_loss:   0.4209 (Epoch 1)
+
+Saved artifacts:
+  - VanillaGAN sample grids (every 10 epochs)
+  - VanillaGAN final 8x8 grid
+  - VanillaGAN training curves
+  - DCGAN sample grids (every 10 epochs)
+  - DCGAN final 8x8 grid
+  - DCGAN training curves
+  - Training log: train.log
+
+============================================================

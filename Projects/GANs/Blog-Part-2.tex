@@ -1,0 +1,180 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, graphicx, hyperref, geometry, listings, xcolor}
+\geometry{a4paper, margin=1in}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\title{\textbf{GANs from Scratch: Part 2 -- Pure PyTorch Implementation}}
+\author{Build in Public Series}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+    \includegraphics[width=\textwidth]{Post-2-Banner.png}
+\end{center}
+
+\section{Introduction}
+Welcome to Part 2 of our series on Generative Adversarial Networks. In Part 1, we derived the minimax objective, proved the form of the optimal discriminator, and showed that GAN training implicitly minimizes the Jensen-Shannon divergence between real and generated distributions.
+
+Now, it is time to turn those equations into code. We implement two complete architectures in pure PyTorch: a Vanilla GAN with fully-connected layers and a Deep Convolutional GAN (DCGAN) that leverages the spatial inductive bias of convolutions.
+
+\section{The Vanilla Generator}
+The Generator maps a 100-dimensional noise vector $z$ to a $28 \times 28$ image through a sequence of fully-connected layers with BatchNorm and ReLU activations:
+
+\begin{lstlisting}[language=Python]
+class Generator(nn.Module):
+    def __init__(self, z_dim=100):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(z_dim, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(True),
+            nn.Linear(256, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(True),
+            nn.Linear(512, 1024),
+            nn.BatchNorm1d(1024),
+            nn.ReLU(True),
+            nn.Linear(1024, 784),
+            nn.Tanh(),
+        )
+
+    def forward(self, z):
+        out = self.net(z)
+        return out.view(-1, 1, 28, 28)
+\end{lstlisting}
+
+The final \texttt{Tanh} activation ensures the output lies in $[-1, 1]$, matching our data normalization. This seemingly small detail is critical: a mismatch between the generator's output range and the data range prevents convergence entirely.
+
+\section{The Vanilla Discriminator}
+The Discriminator takes a $28 \times 28$ image, flattens it, and classifies it as real or fake through descending linear layers:
+
+\begin{lstlisting}[language=Python]
+class Discriminator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(784, 512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Linear(256, 1),
+            nn.Sigmoid(),
+        )
+\end{lstlisting}
+
+Notice the use of \texttt{LeakyReLU(0.2)} instead of standard ReLU. In the Discriminator, dead neurons from ReLU can kill the gradient signal entirely, preventing the Generator from learning. LeakyReLU's small negative slope (0.2) ensures that gradients always flow, even for negative activations.
+
+\section{The DCGAN Architecture}
+Radford et al. (2015) identified a set of architectural guidelines that dramatically stabilize GAN training:
+\begin{enumerate}
+    \item Replace pooling layers with strided convolutions (Discriminator) and transposed convolutions (Generator)
+    \item Use BatchNorm in both networks (except the Discriminator's input layer and the Generator's output layer)
+    \item Use ReLU in the Generator, LeakyReLU in the Discriminator
+    \item Remove fully-connected hidden layers in favor of convolutional structure
+\end{enumerate}
+
+\subsection{DCGAN Generator}
+The DCGAN Generator projects the noise vector into a spatial feature map, then progressively upsamples using \texttt{ConvTranspose2d}:
+
+\begin{lstlisting}[language=Python]
+class DCGenerator(nn.Module):
+    def __init__(self, z_dim=100):
+        super().__init__()
+        self.project = nn.Sequential(
+            nn.Linear(z_dim, 256 * 7 * 7),
+            nn.BatchNorm1d(256 * 7 * 7),
+            nn.ReLU(True),
+        )
+        self.conv_blocks = nn.Sequential(
+            nn.ConvTranspose2d(256, 128, 4, 2, 1),  # -> (128, 14, 14)
+            nn.BatchNorm2d(128),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(128, 64, 4, 2, 1),   # -> (64, 28, 28)
+            nn.BatchNorm2d(64),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, 1, 3, 1, 1),     # -> (1, 28, 28)
+            nn.Tanh(),
+        )
+\end{lstlisting}
+
+The transposed convolutions learn spatial upsampling filters rather than relying on the fully-connected network to independently generate each pixel. This gives the generator an inductive bias for local spatial structure --- exactly what's needed for image generation.
+
+\subsection{DCGAN Discriminator}
+The Discriminator mirrors the Generator with standard strided convolutions:
+
+\begin{lstlisting}[language=Python]
+class DCDiscriminator(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv_blocks = nn.Sequential(
+            nn.Conv2d(1, 64, 4, 2, 1),         # -> (64, 14, 14)
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(64, 128, 4, 2, 1),       # -> (128, 7, 7)
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(128 * 7 * 7, 1),
+            nn.Sigmoid(),
+        )
+\end{lstlisting}
+
+Note that the first convolutional layer has no BatchNorm, following the DCGAN paper's recommendation. Normalizing the raw input can destabilize early training.
+
+\section{Weight Initialization}
+Both architectures use custom weight initialization drawn from $\mathcal{N}(0, 0.02)$. The DCGAN paper found this essential for stable convergence. Without it, the networks can fall into degenerate modes within the first few epochs.
+
+\begin{lstlisting}[language=Python]
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find("Conv") != -1 or classname.find("Linear") != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find("BatchNorm") != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+\end{lstlisting}
+
+\section{The Training Loop}
+The adversarial training loop alternates between two optimization steps per batch:
+
+\textbf{Step 1 --- Train Discriminator}: Feed real images (label = 1) and fake images from the Generator (label = 0). Compute BCELoss for both, backpropagate, and update $D$.
+
+\textbf{Step 2 --- Train Generator}: Generate fake images and pass them through $D$. The Generator's loss uses label = 1 (it wants $D$ to classify its fakes as real). Backpropagate through $D$ (frozen) into $G$ and update $G$.
+
+The critical detail: we use \texttt{.detach()} on the fake images when training $D$ to prevent gradients from flowing back into $G$ during the Discriminator's update step.
+
+\section{Optimizer Configuration}
+Following the DCGAN paper, we use Adam with a learning rate of $0.0002$ and $(\beta_1, \beta_2) = (0.5, 0.999)$. The reduced $\beta_1$ (compared to the default 0.9) dampens the momentum, which helps stabilize the adversarial oscillations.
+
+\section{Up Next}
+With both architectures implemented, we have everything needed to train GANs on real data. In Part 3, we will train both models on MNIST, analyze the loss dynamics, compare the visual quality of generated samples, and discuss the practical challenges of adversarial training including mode collapse.
+
+\end{document}
