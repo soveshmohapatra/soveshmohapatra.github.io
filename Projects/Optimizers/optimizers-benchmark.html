@@ -1,18 +1,17 @@
 ---
 layout: null
-title: "Deconstructing Optimizers: Part 3 — Head-to-Head Benchmarks"
-description: "Three problems. Per-optimizer learning rates. Identical initialisation. The winner depends entirely on the landscape."
+title: "Deconstructing Optimizers: Part 3 — Head-to-Head on Three Problems"
+description: "SGD, Momentum, Adam, AdamW, and Lion benchmarked on Rosenbrock, Beale, and a real MLP. The winner depends entirely on the landscape — and the differences mostly vanish on real training."
 permalink: /projects/optimizers-benchmark/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing Optimizers: Part 3 — Head-to-Head Benchmarks | Sovesh Mohapatra</title>
+    <title>Deconstructing Optimizers: Part 3 - Head-to-Head on Three Problems | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
     <style>
         .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -35,7 +34,6 @@ permalink: /projects/optimizers-benchmark/
         .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
         .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
-        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
     <script>
@@ -46,47 +44,96 @@ permalink: /projects/optimizers-benchmark/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/optimizers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Optimizers Hub</a>
+        <a href="{{ site.baseurl }}/projects/optimizers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Optimizers Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing Optimizers</h1>
-            <h2 class="article-subtitle">Part 3: Head-to-Head Benchmarks</h2>
+            <h2 class="article-subtitle">Part 3: Head-to-Head on Three Problems</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
-                <div class="abstract-title">Overview</div>
-                <p>Three problems. Per-optimizer learning rates. Identical initialisation. The winner depends entirely on the landscape.</p>
+                <div class="abstract-title">The Question</div>
+                <p>We have five optimizers from Part 2. Each one imposes a different prior on the loss landscape — Momentum bets on consistent gradient direction, Adam bets on per-parameter scale variation, Lion bets on sign-only updates. Whose prior is right? The honest answer is "it depends on the landscape", and this part demonstrates exactly what that dependence looks like.</p>
+                <p>Three experiments, in increasing realism: a smooth narrow valley (Rosenbrock), a flat-plateau-with-sharp-minimum (Beale), and a real 4-layer MLP on the two-moons dataset. Each one probes a different optimizer property. By the end of the third experiment, the textbook ranking of optimizers will look very different.</p>
             </div>
 
-            <h2>Experiment 1 — Rosenbrock</h2>
+            <h2>Experimental Setup</h2>
+
+            <p>For the 2D landscapes, each optimizer gets its <em>own</em> tuned learning rate. This is important. Using a single learning rate for all five would be a fundamentally unfair comparison: Adam's $\sqrt{\hat{v}}$ scaling means it operates in a very different "effective learning rate" regime than SGD, and Lion's sign-only updates are smaller still. A like-for-like comparison requires each optimizer at <em>its</em> optimal lr.</p>
+
+            <p>For the MLP experiment we use the same lr for all five (a typical $10^{-3}$) because that is closer to how practitioners actually choose optimizers in production: you pick an lr that works for most adaptive methods, not one separately tuned per optimizer.</p>
+
+            <p>All five runs on the MLP start from <em>identical initial weights</em>. We re-seed PyTorch before constructing each model so the only thing varying between runs is the optimizer. Without this control, accuracy differences could come from initialisation noise rather than optimizer choice.</p>
+
+            <h2>Experiment 1 — Rosenbrock's Banana Valley</h2>
+
+            <p>Rosenbrock's function is the standard pathological test for optimizers:</p>
+
+            <div class="math-block">$$ f(x, y) = (a - x)^2 + b\,(y - x^2)^2, \qquad a = 1, b = 100. $$</div>
+
+            <p>The minimum sits at $(1, 1)$ where $f = 0$. The curvature is wildly anisotropic — the function changes slowly along a curving valley floor (the parabola $y = x^2$) and rapidly perpendicular to it. Naive gradient descent oscillates across the steep direction and crawls along the shallow one; this is the canonical test of whether an optimizer can navigate ill-conditioned curvature.</p>
+
+            <p>Starting point: $(-1.5, 1.5)$, well outside the valley. We integrate for $2{,}000$ iterations.</p>
+
             <table class="results-table">
                 <thead><tr><th>Optimizer</th><th>Final $f(x, y)$</th><th>$\|p - p^\star\|$</th></tr></thead>
                 <tbody>
                     <tr><td>SGD</td><td>$8.80 \times 10^{-3}$</td><td>$0.20$</td></tr>
-                    <tr><td><strong>Momentum</strong></td><td>$\mathbf{6.26 \times 10^{-9}}$</td><td>$\mathbf{1.8 \times 10^{-4}}$</td></tr>
+                    <tr><td><strong>Momentum</strong></td><td><strong>$6.26 \times 10^{-9}$</strong></td><td><strong>$1.8 \times 10^{-4}$</strong></td></tr>
                     <tr><td>Adam</td><td>$4.02 \times 10^{-2}$</td><td>$0.41$</td></tr>
                     <tr><td>AdamW</td><td>$4.94 \times 10^{-2}$</td><td>$0.45$</td></tr>
                     <tr><td>Lion</td><td>$4.03$</td><td>$2.00$</td></tr>
                 </tbody>
             </table>
-            <p><strong>Momentum wins by six orders of magnitude.</strong> Rosenbrock has consistent gradient direction along the smooth valley floor; Momentum accumulates velocity and shrinks naturally as the gradient does. Adam's $\sqrt{\hat{v}}$ stabilises at a non-zero value near a smooth minimum, so Adam cannot land softly.</p>
 
-            <h2>Experiment 2 — Beale</h2>
+            <p><strong>Momentum wins by six orders of magnitude.</strong> Adam and AdamW plateau at $\sim 5 \times 10^{-2}$ — two orders of magnitude <em>worse</em> than vanilla SGD.</p>
+
+            <p>This result is genuinely counter-intuitive and worth unpacking. Why does Momentum dominate Adam on a smooth problem? Two reasons, both inherent to the optimizers' design:</p>
+
+            <p><strong>Reason 1: $\sqrt{\hat{v}}$ does not shrink with the gradient.</strong> Near a smooth minimum, the gradient direction is consistent and the gradient magnitude is small. The running average $\hat{v}$ stabilises at a value proportional to the gradient variance, not to the gradient magnitude. Adam's effective step size is roughly $\eta / \sqrt{\hat{v}}$, which remains constant as the gradient shrinks. The optimizer cannot land softly — it overshoots the minimum and oscillates around it. The plateau at $\sim 5 \times 10^{-2}$ is exactly this overshoot regime.</p>
+
+            <p><strong>Reason 2: Momentum's velocity buffer naturally shrinks.</strong> The velocity update $v \leftarrow \beta v + g$ inherits the gradient's magnitude. Near a smooth minimum where $g \to 0$, the velocity also approaches zero (geometrically — the decay rate $\beta$ controls how fast). Momentum converges to machine precision because both terms in $\theta \leftarrow \theta - \eta v$ go to zero together.</p>
+
+            <p>Lion's $\mathrm{sign}(c)$ update never shrinks — every step has fixed magnitude $\eta$. On a smooth 2D problem this means it cannot converge below precision $\eta$, which explains the $f = 4.03$ plateau.</p>
+
+            <h2>Experiment 2 — Beale's Function</h2>
+
+            <p>Beale's function is the mirror image of Rosenbrock:</p>
+
+            <div class="math-block">$$ f(x, y) = (1.5 - x + xy)^2 + (2.25 - x + xy^2)^2 + (2.625 - x + xy^3)^2. $$</div>
+
+            <p>It has a global minimum at $(3, 0.5)$ with $f = 0$, surrounded by broad flat regions where the gradient is nearly zero. Optimizers that take steps proportional to the gradient magnitude (SGD, Momentum) crawl through these plateaus; optimizers that normalise the step magnitude (Adam, Lion) escape quickly.</p>
+
+            <p>Starting point: $(-2, -2)$, deep in a flat region. $2{,}000$ iterations.</p>
+
             <table class="results-table">
                 <thead><tr><th>Optimizer</th><th>Final $f(x, y)$</th></tr></thead>
                 <tbody>
-                    <tr><td><strong>Adam</strong></td><td>$\mathbf{2.89 \times 10^{-1}}$</td></tr>
+                    <tr><td><strong>Adam</strong></td><td><strong>$2.89 \times 10^{-1}$</strong></td></tr>
                     <tr><td>AdamW</td><td>$3.62 \times 10^{-1}$</td></tr>
                     <tr><td>Momentum</td><td>$1.17$</td></tr>
                     <tr><td>SGD</td><td>$1.40$</td></tr>
                     <tr><td>Lion</td><td>$38.7$ (diverged)</td></tr>
                 </tbody>
             </table>
-            <p>The order reverses. Beale starts in a flat region with tiny gradients; Adam's $\sqrt{\hat{v}}$ normalisation inflates them to a useful magnitude. Adam wins by an order of magnitude.</p>
 
-            <h2>Experiment 3 — MLP on Moons</h2>
+            <p>The order has reversed. <strong>Adam wins by an order of magnitude over Momentum and SGD.</strong> This is the mirror image of Experiment 1: Adam's $\sqrt{\hat{v}}$ normalisation, which hurts on smooth minima, helps decisively on flat plateaus.</p>
+
+            <p>The mechanism: in the flat region near $(-2, -2)$, the true gradient is small in magnitude. SGD takes a tiny step proportional to that gradient and barely moves. Momentum accumulates a velocity proportional to the gradient and barely moves slightly faster — but still slowly. Adam's $\hat{v}$ also builds up small values, but $\hat{m} / \sqrt{\hat{v}}$ keeps the <em>step size</em> at a useful magnitude regardless of the gradient's absolute scale. Adam escapes the plateau in roughly $50$ iterations; SGD is still in the plateau after $2{,}000$.</p>
+
+            <p>Lion's divergence is illustrative. With fixed-magnitude steps and no second-moment buffer to dampen anything, Lion's trajectory bounces around the plateau, accumulates large momentum from spurious gradients, and ends up driven away from the minimum entirely. Lion's design is optimised for very-high-dimensional landscapes (LLM training) where its sign-only behaviour is a feature; on a 2D problem it is brittle.</p>
+
+            <p>The two experiments together demonstrate something important: <strong>no optimizer dominates across landscapes</strong>. Different optimizers are good at different things. Anyone who claims "Adam is always best" or "SGD is the gold standard" is reasoning from a single regime.</p>
+
+            <h2>Experiment 3 — MLP on Moons (Real Training)</h2>
+
+            <p>The 2D landscapes are pedagogical extremes. Real neural network training operates in a regime with millions of parameters, stochastic gradients from mini-batches, and a loss surface whose curvature changes constantly as the parameters move. The 2D differences may or may not survive in this regime.</p>
+
+            <p>Setup: a $2 \to 64 \to 64 \to 2$ MLP with tanh activations on the two-moons dataset ($1{,}000$ points). 60 epochs, batch size 128, learning rate $10^{-2}$ for all five optimizers, identical initial weights.</p>
+
             <table class="results-table">
-                <thead><tr><th>Optimizer</th><th>Final loss</th><th>Final accuracy</th></tr></thead>
+                <thead><tr><th>Optimizer</th><th>Final training loss</th><th>Final training accuracy</th></tr></thead>
                 <tbody>
                     <tr><td>SGD</td><td>$0.2845$</td><td>$88.30\%$</td></tr>
                     <tr><td>Momentum</td><td>$0.2220$</td><td>$91.20\%$</td></tr>
@@ -95,20 +142,53 @@ permalink: /projects/optimizers-benchmark/
                     <tr><td>Lion</td><td>$0.0757$</td><td>$97.50\%$</td></tr>
                 </tbody>
             </table>
-            <p>Adam, AdamW, Lion all cluster at $97.5$--$97.7\%$. Lion is competitive despite struggling on both 2D landscapes. On a real high-dimensional training problem, the differences between adaptive optimizers vanish into noise.</p>
+
+            <p>Three findings here, each interesting in its own way.</p>
+
+            <p><strong>Finding 1: The Adam family clusters at $97.5$–$97.7\%$ accuracy.</strong> Adam, AdamW, and Lion are within $0.2$ percentage points of each other. The dramatic differences from Experiments 1 and 2 have vanished. On a real training problem with stochasticity, parameter count $\sim 4{,}500$, and a loss surface whose curvature is constantly changing, the adaptive optimizers all converge to roughly the same answer. The choice between them stops being a question of optimization quality and starts being a question of compute, memory, and engineering convenience.</p>
+
+            <p><strong>Finding 2: The Adam family beats Momentum by $\sim 6$ percentage points and SGD by $\sim 10$.</strong> This part of the textbook story <em>is</em> correct. Adaptive optimizers do beat non-adaptive ones on real high-dimensional training. The gap is not enormous on this small problem, but it is consistent. At scale (large vision or language models) the gap is usually larger.</p>
+
+            <p><strong>Finding 3: Lion catches up despite struggling on the 2D landscapes.</strong> This is the surprise. Lion was the worst performer on both Rosenbrock and Beale, yet on the MLP it is statistically tied with Adam and AdamW. The reason is dimensionality: in $\sim 4{,}500$-dimensional weight space, the sign-only updates do not have the directional pathologies they exhibit on 2D toy problems. The gradient noise that hurts Lion in 2D averages out across many parameters, and the constant-magnitude updates act as a form of implicit regularisation. Lion was <em>designed</em> for this regime.</p>
+
+            <h2>Why The Differences Vanish</h2>
+
+            <p>The mechanism behind Finding 1 is worth understanding because it transfers to real production training. On the 2D landscapes, the optimizer's <em>specific</em> behaviour near features like smooth minima or flat plateaus is exposed directly — every iteration matters and the landscape is fully visible to the optimizer.</p>
+
+            <p>On a real training problem, three things average out the differences:</p>
+
+            <p><strong>(a) Stochastic gradients.</strong> Each step uses a different mini-batch, so the "gradient" is noisy. The signal-to-noise ratio of any single step is low. Optimizer-specific behaviour on the deterministic loss surface is smeared by mini-batch noise.</p>
+
+            <p><strong>(b) Dimensionality.</strong> In a high-dimensional weight space, gradient directions are nearly orthogonal between iterations. Most of an optimizer's specialised behaviour (Momentum's accumulation, Adam's variance normalisation) becomes a per-coordinate average rather than a directional advantage.</p>
+
+            <p><strong>(c) Loss-surface plasticity.</strong> The loss surface changes during training as the parameters move. Whatever pathological feature one optimizer would have struggled with at one point in training, the parameters are somewhere else by the next epoch. There is no fixed valley or plateau the optimizer can get stuck in for long.</p>
+
+            <p>These three effects together explain why production ML training is forgiving of optimizer choice within the adaptive family. AdamW is the default, but Lion would have produced statistically indistinguishable training curves on most workloads. The flip side is that production training is <em>unforgiving</em> of non-adaptive optimizers: plain SGD generally leaves $5$–$10$ points of accuracy on the table compared to AdamW, which is a much bigger deal than the difference between AdamW and Lion.</p>
 
             <h2>Practical Recipe</h2>
+
             <ul>
-                <li>For a new model: AdamW, lr $3 \times 10^{-4}$ to $10^{-3}$, weight decay $0.01$, cosine schedule.</li>
-                <li>If optimizer-state memory matters: Lion at $\sim 1/10$ the AdamW lr.</li>
-                <li>Plain SGD is pedagogical; if you choose it, you should be able to articulate why.</li>
+                <li><strong>For a new model on a new dataset:</strong> AdamW. Learning rate $3 \times 10^{-4}$ to $10^{-3}$. Weight decay $0.01$. Cosine annealing over the training run. Move on; don't optimize the optimizer.</li>
+                <li><strong>If optimizer-state memory is a bottleneck</strong> (training large language models on consumer hardware): Lion. Drop the learning rate to $1/10$ of what AdamW would use. Drop weight decay to $0$ or near it (Lion has implicit regularisation).</li>
+                <li><strong>Use plain SGD with Momentum only if you have a specific reason</strong> — historically image classification with batch normalisation has favoured it, and some convex problems benefit. For deep learning in 2026 it is mostly pedagogical.</li>
+                <li><strong>Do not use Adam-without-W in 2026.</strong> AdamW always dominates in practice. The original Adam exists for backward compatibility, not for any active engineering reason.</li>
             </ul>
 
+            <h2>What the Three Experiments Actually Prove</h2>
+
+            <ul>
+                <li>Optimizers are not "better" or "worse" in the abstract. They impose different priors on the landscape, and each prior matches some landscapes well and others badly.</li>
+                <li>The dramatic differences on 2D toy landscapes mostly disappear on real training. The differences that survive (Adam-family vs SGD) are large enough to matter; the rest (AdamW vs Adam vs Lion) come down to second-order effects, memory budget, and the LR schedule.</li>
+                <li>The framework matters more than the optimizer. PyTorch's <code>torch.optim</code> ships nine optimizers and we just implemented five of them in $\sim 75$ lines of pure Python. Once you understand the family tree, switching between optimizers is a one-line change.</li>
+            </ul>
+
+            <p>In subsequent series we treat the optimizer as a settled matter (AdamW with sensible hyperparameters) and focus on architecture and loss design.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/Optimizers" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/Optimizers</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

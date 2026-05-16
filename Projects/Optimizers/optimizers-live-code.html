@@ -1,14 +1,14 @@
 ---
 layout: null
-title: "Deconstructing Optimizers: Part 2 — Fifteen Lines Each"
-description: "Every optimizer is a class with two methods: <code>.step()</code> and <code>.zero_grad()</code>. No <code>torch.optim</code> inheritance, no abstract base class."
+title: "Deconstructing Optimizers: Part 2 — Five Optimizers in Fifteen Lines Each"
+description: "Building SGD, Momentum, Adam, AdamW, and Lion from scratch in pure PyTorch. About 75 lines of code total, each optimizer a one-line modification of its predecessor."
 permalink: /projects/optimizers-live-code/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing Optimizers: Part 2 — Fifteen Lines Each | Sovesh Mohapatra</title>
+    <title>Deconstructing Optimizers: Part 2 - Fifteen Lines Each | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -32,9 +32,6 @@ permalink: /projects/optimizers-live-code/
         .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
-        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
-        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
@@ -46,87 +43,189 @@ permalink: /projects/optimizers-live-code/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/optimizers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Optimizers Hub</a>
+        <a href="{{ site.baseurl }}/projects/optimizers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Optimizers Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing Optimizers</h1>
-            <h2 class="article-subtitle">Part 2: Fifteen Lines Each</h2>
+            <h2 class="article-subtitle">Part 2: Five Optimizers in Fifteen Lines Each</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
                 <div class="abstract-title">Overview</div>
-                <p>Every optimizer is a class with two methods: <code>.step()</code> and <code>.zero_grad()</code>. No <code>torch.optim</code> inheritance, no abstract base class.</p>
+                <p>Part 1 established the family relationship: every modern optimizer is a one-line modification of SGD. Now we implement all five — SGD, Momentum, Adam, AdamW, Lion — in roughly $75$ lines of PyTorch total. No <code>torch.optim</code> inheritance, no abstract base class, no <code>state_dict()</code> bookkeeping. Each class exposes exactly two methods: <code>.step()</code> and <code>.zero_grad()</code>.</p>
+                <p>The point of writing them at this level is to make the differences visible. With every optimizer in a single $\sim$15-line block, the modifications that distinguish Adam from Momentum, or Lion from Adam, are precisely the lines that change. The family tree from Part 1 stops being an abstract description and starts being something you can scroll through.</p>
             </div>
 
-            <h2>SGD</h2>
+            <h2>The Common Interface</h2>
+
+            <p>Every optimizer has the same two-method surface. <code>.step()</code> applies one update to the parameters using their current <code>.grad</code> tensors; <code>.zero_grad()</code> resets the gradients between mini-batches. PyTorch's real <code>torch.optim.Optimizer</code> adds state-dict serialization, parameter groups, and a closure-based step variant — none of which we need for pedagogy.</p>
+
+            <p>The constructor's job is to capture the parameter list and allocate per-parameter state (momentum buffers, second-moment buffers). All five optimizers below follow the same pattern.</p>
+
+            <h2>SGD — The Parent</h2>
+
+            <p>Three lines of forward, zero lines of state to carry between steps. There is nothing to remember:</p>
+
             <pre><code class="language-python">class SGD:
     def __init__(self, params, lr=1e-2):
-        self.params = list(params); self.lr = lr
+        self.params = list(params)
+        self.lr = lr
+
     def step(self):
         with torch.no_grad():
             for p in self.params:
-                if p.grad is None: continue
-                p.add_(p.grad, alpha=-self.lr)</code></pre>
+                if p.grad is None:
+                    continue
+                p.add_(p.grad, alpha=-self.lr)
 
-            <h2>Momentum</h2>
+    def zero_grad(self):
+        for p in self.params:
+            if p.grad is not None:
+                p.grad.zero_()</code></pre>
+
+            <p>Three things to notice in this baseline that carry through to every other optimizer in this article.</p>
+
+            <p><strong>The <code>torch.no_grad()</code> context.</strong> The parameter update is itself an arithmetic operation on tensors that have <code>requires_grad=True</code>. Without the no-grad wrapper, PyTorch would build the update into the autograd graph, leaking memory and confusing future <code>.backward()</code> calls. Every optimizer in this article wraps its step in <code>no_grad</code>.</p>
+
+            <p><strong>The <code>if p.grad is None: continue</code> guard.</strong> Some parameters in a model may not have received gradients on a given forward pass (e.g., layers used only in a different branch of a conditional architecture). Iterating over them without a guard would crash on the <code>p.grad</code> access. Real-world optimizer code is full of this kind of defensive bookkeeping.</p>
+
+            <p><strong>In-place arithmetic with <code>add_</code>.</strong> The line <code>p.add_(p.grad, alpha=-self.lr)</code> is mathematically equivalent to <code>p = p - lr * p.grad</code> but allocates no new tensor — the update happens in the existing storage. For a 70B-parameter model, the difference between in-place and out-of-place updates is roughly $300$ GB of avoidable allocation per training step.</p>
+
+            <h2>Momentum — The First Memory</h2>
+
+            <p>Momentum adds one buffer per parameter — a velocity vector that accumulates gradients with exponential decay. The update rule is two equations:</p>
+
+            <div class="math-block">$$ v_{t+1} = \beta v_t + g_t, \qquad \theta_{t+1} = \theta_t - \eta v_{t+1}. $$</div>
+
             <pre><code class="language-python">class Momentum:
     def __init__(self, params, lr=1e-2, momentum=0.9):
-        self.params = list(params); self.lr = lr; self.momentum = momentum
+        self.params = list(params)
+        self.lr = lr
+        self.momentum = momentum
         self.v = [torch.zeros_like(p) for p in self.params]
+
     def step(self):
         with torch.no_grad():
             for p, v in zip(self.params, self.v):
+                if p.grad is None:
+                    continue
                 v.mul_(self.momentum).add_(p.grad)
                 p.add_(v, alpha=-self.lr)</code></pre>
 
-            <h2>Adam</h2>
+            <p>The crucial two lines are <code>v.mul_(self.momentum).add_(p.grad)</code>, which is the velocity update, and <code>p.add_(v, alpha=-self.lr)</code>, which is the parameter step. Notice that we update the velocity buffer <em>in place</em> and then use the new velocity for the parameter update — this is the standard formulation. Some references use Nesterov-style "look-ahead" momentum where the gradient is evaluated at the projected point $\theta_t - \eta \beta v_t$ instead of at $\theta_t$; that is a separate variant we are not implementing here.</p>
+
+            <p><strong>Initialisation of $v$.</strong> The velocity buffer starts at zero, which means the first step is identical to SGD — there is no accumulated momentum yet. The buffer "warms up" over the first few iterations: after $k$ steps with roughly constant gradient $g$, $v_k \approx (1 + \beta + \beta^2 + \dots + \beta^{k-1}) g \to g/(1 - \beta)$. For $\beta = 0.9$, the steady-state velocity is $10 \times$ the per-step gradient, which is why classical training literature distinguished between "early epochs" (effectively SGD-like) and "steady state" (momentum-dominated) behaviour.</p>
+
+            <p><strong>What momentum buys you.</strong> On a smooth valley with consistent gradient direction (think Rosenbrock's banana), the velocity vector accumulates the consistent component while oscillations average out — the ball rolls along the floor of the valley rather than bouncing off the walls. On a flat plateau where gradients are tiny but consistent, momentum lets you accelerate gradually rather than crawling. The cost is one extra tensor of state per parameter and an extra in-place multiplication per step. For most modern training that is trivial overhead.</p>
+
+            <h2>Adam — Two Running Averages</h2>
+
+            <p>Adam keeps two running averages: the first moment $m_t$ (mean of the gradient, like momentum) and the second moment $v_t$ (mean of $g^2$, an estimate of per-parameter gradient variance). Both are bias-corrected before use:</p>
+
+            <div class="math-block">$$ m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t, \qquad v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2 $$</div>
+            <div class="math-block">$$ \hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \qquad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}, \qquad \theta_{t+1} = \theta_t - \eta \cdot \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \varepsilon}. $$</div>
+
             <pre><code class="language-python">class Adam:
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8):
-        self.params = list(params); self.lr = lr
-        self.beta1, self.beta2 = betas; self.eps = eps; self.t = 0
+        self.params = list(params)
+        self.lr = lr
+        self.beta1, self.beta2 = betas
+        self.eps = eps
+        self.t = 0
         self.m = [torch.zeros_like(p) for p in self.params]
         self.v = [torch.zeros_like(p) for p in self.params]
+
     def step(self):
         self.t += 1
         bc1 = 1 - self.beta1 ** self.t
         bc2 = 1 - self.beta2 ** self.t
-        for p, m, v in zip(self.params, self.m, self.v):
-            g = p.grad
-            m.mul_(self.beta1).add_(g, alpha=1 - self.beta1)
-            v.mul_(self.beta2).addcmul_(g, g, value=1 - self.beta2)
-            p.addcdiv_(m/bc1, (v/bc2).sqrt().add_(self.eps), value=-self.lr)</code></pre>
+        with torch.no_grad():
+            for p, m, v in zip(self.params, self.m, self.v):
+                if p.grad is None:
+                    continue
+                g = p.grad
+                m.mul_(self.beta1).add_(g, alpha=1 - self.beta1)
+                v.mul_(self.beta2).addcmul_(g, g, value=1 - self.beta2)
+                p.addcdiv_(m / bc1, (v / bc2).sqrt().add_(self.eps), value=-self.lr)</code></pre>
 
-            <h2>AdamW</h2>
-            <p>Identical to Adam except the parameter step:</p>
-            <pre><code class="language-python">p.mul_(1 - self.lr * self.wd)            # decoupled weight decay
-p.addcdiv_(m/bc1, (v/bc2).sqrt().add_(self.eps), value=-self.lr)</code></pre>
+            <p>This is the longest update in the series: about ten lines of step, six lines of state. Let's walk through it carefully.</p>
 
-            <h2>Lion</h2>
+            <p><strong>The step counter <code>self.t</code>.</strong> Adam's bias correction needs to know how many steps have been taken since initialisation. The first step is $t = 1$ (not zero), which is what gives $\beta_1^t = \beta_1 < 1$ and makes the correction factor $1 - \beta_1^t$ meaningfully smaller than $1$. As $t$ grows, $\beta_1^t \to 0$ and the correction factor approaches $1$ — bias correction becomes a no-op after enough steps, which is exactly the desired behaviour.</p>
+
+            <p><strong>The two PyTorch primitives <code>addcmul_</code> and <code>addcdiv_</code>.</strong> These are fused multiply-add and multiply-divide ops that PyTorch ships specifically because Adam-style updates are so common. <code>v.addcmul_(g, g, value=1 - self.beta2)</code> computes <code>v += (1 - beta2) * g * g</code> in a single GPU kernel rather than allocating an intermediate tensor for <code>g * g</code>. <code>p.addcdiv_(num, den, value=-lr)</code> computes <code>p += -lr * num / den</code>. On a 70B-parameter model these fused ops save substantial memory bandwidth.</p>
+
+            <p><strong>Why bias correction matters.</strong> We initialise $m_0 = v_0 = 0$. After one step, $m_1 = (1 - \beta_1) g_1$, which is a heavily underestimated version of the true gradient mean. Without correction, Adam would take very small steps for the first few iterations. The correction factor $1/(1 - \beta_1^t)$ rescales the EMA back to an unbiased estimate of the true running mean — under the assumption that the gradient distribution is approximately stationary, which is roughly true for short windows during training.</p>
+
+            <p><strong>What dividing by $\sqrt{\hat{v}_t}$ actually does.</strong> This is the most consequential design choice in Adam. $\sqrt{\hat{v}_t}$ approximates the per-parameter gradient magnitude. A parameter with consistently large gradients sees its effective learning rate shrink (the denominator is large); a parameter with consistently small gradients sees its effective learning rate grow. This is a <em>diagonal preconditioner</em>: Adam adapts the step size per axis without needing to compute (or even approximate) the full Hessian.</p>
+
+            <p><strong>The $\varepsilon = 10^{-8}$.</strong> Its role is to prevent division by zero when $\hat{v}_t$ has not built up yet (e.g., on parameters that have not received non-trivial gradients yet). A value of $10^{-8}$ in float32 is small enough that it doesn't affect well-trained parameters but large enough to dominate when $\hat{v}_t$ is genuinely zero. Some Adam variants use $10^{-12}$ for better precision at the cost of occasional NaN risk; PyTorch's default has stayed at $10^{-8}$ since the original paper.</p>
+
+            <h2>AdamW — A One-Line Modification</h2>
+
+            <p>AdamW is exactly Adam with the parameter update replaced by:</p>
+
+            <pre><code class="language-python">p.mul_(1 - self.lr * self.wd)             # decoupled weight decay (the new line)
+p.addcdiv_(m / bc1, (v / bc2).sqrt().add_(self.eps), value=-self.lr)</code></pre>
+
+            <p>Everything else — the buffers, the bias correction, the momentum and variance updates — is identical. This single insertion is the entire AdamW innovation.</p>
+
+            <p>The question is: why does this one-line change matter? L2 regularisation in classical training is added directly to the gradient: $g \leftarrow g + \lambda \theta$. Under SGD this is mathematically equivalent to "weight decay" applied to the parameter: $\theta \leftarrow (1 - \eta \lambda)\theta - \eta g$. Adam breaks that equivalence. When we add $\lambda \theta$ to the gradient before computing $m$ and $v$, the decay term gets divided by $\sqrt{\hat{v}}$ along with everything else — which means parameters with small gradients receive disproportionately large effective decay, and parameters with large gradients receive almost none.</p>
+
+            <p>This is empirically harmful: it couples the strength of regularisation to the gradient noise distribution of each parameter, which is not what the user intended when they set <code>weight_decay=0.01</code>. Loshchilov & Hutter's 2019 paper showed that decoupling the decay — applying it directly to $\theta$ outside the Adam update — produced more robust training and better final performance across vision and language benchmarks. Every modern LLM training recipe in 2026 uses AdamW, not Adam.</p>
+
+            <p>The implementation detail to notice: $p \leftarrow (1 - \eta \lambda) p$ <em>shrinks</em> the parameter slightly toward zero. The Adam update then adds the gradient-driven step to the already-shrunken parameter. The shrinkage rate $\eta \lambda$ is independent of $\hat{v}$ — that is the entire point.</p>
+
+            <h2>Lion — Sign Instead of $\sqrt{\hat{v}}$</h2>
+
+            <p>Chen et al. (Google, 2023) used symbolic regression to search over the space of optimizer programs. The output: <strong>Lion</strong> (EvoLved Sign Momentum). It is Adam with two structural simplifications and a small re-ordering:</p>
+
             <pre><code class="language-python">class Lion:
     def __init__(self, params, lr=1e-4, betas=(0.9, 0.99), weight_decay=0.0):
-        self.params = list(params); self.lr = lr
-        self.beta1, self.beta2 = betas; self.wd = weight_decay
+        self.params = list(params)
+        self.lr = lr
+        self.beta1, self.beta2 = betas
+        self.wd = weight_decay
         self.m = [torch.zeros_like(p) for p in self.params]
+
     def step(self):
-        for p, m in zip(self.params, self.m):
-            g = p.grad
-            c = self.beta1 * m + (1 - self.beta1) * g
-            p.add_(torch.sign(c) + self.wd * p, alpha=-self.lr)
-            m.mul_(self.beta2).add_(g, alpha=1 - self.beta2)</code></pre>
-            <p>One buffer instead of two ($v$ is gone). Sign-based update direction. Momentum updated <em>after</em> the parameter step with a different $\beta$.</p>
+        with torch.no_grad():
+            for p, m in zip(self.params, self.m):
+                if p.grad is None:
+                    continue
+                g = p.grad
+                c = self.beta1 * m + (1 - self.beta1) * g
+                update = torch.sign(c)
+                if self.wd:
+                    update = update + self.wd * p
+                p.add_(update, alpha=-self.lr)
+                m.mul_(self.beta2).add_(g, alpha=1 - self.beta2)</code></pre>
 
-            <h2>Summary</h2>
-            <ul>
-                <li>Five optimizers in ~75 lines of Python.</li>
-                <li>Each is a one-line modification of its predecessor.</li>
-                <li>No <code>torch.optim</code> inheritance required — the interface is two methods.</li>
-            </ul>
+            <p>Three differences from Adam, all visible in the code.</p>
 
+            <p><strong>One buffer instead of two.</strong> The second-moment buffer $v$ is gone. Lion stores only $m$. For a 70B-parameter model that is roughly $140$ GB of optimizer state instead of $280$ GB. On consumer hardware this is the difference between fitting and not fitting.</p>
+
+            <p><strong>The update direction is $\mathrm{sign}(c)$ instead of $\hat{m} / \sqrt{\hat{v}}$.</strong> Every parameter moves by exactly $\pm \eta$ per step, regardless of the gradient's magnitude. Adam's adaptive per-parameter scaling has been replaced by an across-the-board fixed scale. This is the design choice that demands a smaller learning rate — typically $3 \times$ to $10 \times$ smaller than what AdamW would use. The implicit regularisation from constant-magnitude updates also acts as a form of weight regularisation in its own right; you generally do not need as much explicit weight decay with Lion as with AdamW.</p>
+
+            <p><strong>The momentum is updated <em>after</em> the parameter step, using $\beta_2$.</strong> The update direction is $c = \beta_1 m_{t-1} + (1 - \beta_1) g_t$, computed from the <em>old</em> momentum buffer. Then the buffer is rolled forward with a different decay rate $\beta_2 = 0.99$ (compared to $\beta_1 = 0.9$). This two-buffer dance is the part of Lion that does not have a one-line conceptual justification — it was selected by the symbolic-regression search and the authors report it consistently outperforms alternatives. Real-world ML is full of design choices like this: discovered empirically, kept because they work, not always explainable by first principles.</p>
+
+            <h2>Why the Common Skeleton Matters</h2>
+
+            <p>Reading these five implementations one after another reveals something the equations alone do not: <em>the optimizers are mostly the same code</em>. The list of parameters, the in-place updates, the <code>no_grad</code> context, the iteration pattern — all identical. The differences live in three places: which buffers exist, how the update direction is computed, and (for AdamW) whether decoupled decay is applied.</p>
+
+            <p>This is not coincidence. The space of useful first-order optimizers is small. Every optimizer paper for the last decade — Adafactor, Sophia, Shampoo, Tiger, Adan, Schedule-Free SGD — is some variation on this same skeleton. Knowing the skeleton inside out makes reading new optimizer papers much faster: you scan for the buffer list, the update direction, and the regularisation handling, and the rest is fixed.</p>
+
+            <p>It is also why <strong>most ML practitioners do not need to write their own optimizers</strong>. The PyTorch implementations of these five — with proper state-dict serialization, parameter groups, learning-rate schedulers, distributed-training support, mixed-precision wrappers, and so on — are battle-tested across thousands of production deployments. The 75-line versions in this post are for understanding; in production, <code>torch.optim.AdamW</code> is the right answer.</p>
+
+            <h2>What Part 3 Tests</h2>
+
+            <p>With all five optimizers in hand, Part 3 benchmarks them on three problems: Rosenbrock (a smooth narrow valley), Beale (flat plateaus with a sharp minimum), and a real 4-layer MLP on the two-moons dataset. Each problem is designed to probe a different optimizer property — and the result is not the textbook story that "Adam is always best."</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/Optimizers" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/Optimizers</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
