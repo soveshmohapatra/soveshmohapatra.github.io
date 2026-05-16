@@ -1,0 +1,98 @@
+---
+layout: null
+title: "Deconstructing LoRA: Part 3 — 4.59% Beats Full Fine-Tune"
+description: "Pretrain a 4-layer MLP on moons. Define a target task: the same moons rotated by 45°. Adapt with full fine-tuning vs LoRA at ranks 2/4/8."
+permalink: /projects/lora-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing LoRA: Part 3 — 4.59% Beats Full Fine-Tune | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/lora/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing LoRA Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing LoRA</h1>
+            <h2 class="article-subtitle">Part 3: 4.59% Beats Full Fine-Tune</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>Pretrain a 4-layer MLP on moons. Define a target task: the same moons rotated by 45°. Adapt with full fine-tuning vs LoRA at ranks 2/4/8.</p>
+            </div>
+
+            <h2>Setup</h2>
+            <p>Base task: two-moons, $n=1000$, noise $0.15$. Target task: same data rotated $45^\circ$. Architecture: 4-layer MLP, hidden $=128$, total params $33{,}666$. Zero-shot transfer of the pretrained model to the rotated task: $63.2\%$.</p>
+
+            <h2>Results</h2>
+            <table class="results-table">
+                <thead><tr><th>Method</th><th>Trainable params</th><th>% of full FT</th><th>Final acc</th></tr></thead>
+                <tbody>
+                    <tr><td>From scratch</td><td>$33{,}666$</td><td>$100.00\%$</td><td>$98.90\%$</td></tr>
+                    <tr><td>Full fine-tune</td><td>$33{,}666$</td><td>$100.00\%$</td><td>$99.00\%$</td></tr>
+                    <tr><td><strong>LoRA ($r = 2$)</strong></td><td><strong>$1{,}544$</strong></td><td><strong>$4.59\%$</strong></td><td><strong>$99.10\%$</strong></td></tr>
+                    <tr><td>LoRA ($r = 4$)</td><td>$3{,}088$</td><td>$9.17\%$</td><td>$99.10\%$</td></tr>
+                    <tr><td>LoRA ($r = 8$)</td><td>$6{,}176$</td><td>$18.34\%$</td><td>$98.90\%$</td></tr>
+                </tbody>
+            </table>
+            <p>LoRA at rank $2$ — $1{,}544$ trainable parameters — matches or marginally beats full fine-tuning. The other $32{,}122$ parameters remain frozen.</p>
+
+            <h2>Why $r=8$ Does Not Outperform $r=2$</h2>
+            <p>The intrinsic rank of the useful weight change for this task is small. Adding capacity beyond it buys variance, not signal — when the true effect is low-dimensional, increasing rank adds noise without adding usable degrees of freedom. Rank is a hyperparameter you tune from below; rank $> 16$ is rarely useful short of major distribution shift.</p>
+
+            <h2>Practical Implications</h2>
+            <p><strong>Memory:</strong> only LoRA params need optimizer state. With rank-8 LoRA on a 7B model, AdamW state shrinks from $\sim 56$ GB to $\sim 60$ MB. That is the difference between needing an A100 and fitting on a $24$ GB consumer GPU.</p>
+            <p><strong>Serving:</strong> ship one frozen base + many small LoRA adapters. Switching tasks is a parameter-load, not a model-reload.</p>
+            <p><strong>Composition:</strong> LoRA adapters are linear. Sum or interpolate two LoRAs trained on different tasks for stacked behaviour.</p>
+            <p><strong>Reversibility:</strong> the base is untouched. Undo a fine-tune by removing the adapter.</p>
+
+            <h2>Why Freezing Matters</h2>
+            <p>Freezing is not memory optimisation — it is what makes adapter-style fine-tuning work in production. Drift the base and you lose the ship-one-base property, the catastrophic-forgetting guarantee, and adapter composability.</p>
+
+
+            <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
+                <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
+                <a href="https://github.com/soveshmohapatra/LoRA" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/LoRA</a>
+            </p>
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

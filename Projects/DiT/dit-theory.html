@@ -1,0 +1,84 @@
+---
+layout: null
+title: "Deconstructing DiT: Part 1 — Diffusion Transformers and adaLN-Zero"
+description: "For five years 'diffusion model' meant a U-Net. Peebles & Xie (2023) replaced it with a Vision Transformer. By 2024 every major production diffusion model — SD3, Sora, PixArt-α — moved to DiT."
+permalink: /projects/dit-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing DiT: Part 1 — Diffusion Transformers and adaLN-Zero | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/dit/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing DiT Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing DiT</h1>
+            <h2 class="article-subtitle">Part 1: Diffusion Transformers and adaLN-Zero</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>For five years 'diffusion model' meant a U-Net. Peebles & Xie (2023) replaced it with a Vision Transformer. By 2024 every major production diffusion model — SD3, Sora, PixArt-α — moved to DiT.</p>
+            </div>
+
+            <h2>The U-Net-to-Transformer Transition</h2>
+            <p>DDPM (2020), GLIDE, Latent Diffusion, Stable Diffusion 1/2, Imagen — all use a convolutional U-Net with cross-attention for text conditioning. DiT replaces the U-Net entirely with a Vision Transformer that processes the image as a sequence of patches, conditioning everything via adaLN-Zero.</p>
+
+            <h2>The Architecture</h2>
+            <p>Each DiT block applies:</p>
+            <div class="math-block">$$ \mathbf{h} = \text{LayerNorm}(\mathbf{x}) \cdot (1 + \gamma_a) + \beta_a, \quad \mathbf{x} \leftarrow \mathbf{x} + \alpha_a \cdot \text{SelfAttention}(\mathbf{h}), $$</div>
+            <div class="math-block">$$ \mathbf{h} = \text{LayerNorm}(\mathbf{x}) \cdot (1 + \gamma_m) + \beta_m, \quad \mathbf{x} \leftarrow \mathbf{x} + \alpha_m \cdot \text{MLP}(\mathbf{h}). $$</div>
+            <p>The six modulation parameters $(\gamma_a, \beta_a, \alpha_a, \gamma_m, \beta_m, \alpha_m)$ are produced by a small MLP from the conditioning vector $\mathbf{c} = \text{embed}(t) + \text{embed}(y)$. LayerNorm has its own affine disabled — scale and shift are entirely data-dependent.</p>
+
+            <h2>Why adaLN-Zero?</h2>
+            <p><strong>adaLN:</strong> LayerNorm's scale and shift come from the conditioning vector, not learned per-layer. <strong>Gating:</strong> a learnable $\alpha$ on each residual. <strong>Zero init:</strong> the modulation MLP is initialised to zero, so every block starts as identity. The model gradually un-zeros it as it figures out what each block should do. This is empirically essential for stable early training.</p>
+
+            <h2>Why Not Cross-Attention?</h2>
+            <p>Cross-attention adds parameters and computation at every layer. adaLN-Zero only needs a small MLP per block. For sequence-independent conditioning (a single time + class vector) modulation is sufficient. Production text-conditional DiT models (SD3, Sora) add a small text cross-attention back for the text branch, but use adaLN-Zero for everything else.</p>
+
+            <h2>Inductive Bias as a Resource</h2>
+            <p>U-Nets bake in three priors: locality, translation equivariance, multi-scale processing. These are correct for natural images and let a U-Net learn good image structure from very little data.</p>
+            <p>DiT has none of these. It must learn them from data. With small datasets this is a disadvantage. With large datasets it is an advantage — the model is free to learn whatever bias the data actually wants, including ones a U-Net could not represent. The crossover is empirical: somewhere around several million images at modern resolutions.</p>
+
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

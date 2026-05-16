@@ -1,0 +1,96 @@
+---
+layout: null
+title: "Deconstructing Normalization: Part 1 — The Family"
+description: "BatchNorm, LayerNorm, RMSNorm, GroupNorm. Four ways to normalize activations. Each is a different choice of which axes to reduce over and which statistics to subtract."
+permalink: /projects/normalization-layers-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Normalization: Part 1 — The Family | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/normalization-layers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Normalization Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Normalization</h1>
+            <h2 class="article-subtitle">Part 1: The Family</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>BatchNorm, LayerNorm, RMSNorm, GroupNorm. Four ways to normalize activations. Each is a different choice of which axes to reduce over and which statistics to subtract.</p>
+            </div>
+
+            <h2>Why Normalize at All?</h2>
+            <p>Without intervention, the distribution of activations inside a deep network drifts. By layer 50 it can have wildly different mean and variance from layer 1, causing vanishing/exploding signals and coupling between layers. Normalization layers fix this by rescaling activations to a fixed distribution.</p>
+
+            <h2>The Four Norms, Side by Side</h2>
+            <p>Consider a 2D tensor of shape $(B, C)$ where $B$ is batch and $C$ is features.</p>
+
+            <p><strong>BatchNorm</strong> — reduce over the batch dimension, per feature:</p>
+            <div class="math-block">$$ \mathrm{BN}(x)_{b,c} = \gamma_c \cdot \frac{x_{b,c} - \mu_c}{\sqrt{\sigma_c^2 + \varepsilon}} + \beta_c. $$</div>
+            <p>Tracks running statistics for inference. Dominates CNNs.</p>
+
+            <p><strong>LayerNorm</strong> — reduce over the feature dimension, per sample:</p>
+            <div class="math-block">$$ \mathrm{LN}(x)_{b,c} = \gamma_c \cdot \frac{x_{b,c} - \mu_b}{\sqrt{\sigma_b^2 + \varepsilon}} + \beta_c. $$</div>
+            <p>No batch-dependence, no running statistics. Why Transformers use LayerNorm.</p>
+
+            <p><strong>RMSNorm</strong> — drops the mean subtraction:</p>
+            <div class="math-block">$$ \mathrm{RMS}(x)_{b,c} = \gamma_c \cdot \frac{x_{b,c}}{\sqrt{\frac{1}{C} \sum_{c'} x_{b,c'}^2 + \varepsilon}}. $$</div>
+            <p>No additive bias either. Activations keep their mean — the rest of the model handles position along the axis.</p>
+
+            <p><strong>GroupNorm</strong> — split features into $G$ groups, normalize within each. Independent of batch size, more local than LayerNorm. Standard in image diffusion.</p>
+
+            <h2>Why RMSNorm Drops the Mean</h2>
+            <p>Zhang & Sennrich (2019) showed that the mean subtraction in LayerNorm does no measurable work. RMSNorm needs one fewer reduce, no subtraction, no additive bias parameter. At LLM scale — 100+ transformer layers, trillions of tokens — saving 30% of the normalisation FLOPs is real money. <strong>Llama, Mistral, Gemma all use RMSNorm.</strong></p>
+
+            <h2>Which One When?</h2>
+            <ul>
+                <li><strong>CNNs on ImageNet-scale data:</strong> BatchNorm.</li>
+                <li><strong>Transformers:</strong> LayerNorm or RMSNorm.</li>
+                <li><strong>Image diffusion (UNets):</strong> GroupNorm.</li>
+                <li><strong>Tiny models on simple tasks:</strong> arguably none — toy benchmarks frequently show normalization hurting at small scale.</li>
+            </ul>
+
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

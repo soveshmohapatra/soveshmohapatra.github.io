@@ -1,0 +1,94 @@
+---
+layout: null
+title: "Deconstructing LoRA: Part 1 — The Low-Rank Decomposition"
+description: "LoRA works because weight updates during fine-tuning have very low intrinsic rank. The whole technique is one equation: $y = Wx + (BA)x$ where $A, B$ are small trainable matrices and $W$ is frozen."
+permalink: /projects/lora-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing LoRA: Part 1 — The Low-Rank Decomposition | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/lora/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing LoRA Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing LoRA</h1>
+            <h2 class="article-subtitle">Part 1: The Low-Rank Decomposition</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>LoRA works because weight updates during fine-tuning have very low intrinsic rank. The whole technique is one equation: $y = Wx + (BA)x$ where $A, B$ are small trainable matrices and $W$ is frozen.</p>
+            </div>
+
+            <h2>The Affordability Problem</h2>
+            <p>A 70B-parameter model has $W \in \mathbb{R}^{d_\text{in} \times d_\text{out}}$ at every linear layer. Full fine-tuning means updating every entry — gradient, AdamW optimizer state, GPU memory. For a 70B model that's hardware unavailable to most practitioners. Hu et al. (2021) observed that the <em>change</em> in $W$ produced by fine-tuning has very low intrinsic rank — even when $W'$ itself isn't low-rank.</p>
+
+            <h2>The Decomposition</h2>
+            <div class="math-block">$$ \Delta W \approx B A, \qquad A \in \mathbb{R}^{r \times d_\text{in}}, \qquad B \in \mathbb{R}^{d_\text{out} \times r}. $$</div>
+            <p>The forward pass becomes $y = Wx + BAx$. $W$ is frozen. Only $A$ and $B$ are trained. For $d_\text{in} = d_\text{out} = 4096$ and $r = 8$, that's a $250\times$ reduction in trainable parameters per layer.</p>
+
+            <h2>Why the Intrinsic Rank Is Low</h2>
+            <p>Two intuitions: <strong>Geometric.</strong> The pretrained weight $W$ already encodes general structure; fine-tuning needs to modify only a small region of input-output space. <strong>Empirical.</strong> Aghajanyan et al. (2020) projected fine-tuning trajectories onto random low-dim subspaces and asked how many dimensions are needed to recover full performance — the answer was usually a few hundred, regardless of model size.</p>
+
+            <h2>Initialisation Matters</h2>
+            <ul>
+                <li>$A$ is initialised with small Gaussian noise.</li>
+                <li>$B$ is initialised to zero.</li>
+            </ul>
+            <p>The product $BA$ at initialisation is exactly zero. The LoRA-augmented model is identical to the pretrained model at the start of fine-tuning.</p>
+
+            <h2>The Alpha/r Scaling Trick</h2>
+            <div class="math-block">$$ y = Wx + \frac{\alpha}{r} \cdot BA\,x. $$</div>
+            <p>$\alpha$ is a hyperparameter typically set to $2r$. Dividing by $r$ keeps the effective update magnitude constant when rank changes, so learning rates do not need to be retuned across rank settings.</p>
+
+            <h2>Summary</h2>
+            <ul>
+                <li>Fine-tuning's weight delta has low intrinsic rank.</li>
+                <li>LoRA factorises that delta as $BA$ with rank $r \ll \min(d_\text{in}, d_\text{out})$.</li>
+                <li>Asymmetric initialisation ensures the model starts identical to the base.</li>
+                <li>Total parameter savings: typically 100-1000$\times$.</li>
+            </ul>
+
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+---
+layout: null
+title: "Deconstructing Tokenization: Part 1 — Why BPE Wins"
+description: "A neural language model does not consume text. It consumes a sequence of integer ids. The function that turns text into ids — the tokenizer — is trained separately, frozen for the model's lifetime, an"
+permalink: /projects/bpe-tokenizer-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Tokenization: Part 1 — Why BPE Wins | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/bpe-tokenizer/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Tokenization Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Tokenization</h1>
+            <h2 class="article-subtitle">Part 1: Why BPE Wins</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>A neural language model does not consume text. It consumes a sequence of integer ids. The function that turns text into ids — the tokenizer — is trained separately, frozen for the model's lifetime, and shapes everything downstream.</p>
+            </div>
+
+            <h2>Three Granularities</h2>
+            <p><strong>Character-level:</strong> one token per Unicode codepoint. Long sequences, fixed vocabulary, wasted capacity on common patterns.</p>
+            <p><strong>Word-level:</strong> short sequences, lopsided vocabulary, brittle on out-of-vocabulary tokens.</p>
+            <p><strong>Subword-level:</strong> the compromise everyone settled on. Common words become single tokens; rare words decompose. Byte-pair encoding (BPE) is the dominant algorithm.</p>
+
+            <h2>Byte-Pair Encoding</h2>
+            <p>Algorithm from Gage (1994), originally a data compression paper. Sennrich et al. (2016) adapted it to NMT; GPT-2 made it byte-level in 2019.</p>
+            <ol>
+                <li>Initial vocabulary: the 256 raw bytes.</li>
+                <li>Tokenize the corpus byte-by-byte.</li>
+                <li>Repeat until target vocabulary size:
+                    <ol>
+                        <li>Count adjacent token pair frequencies.</li>
+                        <li>Pick the most frequent pair $(a, b)$.</li>
+                        <li>Assign a new token id, replace every occurrence in the corpus.</li>
+                        <li>Record the merge $((a, b) \to \text{new\_id})$.</li>
+                    </ol>
+                </li>
+            </ol>
+            <p><strong>Inference:</strong> replay recorded merges in order on the byte-level representation of new text. Order matters — earlier merges combine into later ones.</p>
+
+            <h2>Why Byte-Level Beats Character-Level</h2>
+            <ul>
+                <li>Every UTF-8 text encodes to bytes losslessly — no OOV problem, ever.</li>
+                <li>Multilingual text, emoji, mathematical symbols all decompose to bytes uniformly.</li>
+                <li>The initial vocabulary is always 256 (the bytes), independent of corpus.</li>
+            </ul>
+
+            <h2>Greedy Compression Is Not Language Understanding</h2>
+            <p>BPE is greedy frequency-based compression. It has no concept of words, syntax, or morphology. Patterns it discovers are linguistically meaningful only because we run it on natural language. Train it on repetitive code and it will merge entire lines of code into single tokens — exactly the failure mode Part 3 demonstrates.</p>
+
+            <h2>The Frozen-Tokenizer Problem</h2>
+            <p>Once trained, BPE merges are fixed. The model is trained on top of those tokens. Changing the tokenizer post hoc would invalidate every learned weight. Tokenization artifacts (failure to count letters, whitespace sensitivity, weird arithmetic) are essentially permanent.</p>
+
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

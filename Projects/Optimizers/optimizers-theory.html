@@ -1,0 +1,98 @@
+---
+layout: null
+title: "Deconstructing Optimizers: Part 1 — The Family Tree"
+description: "Every neural network you have ever heard of was trained by a small variation on the same update rule. Reading the major optimizers side by side, the family tree becomes obvious: each one is a one-line"
+permalink: /projects/optimizers-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Optimizers: Part 1 — The Family Tree | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/optimizers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Optimizers Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Optimizers</h1>
+            <h2 class="article-subtitle">Part 1: The Family Tree</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>Every neural network you have ever heard of was trained by a small variation on the same update rule. Reading the major optimizers side by side, the family tree becomes obvious: each one is a one-line modification of its predecessor.</p>
+            </div>
+
+            <h2>Gradient Descent and Momentum</h2>
+            <p>The starting point: $\theta_{t+1} = \theta_t - \eta \, \nabla \mathcal{L}(\theta_t)$. On ill-conditioned problems, plain GD oscillates across the steep direction and crawls along the shallow one. The fix: add memory.</p>
+            <p><strong>Momentum (Polyak, 1964):</strong></p>
+            <div class="math-block">$$ v_{t+1} = \beta v_t + g_t, \qquad \theta_{t+1} = \theta_t - \eta v_{t+1}. $$</div>
+            <p>$\beta = 0.9$ typically. A velocity buffer averages out high-frequency oscillation and reinforces consistent directions.</p>
+
+            <h2>Adam (Kingma & Ba, 2014)</h2>
+            <p>Adam tracks two running averages — the first moment $m_t$ (like momentum) and the second moment $v_t$ (mean of $g^2$):</p>
+            <div class="math-block">$$ m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t, \quad v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2 $$</div>
+            <div class="math-block">$$ \hat{m}_t = m_t/(1 - \beta_1^t), \quad \hat{v}_t = v_t/(1 - \beta_2^t), \quad \theta \leftarrow \theta - \eta\,\hat{m}_t/(\sqrt{\hat{v}_t} + \varepsilon). $$</div>
+            <p>The bias correction un-biases the early-step estimates pulled toward zero by $m_0 = v_0 = 0$. Dividing by $\sqrt{\hat{v}}$ normalises the step size per parameter — a diagonal preconditioner that adapts to per-axis curvature without computing the Hessian.</p>
+
+            <h2>AdamW (Loshchilov & Hutter, 2019)</h2>
+            <p>Identical to Adam except weight decay is applied <em>directly to $\theta$</em>, not added to the gradient before computing $m$ and $v$. Under standard L2-in-loss, Adam's adaptive scaling makes the effective decay strength depend on per-parameter gradient history — which is not what you want. Decoupling fixes this. Every modern LLM training recipe uses AdamW, not Adam.</p>
+
+            <h2>Lion (Chen et al., 2023)</h2>
+            <p>Found by symbolic search through optimizer programs. Lion is Adam where $\sqrt{\hat{v}}$ has been replaced by the sign function:</p>
+            <div class="math-block">$$ c_t = \beta_1 m_{t-1} + (1-\beta_1) g_t, \qquad \theta \leftarrow \theta - \eta(\mathrm{sign}(c_t) + \lambda \theta). $$</div>
+            <p>The second-moment buffer disappears — half the memory of Adam. Every update has the same magnitude in every direction; learning rate must shrink to $\sim 0.1\times$ Adam's.</p>
+
+            <h2>The Family Tree, Compact</h2>
+            <table class="results-table">
+                <thead><tr><th>Optimizer</th><th>Update rule</th><th>State</th></tr></thead>
+                <tbody>
+                    <tr><td>SGD</td><td>$\theta \leftarrow \theta - \eta g$</td><td>none</td></tr>
+                    <tr><td>Momentum</td><td>$\theta \leftarrow \theta - \eta v$</td><td>$v$</td></tr>
+                    <tr><td>Adam</td><td>$\theta \leftarrow \theta - \eta \hat{m}/(\sqrt{\hat{v}} + \varepsilon)$</td><td>$m, v$</td></tr>
+                    <tr><td>AdamW</td><td>$\theta \leftarrow (1-\eta\lambda)\theta - \eta \hat{m}/(\sqrt{\hat{v}} + \varepsilon)$</td><td>$m, v$</td></tr>
+                    <tr><td>Lion</td><td>$\theta \leftarrow \theta - \eta (\mathrm{sign}(c) + \lambda \theta)$</td><td>$m$</td></tr>
+                </tbody>
+            </table>
+            <p>Five lines. Three buffers. Two preconditioners ($\sqrt{\hat{v}}$ vs $\mathrm{sign}(c)$). That is the entire family.</p>
+
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

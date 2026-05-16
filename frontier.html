@@ -556,6 +556,181 @@ permalink: /projects/frontier/
                 </div>
             </article>
 
+            <!-- Project Card 28: LoRA -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">May 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/lora/"
+                            style="color: inherit; text-decoration: none;">LoRA from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">Low-rank adaptation in 50 lines of PyTorch. Fine-tuning's weight delta has low intrinsic rank — LoRA factorises it as BA with rank r ≪ d. On a moons-rotation adaptation task, rank-2 LoRA matches full fine-tuning with 4.59% of the trainable parameters. The technique that turned 70B-parameter fine-tuning into a consumer-laptop activity.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/LoRA" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <!-- TODO: add LinkedIn post URL after publishing -->
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 29: CLIP -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">May 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/clip/"
+                            style="color: inherit; text-decoration: none;">CLIP from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">Contrastive image-text pretraining in 80 lines of PyTorch. Two encoders, a shared embedding space, a single symmetric InfoNCE loss — no labels, no classifier head. A 75K-parameter from-scratch CLIP reaches 100% zero-shot on 16-way colored-shape classification in 14 seconds, with the embedding space organising itself by (color, shape) without supervision on either concept.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/CLIP" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <!-- TODO: add LinkedIn post URL after publishing -->
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 30: NeRF Kernel -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">May 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/nerf-kernel/"
+                            style="color: inherit; text-decoration: none;">NeRF Kernel from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">The single trick that made NeRF (and SIREN, Instant-NGP, every neural-field method since) work: Fourier feature encoding of input coordinates. Same MLP, same training, same parameter budget — the encoded variant fits a 64×64 image at +10.64 dB PSNR over the unencoded one. The architecture was never the bottleneck; spectral bias was.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/NeRF-Kernel" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <!-- TODO: add LinkedIn post URL after publishing -->
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 31: DiT -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">May 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/dit/"
+                            style="color: inherit; text-decoration: none;">DiT from Scratch <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">The Diffusion Transformer (Peebles & Xie, 2023) — the architecture that replaced the U-Net in Stable Diffusion 3 and Sora. Built from scratch in 250 lines of PyTorch with adaLN-Zero conditioning, trained class-conditionally on 16x16 colored shapes. The honest result: undertrained at toy scale, exactly as the inductive-bias tradeoff predicts.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/DiT" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <!-- TODO: add LinkedIn post URL after publishing -->
+                    </div>
+                </div>
+            </article>
+
+            <!-- Project Card 32: Neural ODE on Biological Dynamics -->
+            <article class="project-card">
+                <div class="card-glass-bg"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <span class="card-tag tag-project">Live Project</span>
+                        <span class="card-date">May 2026</span>
+                    </div>
+                    <h2 class="card-title"><a href="{{ site.baseurl }}/projects/neural-ode-bio/"
+                            style="color: inherit; text-decoration: none;">Neural ODE on Biological Dynamics <i
+                                class="fas fa-link"
+                                style="font-size: 0.6em; vertical-align: middle; margin-left: 0.3rem; color: var(--text-muted);"></i></a>
+                    </h2>
+                    <p class="card-desc">Neural ODEs applied to the FitzHugh-Nagumo neuron model — the canonical 2D simplification of Hodgkin-Huxley excitability. The capstone of the series: phase-portrait recovery as a more honest diagnostic than trajectory MSE. The Neural ODE recovers the true vector field with cosine similarity 0.94–0.96; a parameter-matched discrete RNN fits the data equally but does not learn the physics.</p>
+
+                    <div class="progress-section">
+                        <div class="progress-labels">
+                            <span class="progress-text">Development Status</span>
+                            <span class="progress-value" style="color: var(--accent-light);">Completed</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-fill" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <a href="https://github.com/soveshmohapatra/Neural-ODE-Bio" target="_blank"
+                            class="social-btn github-btn">
+                            <i class="fab fa-github"></i> <span>Repo</span>
+                        </a>
+                        <!-- TODO: add LinkedIn post URL after publishing -->
+                    </div>
+                </div>
+            </article>
+
         </section>
     </main>
 

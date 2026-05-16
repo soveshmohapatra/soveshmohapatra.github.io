@@ -1,0 +1,96 @@
+---
+layout: null
+title: "Deconstructing CLIP: Part 3 — 100% Zero-Shot in 14 Seconds"
+description: "3,200 32×32 RGB images, 16 classes (4 colors × 4 shapes). 75K-parameter CLIP, 30 epochs, 14 seconds on MPS. 100% zero-shot on the held-out test set."
+permalink: /projects/clip-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing CLIP: Part 3 — 100% Zero-Shot in 14 Seconds | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/clip/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing CLIP Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing CLIP</h1>
+            <h2 class="article-subtitle">Part 3: 100% Zero-Shot in 14 Seconds</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>3,200 32×32 RGB images, 16 classes (4 colors × 4 shapes). 75K-parameter CLIP, 30 epochs, 14 seconds on MPS. 100% zero-shot on the held-out test set.</p>
+            </div>
+
+            <h2>Setup Recap</h2>
+            <p><strong>Task.</strong> 16-way classification of 32×32 RGB images. Random baseline: $6.25\%$. <strong>Data.</strong> $3{,}200$ synthetic image-caption pairs; $2{,}720$ train, $480$ held out. <strong>Model.</strong> ImageEncoder (5-conv CNN, 64-dim projection), TextEncoder (token+pos embed, mean pool, 64-dim projection), plus one learnable temperature. Total: $74{,}913$ parameters.</p>
+
+            <h2>The Training Trajectory</h2>
+            <table class="results-table">
+                <thead><tr><th>Epoch</th><th>InfoNCE loss</th><th>Zero-shot accuracy</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td>3.5117</td><td>27.08%</td></tr>
+                    <tr><td>4</td><td>2.6948</td><td>41.67%</td></tr>
+                    <tr><td>8</td><td>2.2163</td><td>67.71%</td></tr>
+                    <tr><td>12</td><td>1.8234</td><td>91.67%</td></tr>
+                    <tr><td>17</td><td>1.5611</td><td><strong>100.00%</strong></td></tr>
+                    <tr><td>30</td><td>1.5014</td><td>100.00%</td></tr>
+                </tbody>
+            </table>
+            <p>Epoch 1 already hits $27.1\%$ — four times the random baseline. The contrastive signal is dense: every batch is itself a 64-way classification problem.</p>
+
+            <h2>What the Embedding Space Looks Like</h2>
+            <p>A t-SNE projection of the held-out image embeddings (small dots) and the 16 class-caption embeddings (large stars) shows 16 tight clusters. Each contains the caption-star plus all $30$ images of that class. The 16-class structure emerged from the contrastive objective alone — the model was never told that "color" and "shape" are separable attributes.</p>
+
+            <h2>Diagonal Dominance in the Similarity Matrix</h2>
+            <p>The image-caption similarity matrix on the held-out batch shows the expected pattern: each row's maximum is on the diagonal with a clear gap to the runners-up. The off-diagonal structure is informative too — the same shape in a different color is the second-highest match, indicating the model encodes shape and color as somewhat independent dimensions.</p>
+
+            <h2>Generalisation: What Scales</h2>
+            <p>If we scaled this experiment up to OpenAI's CLIP — bigger encoders (ViT-B/32 or ResNet-50, ~100M params), bigger captions (variable-length natural language, vocab 50K), bigger batches ($32{,}768$ vs $64$), bigger corpus (400M pairs) — the algorithm doesn't change. The recipe scales by changing magnitudes.</p>
+
+
+            <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
+                <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
+                <a href="https://github.com/soveshmohapatra/CLIP" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/CLIP</a>
+            </p>
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+---
+layout: null
+title: "Deconstructing TinyGPT: Part 3 — Learning Curriculum and Attention Inspection"
+description: "100% test accuracy in 98 seconds on synthetic 3-digit addition with a 200K-parameter Transformer. The per-position learning curriculum exposes the carry-chain bottleneck. By Sovesh Mohapatra."
+permalink: /projects/tinygpt-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing TinyGPT: Part 3 - Learning Curriculum and Attention Inspection | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button>
+        </div>
+    </nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/tinygpt/" class="back-link"><i class="fas fa-arrow-left"></i> Back to TinyGPT Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing TinyGPT from Scratch</h1>
+            <h2 class="article-subtitle">Part 3: Learning Curriculum and Attention Inspection</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Setup</div>
+                <p><strong>Task.</strong> Given an 8-character prompt <code>ABC+DEF=</code>, emit a 4-character reversed sum. <strong>Model.</strong> TinyGPT with vocab=12, block=12, 4 layers, 4 heads, n_embd=64. Total trainable parameters (with weight tying): <strong>200,832</strong>. <strong>Training.</strong> 10,000 synthetic examples, AdamW lr=5e-4 with cosine schedule, 50 epochs, batch 128. <strong>Evaluation.</strong> 1,000 held-out examples; exact-match accuracy plus per-position accuracy. <strong>Hardware.</strong> Apple M-series MPS backend.</p>
+            </div>
+
+            <h2>Final Test Results</h2>
+            <table class="results-table">
+                <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+                <tbody>
+                    <tr><td>Exact-match accuracy (full 4-digit answer)</td><td>1000/1000 = <strong>100.0%</strong></td></tr>
+                    <tr><td>Position 0 (units, no carry-in)</td><td>100.0%</td></tr>
+                    <tr><td>Position 1 (tens, carry from units)</td><td>100.0%</td></tr>
+                    <tr><td>Position 2 (hundreds, carry from tens)</td><td>100.0%</td></tr>
+                    <tr><td>Position 3 (thousands, carry from hundreds)</td><td>100.0%</td></tr>
+                    <tr><td>Training time</td><td>98.1 s on MPS</td></tr>
+                    <tr><td>Final training loss</td><td>0.0012</td></tr>
+                </tbody>
+            </table>
+            <p>A 200,832-parameter model trained from scratch in 98 seconds solves three-digit addition perfectly on the held-out test set. The interesting story is not the final number — it is how the model got there.</p>
+
+            <h2>The Learning Curriculum</h2>
+            <p>Per-epoch per-position accuracy on the validation set reveals the order in which the model masters each digit:</p>
+            <table class="results-table">
+                <thead><tr><th>Epoch</th><th>Loss</th><th>Exact</th><th>pos 0 (units)</th><th>pos 1 (tens)</th><th>pos 2 (hund.)</th><th>pos 3 (thou.)</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td>1.979</td><td>0.003</td><td>0.106</td><td>0.104</td><td>0.093</td><td>0.898</td></tr>
+                    <tr><td>7</td><td>1.624</td><td>0.003</td><td>0.088</td><td>0.098</td><td>0.454</td><td>0.961</td></tr>
+                    <tr><td>12</td><td>0.994</td><td>0.084</td><td>0.834</td><td>0.123</td><td>0.561</td><td>0.945</td></tr>
+                    <tr><td>15</td><td>0.203</td><td>0.907</td><td>0.999</td><td>0.963</td><td>0.936</td><td>0.997</td></tr>
+                    <tr><td>19</td><td>0.018</td><td>1.000</td><td>1.000</td><td>1.000</td><td>1.000</td><td>1.000</td></tr>
+                </tbody>
+            </table>
+
+            <h3>The thousands digit is learned first</h3>
+            <p>Position 3 reaches $96\%$ by epoch 7, while the other three positions are still near chance. This is not because thousands is mathematically easy — it is because in the training distribution it is almost always $0$ or $1$ (since $A, B < 1000 \Rightarrow A+B < 2000$). The model learns the marginal distribution of position 3 before it learns the function from $(A, B)$ to the digit. Same phenomenon as language models learning that "the" is the most likely next token before they learn syntax.</p>
+
+            <h3>The tens digit is learned last</h3>
+            <p>Position 1 is the slowest to converge — still at $30\%$ at epoch 13 when the units digit is already at $99\%$. The reason: the tens digit depends on the carry generated by the units of $A$ and $B$, which the model must compute internally. Among the four output positions, this is the one with the longest internal-dependency chain that is also non-marginal. By epoch 17 the model has consolidated this internal computation; by epoch 19 it is solved.</p>
+
+            <p>The curriculum reveals that the model is not memorising lookup tables — it is constructing internal carry-propagation circuitry, in the order the dependency structure imposes.</p>
+
+            <h2>Why the Reversed Output Was Necessary</h2>
+            <p>A causal Transformer predicts token $t$ using only tokens $0, \ldots, t-1$. In non-reversed left-to-right addition, the leftmost output digit depends on carries generated by the rightmost input columns — columns the model has not yet been asked to attend to. Worse: by the time the model is asked to emit the tens digit, it has already emitted the thousands digit, but the thousands digit logically depends on the tens carry. The causal mask forbids the model from looking ahead, so the non-causal dependency cannot be resolved.</p>
+            <p>Reversing the output makes every output digit depend only on already-attended inputs and already-emitted carries. The dependency graph is causal, and a causal Transformer can model it.</p>
+
+            <h2>Attention Inspection</h2>
+            <p>The attention weights from the final layer at the moment the model emits position 0 of the answer (units digit of the sum) are highest on the units of $A$ and $B$ in the prompt, consistent with column-wise addition. The model learned that columns exist and that the rightmost column produces the rightmost output, without any inductive bias hard-coding this.</p>
+
+            <h2>What This Proves</h2>
+            <ul>
+                <li>A working decoder-only Transformer fits in $\sim$150 lines of PyTorch and trains to 100% on three-digit addition in 98 seconds.</li>
+                <li>The per-position learning curriculum reveals interpretable internal structure: marginals are learned before functions; dependency chains are mastered in dependency order.</li>
+                <li>How a task is framed determines whether a given architecture can learn it. Reversed-output is the difference between 100% and ~25% here — the same difference often appears in real LLM tasks, where prompt engineering and supervised fine-tuning are partial reframings of the dependency structure.</li>
+            </ul>
+
+            <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
+                <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
+                <a href="https://github.com/soveshmohapatra/TinyGPT" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/TinyGPT</a>
+            </p>
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

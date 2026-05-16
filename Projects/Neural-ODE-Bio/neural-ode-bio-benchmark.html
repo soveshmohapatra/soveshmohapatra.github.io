@@ -1,0 +1,104 @@
+---
+layout: null
+title: "Neural ODEs on Biological Dynamics: Part 3 — Phase-Portrait Recovery and Why It Matters"
+description: "Both Neural ODE and a parameter-matched discrete RNN fit FHN trajectories to MSE 0.02. Only the Neural ODE learned the physics."
+permalink: /projects/neural-ode-bio-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural ODEs on Biological Dynamics: Part 3 — Phase-Portrait Recovery and Why It Matters | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/neural-ode-bio/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Neural ODEs on Biological Dynamics Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Neural ODEs on Biological Dynamics</h1>
+            <h2 class="article-subtitle">Part 3: Phase-Portrait Recovery and Why It Matters</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>Both Neural ODE and a parameter-matched discrete RNN fit FHN trajectories to MSE 0.02. Only the Neural ODE learned the physics.</p>
+            </div>
+
+            <h2>Trajectory-Fit Results</h2>
+            <table class="results-table">
+                <thead><tr><th>Model</th><th>Params</th><th>Final MSE</th><th>Extrapolation MSE</th><th>Train time</th></tr></thead>
+                <tbody>
+                    <tr><td>Neural ODE</td><td>$17{,}282$</td><td>$0.02072$</td><td><strong>$0.02014$</strong></td><td>$40.5$ s</td></tr>
+                    <tr><td>Discrete RNN</td><td>$17{,}282$</td><td><strong>$0.01547$</strong></td><td>$0.01670$</td><td>$8.9$ s</td></tr>
+                </tbody>
+            </table>
+            <p>In-distribution the discrete RNN is marginally better and trains 4.5× faster. Extrapolation past the training horizon (4× longer trajectory): both stay close to their in-distribution MSE — neither model degrades dramatically. If we had kept $t$ in the Neural ODE input, extrapolation MSE would have been $\sim 5.0$ instead of $0.02$ — a factor of 250 difference from one design choice.</p>
+
+            <h2>The Key Visual Finding — Phase-Portrait Recovery</h2>
+            <p>Trajectory MSE is a noisy proxy for "did the model learn the dynamics." A model can fit individual time series without learning the underlying flow.</p>
+            <p>The phase-portrait visualisation answers the better question: query each model's predicted $f$ at a grid of $(v, w)$ points, compare against ground-truth $f_\text{FHN}$ arrow-by-arrow.</p>
+
+            <h3>Neural ODE phase portrait</h3>
+            <table class="results-table">
+                <thead><tr><th>Regime</th><th>Mean cosine similarity with $f_\text{FHN}$</th></tr></thead>
+                <tbody>
+                    <tr><td>Quiescent ($I = 0.2$)</td><td>$0.94$</td></tr>
+                    <tr><td>Spiking ($I = 0.5$)</td><td>$0.96$</td></tr>
+                </tbody>
+            </table>
+            <p>The Neural ODE recovers the direction of the FHN flow with cosine similarity above $0.94$ in both regimes. Learned arrows visibly match ground-truth arrows.</p>
+
+            <h3>Discrete RNN phase portrait</h3>
+            <p>The RNN has no explicit $f$. Its residual update returns the time-integrated effect over one $\Delta t$. We can recover the implicit instantaneous flow by dividing by $\Delta t$ — but only because we know what $\Delta t$ was. Without that, the recovered "field" has correct direction but wrong magnitude.</p>
+
+            <h2>What This Means for Biology</h2>
+            <p>Biological data come at the instrument's sampling rate, not the dynamics' natural timescale. A discrete RNN trained on patch-clamp at 10 kHz produces a model that runs at 10 kHz steps. A Neural ODE trained on the same data lives in continuous time — the same model can predict at any rate, interpolate between samples, and be combined with other Neural ODEs that live in the same space.</p>
+
+            <h2>The Headline Reframe</h2>
+            <p><em>Time-series accuracy and physical fidelity are not the same metric.</em></p>
+            <p>A model that fits the data exactly but has learned a discrete-step approximation gives you predicted trajectories at the training rate. A model that learns the continuous-time vector field gives you a model of the system. They are different scientific objects, and only the second lets you reason about the underlying physics.</p>
+
+
+            <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
+                <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
+                <a href="https://github.com/soveshmohapatra/Neural-ODE-Bio" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/Neural-ODE-Bio</a>
+            </p>
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

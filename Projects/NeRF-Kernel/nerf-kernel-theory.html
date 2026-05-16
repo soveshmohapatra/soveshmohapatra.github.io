@@ -1,0 +1,89 @@
+---
+layout: null
+title: "Deconstructing the NeRF Kernel: Part 1 — Why MLPs Need Fourier Features to See"
+description: "NeRF is a SIREN that learned to render. The geometry is not in the architecture — it is in the loss. The pivotal innovation behind every neural-field method since NeRF is a single trick: Fourier featu"
+permalink: /projects/nerf-kernel-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing the NeRF Kernel: Part 1 — Why MLPs Need Fourier Features to See | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/nerf-kernel/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing the NeRF Kernel Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing the NeRF Kernel</h1>
+            <h2 class="article-subtitle">Part 1: Why MLPs Need Fourier Features to See</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>NeRF is a SIREN that learned to render. The geometry is not in the architecture — it is in the loss. The pivotal innovation behind every neural-field method since NeRF is a single trick: Fourier feature encoding of the input coordinates.</p>
+            </div>
+
+            <h2>The Spectral Bias of ReLU MLPs</h2>
+            <p>Tancik et al. (2020) showed that the Neural Tangent Kernel of a ReLU MLP decays with frequency. High-frequency components of the target function converge much more slowly than low-frequency ones — a ReLU MLP cannot fit sharp edges, fine textures, or periodic structure from coordinate inputs at realistic budgets. This is what doomed coordinate-based scene representations before NeRF.</p>
+
+            <h2>Fourier Feature Encoding</h2>
+            <p>The fix: lift the coordinate $\mathbf{p}$ into a higher-dimensional Fourier space:</p>
+            <div class="math-block">$$ \gamma(\mathbf{p}) = \big[ \sin(2^0 \pi \mathbf{p}),\, \cos(2^0 \pi \mathbf{p}),\, \sin(2^1 \pi \mathbf{p}),\, \cos(2^1 \pi \mathbf{p}),\, \ldots,\, \sin(2^{L-1} \pi \mathbf{p}),\, \cos(2^{L-1} \pi \mathbf{p}) \big]. $$</div>
+            <p>The MLP now operates on $\gamma(\mathbf{p}) \in \mathbb{R}^{2 L \, \dim(\mathbf{p})}$ instead of $\mathbf{p}$. The MLP no longer manufactures high frequencies — they are already in the input.</p>
+
+            <h2>Why Exponentially-Spaced Frequencies?</h2>
+            <p>Natural signals have approximately self-similar spectra at different scales. Linear-spaced frequencies waste capacity on one scale. Exponential spacing covers many decades with few bins. $L = 6$ covers $1, 2, 4, 8, 16, 32$ cycles per unit input.</p>
+
+            <h2>Why Both Sin AND Cos?</h2>
+            <p>$\sin(\omega p)$ and $\cos(\omega p)$ together span every phase at frequency $\omega$. With only $\sin$ the MLP would be confined to a fixed phase the encoder cannot adjust (the encoder has no trainable parameters).</p>
+
+            <h2>NeRF in Three Equations</h2>
+            <p>Let $\mathbf{r}(t) = \mathbf{o} + t \mathbf{d}$ be a ray. Sample $N$ points and predict color + density:</p>
+            <div class="math-block">$$ (\mathbf{c}_i, \sigma_i) = f_\theta\!\big( \gamma_x(\mathbf{r}(t_i)),\; \gamma_d(\mathbf{d}) \big). $$</div>
+            <p>Volume render via the alpha-compositing integral:</p>
+            <div class="math-block">$$ C(\mathbf{r}) = \sum_{i=1}^{N} T_i \, (1 - \exp(-\sigma_i \, \delta_i)) \, \mathbf{c}_i, \quad T_i = \exp\!\left( -\sum_{j < i} \sigma_j \, \delta_j \right). $$</div>
+            <p>Per-pixel MSE loss between $C(\mathbf{r})$ and ground truth. Train end-to-end.</p>
+
+            <h2>What This Series Demonstrates</h2>
+            <p>Implementing full 3D NeRF (multi-view poses, ray sampling, volume rendering) is roughly 500-800 lines of code with hours of GPU training. What we demonstrate is the <em>kernel</em>: a coordinate MLP plus Fourier features, fitting a high-frequency 2D image. This captures the same numerical phenomenon (spectral bias defeated by Fourier features) at a scale that trains in 6 seconds.</p>
+
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

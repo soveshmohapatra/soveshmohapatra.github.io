@@ -1,0 +1,100 @@
+---
+layout: null
+title: "Deconstructing Normalization: Part 3 — The Mean Was Load-Bearing for Nothing"
+description: "20-layer non-residual MLP on moons. Identical initialisation. Five variants: None, BatchNorm, LayerNorm, RMSNorm, GroupNorm."
+permalink: /projects/normalization-layers-benchmark/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Normalization: Part 3 — The Mean Was Load-Bearing for Nothing | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/normalization-layers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Normalization Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Normalization</h1>
+            <h2 class="article-subtitle">Part 3: The Mean Was Load-Bearing for Nothing</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>20-layer non-residual MLP on moons. Identical initialisation. Five variants: None, BatchNorm, LayerNorm, RMSNorm, GroupNorm.</p>
+            </div>
+
+            <h2>Results</h2>
+            <table class="results-table">
+                <thead><tr><th>Norm</th><th>Params</th><th>Final loss</th><th>Final acc</th><th>Train</th><th>FLOPs/call</th></tr></thead>
+                <tbody>
+                    <tr><td>None</td><td>83,522</td><td>0.1116</td><td><strong>97.50%</strong></td><td><strong>1.8s</strong></td><td>0</td></tr>
+                    <tr><td>BatchNorm</td><td>86,210</td><td>0.1060</td><td>95.70%</td><td>4.3s</td><td>65,536</td></tr>
+                    <tr><td>LayerNorm</td><td>86,210</td><td>0.0881</td><td>96.60%</td><td>4.4s</td><td>65,536</td></tr>
+                    <tr><td><strong>RMSNorm</strong></td><td><strong>84,866</strong></td><td><strong>0.0927</strong></td><td>97.10%</td><td><strong>2.9s</strong></td><td><strong>32,896</strong></td></tr>
+                    <tr><td>GroupNorm</td><td>86,210</td><td>0.1229</td><td>97.20%</td><td>6.8s</td><td>65,536</td></tr>
+                </tbody>
+            </table>
+
+            <h2>The Surprising Finding</h2>
+            <p>The Identity (no-normalization) baseline wins on accuracy. BatchNorm <em>hurts</em> by 1.8 percentage points; LayerNorm by 0.9. The textbook story — "normalisation is essential for training deep networks" — is not what the data shows at this regime. Three reasons:</p>
+            <ul>
+                <li>Tanh activations naturally bound activations to $[-1, 1]$.</li>
+                <li>AdamW is well-conditioned enough to compensate per-parameter.</li>
+                <li>BatchNorm's running statistics are noisy at small scale.</li>
+            </ul>
+
+            <h2>The Finding That Transfers</h2>
+            <p>Among the normalisations that work, RMSNorm beats LayerNorm on every axis: fewer parameters, faster training, half the FLOPs, lower final loss. This is the Llama/Mistral/Gemma design choice in microcosm. The mean subtraction step in LayerNorm does no measurable work but costs a per-token reduce, a subtraction, and an additive bias parameter — real money at LLM scale.</p>
+
+            <h2>Three Lessons</h2>
+            <ol>
+                <li>Normalisation is not free magic. At small scale it can hurt as easily as it helps.</li>
+                <li>Toy benchmarks lie about norm importance. Real production constraints make norms essential.</li>
+                <li>The RMSNorm reframe travels: whenever a paper subtracts something, ask whether the subtraction is load-bearing.</li>
+            </ol>
+
+
+            <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
+                <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
+                <a href="https://github.com/soveshmohapatra/Normalization-Layers" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/Normalization-Layers</a>
+            </p>
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+---
+layout: null
+title: "Neural ODEs on Biological Dynamics: Part 1 — The FHN Model and Why Continuity Matters"
+description: "ODEs were designed for biological dynamics. Machine learning has been using them on toy spirals. This series points a Neural ODE at the FitzHugh-Nagumo neuron model — the canonical 2D simplification o"
+permalink: /projects/neural-ode-bio-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural ODEs on Biological Dynamics: Part 1 — The FHN Model and Why Continuity Matters | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
+        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/neural-ode-bio/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Neural ODEs on Biological Dynamics Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Neural ODEs on Biological Dynamics</h1>
+            <h2 class="article-subtitle">Part 1: The FHN Model and Why Continuity Matters</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Overview</div>
+                <p>ODEs were designed for biological dynamics. Machine learning has been using them on toy spirals. This series points a Neural ODE at the FitzHugh-Nagumo neuron model — the canonical 2D simplification of Hodgkin-Huxley excitability.</p>
+            </div>
+
+            <h2>From Synthetic Spirals to Real Dynamical Systems</h2>
+            <p>The original Neural ODE paper used 2D spirals as the demonstration — clean phase portrait, low dimension, non-trivial flow. But spirals are not where Neural ODEs were going to matter. The natural application is to dynamical systems that genuinely live in continuous time — which is to say, biology.</p>
+
+            <h2>FitzHugh-Nagumo</h2>
+            <p>FitzHugh (1961) and Nagumo et al. (1962) introduced a two-variable simplification of the four-variable Hodgkin-Huxley action-potential model:</p>
+            <div class="math-block">$$ \frac{dv}{dt} = v - \frac{v^3}{3} - w + I, \qquad \frac{dw}{dt} = \frac{v + a - b w}{\tau}. $$</div>
+            <p>Standard parameters: $a = 0.7$, $b = 0.8$, $\tau = 12.5$. $I$ is an external current. For $I$ above $\sim 0.34$, a stable limit cycle (sustained spiking). Below, a stable fixed point (quiescent). This is the canonical reduced model for "is the neuron firing right now?"</p>
+
+            <h2>Why Continuous-Time Inductive Biases?</h2>
+            <p><strong>Discrete RNNs</strong> ($y_{t+1} = y_t + g(y_t)$) effectively assume a fixed timestep baked into $g$. If we train on data sampled at $\Delta t = 0.5$ and want to predict at $\Delta t = 0.25$, the model has no way to take a half-step. The whole representation is bound to the sampling rate.</p>
+            <p><strong>Neural ODEs</strong> ($dy/dt = f(y)$) have no notion of timestep. We can integrate with whatever solver and step size we want at inference, as long as $f$ approximates the true vector field. The model lives in the same continuous space the underlying physics live in.</p>
+            <p>For biology this is decisive. Calcium imaging at 30 Hz. Patch-clamp at 10 kHz. RNA-seq at one point per hour. None of these are the natural timescale of the underlying processes; they are instrument sampling rates.</p>
+
+            <h2>Autonomous vs Non-Autonomous Dynamics</h2>
+            <p>The original Neural ODE paper used the non-autonomous form $dy/dt = f(t, y)$ for maximum flexibility. For most biological systems the true dynamics are autonomous — the RHS depends on the current state but not on absolute clock time. Including $t$ in $f$ gives the model freedom to overfit to specific time intervals.</p>
+            <p>In our experiments this matters quantitatively. Including $t$ in the Neural ODE input causes extrapolation MSE to balloon from $0.02$ to $5.0$ on the same data. <strong>For FHN and most biological models, autonomous dynamics are the correct inductive bias.</strong></p>
+
+            <h2>What We Aim to Demonstrate</h2>
+            <ul>
+                <li><strong>Trajectory fit.</strong> The Neural ODE can fit FHN spike trajectories with low MSE.</li>
+                <li><strong>Extrapolation.</strong> The same Neural ODE predicts trajectories 4× longer than the training horizon without re-training.</li>
+                <li><strong>Phase-portrait recovery.</strong> The learned vector field $f$ matches the ground-truth FHN flow with high cosine similarity — evidence the model learned the dynamics, not just the time series.</li>
+                <li><strong>Comparison with a discrete RNN.</strong> A parameter-matched residual RNN fits the time series equally well but its learned vector field is not a true continuous flow — it lives in step-space.</li>
+            </ul>
+
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

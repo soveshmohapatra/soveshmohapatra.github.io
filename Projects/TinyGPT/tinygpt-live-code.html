@@ -1,0 +1,159 @@
+---
+layout: null
+title: "Deconstructing TinyGPT: Part 2 — Pure PyTorch Implementation"
+description: "Building a working decoder-only Transformer in 150 lines of PyTorch — multi-head causal self-attention, pre-norm Block, weight-tied TinyGPT, autoregressive sampling, and the synthetic addition dataset. By Sovesh Mohapatra."
+permalink: /projects/tinygpt-live-code/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing TinyGPT: Part 2 - Pure PyTorch Implementation | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode"><i class="fas fa-moon"></i></button>
+        </div>
+    </nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/tinygpt/" class="back-link"><i class="fas fa-arrow-left"></i> Back to TinyGPT Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing TinyGPT from Scratch</h1>
+            <h2 class="article-subtitle">Part 2: Pure PyTorch Implementation</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">File Map</div>
+                <p>Three files: <code>attention.py</code> ($\sim$30 lines) — multi-head causal self-attention. <code>gpt.py</code> ($\sim$120 lines) — Block, TinyGPT, generation, inspection. <code>train.py</code> — synthetic addition dataset, training loop, evaluation.</p>
+            </div>
+
+            <h2>Multi-Head Causal Self-Attention</h2>
+            <pre><code class="language-python">class MultiHeadCausalSelfAttention(nn.Module):
+    def __init__(self, n_embd, n_head, block_size, dropout=0.0):
+        super().__init__()
+        self.n_head = n_head
+        self.d_head = n_embd // n_head
+        self.qkv = nn.Linear(n_embd, 3 * n_embd)
+        self.proj = nn.Linear(n_embd, n_embd)
+        mask = torch.tril(torch.ones(block_size, block_size))
+        self.register_buffer("mask", mask.view(1, 1, block_size, block_size))
+
+    def forward(self, x):
+        B, T, C = x.shape
+        q, k, v = self.qkv(x).split(C, dim=2)
+        q = q.view(B, T, self.n_head, self.d_head).transpose(1, 2)
+        k = k.view(B, T, self.n_head, self.d_head).transpose(1, 2)
+        v = v.view(B, T, self.n_head, self.d_head).transpose(1, 2)
+        att = (q @ k.transpose(-2, -1)) / math.sqrt(self.d_head)
+        att = att.masked_fill(self.mask[:, :, :T, :T] == 0, float("-inf"))
+        att = F.softmax(att, dim=-1)
+        y = (att @ v).transpose(1, 2).contiguous().view(B, T, C)
+        return self.proj(y)</code></pre>
+            <p>A single linear projects to $[Q \mid K \mid V]$ at once — saves three calls to the dispatcher. The mask is registered as a buffer so it moves with <code>.to(device)</code> but is not a learnable parameter.</p>
+
+            <h2>The Block</h2>
+            <pre><code class="language-python">class Block(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(cfg.n_embd)
+        self.attn = MultiHeadCausalSelfAttention(cfg.n_embd, cfg.n_head,
+                                                  cfg.block_size, cfg.dropout)
+        self.ln2 = nn.LayerNorm(cfg.n_embd)
+        self.mlp = nn.Sequential(
+            nn.Linear(cfg.n_embd, 4 * cfg.n_embd), nn.GELU(),
+            nn.Linear(4 * cfg.n_embd, cfg.n_embd), nn.Dropout(cfg.dropout))
+
+    def forward(self, x):
+        x = x + self.attn(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
+        return x</code></pre>
+            <p>Pre-norm. The $4\times$ MLP expansion is the GPT-2 default. GELU is used because it is what GPT-2 used.</p>
+
+            <h2>The Model</h2>
+            <pre><code class="language-python">class TinyGPT(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.tok_emb = nn.Embedding(cfg.vocab_size, cfg.n_embd)
+        self.pos_emb = nn.Embedding(cfg.block_size, cfg.n_embd)
+        self.drop = nn.Dropout(cfg.dropout)
+        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)])
+        self.ln_f = nn.LayerNorm(cfg.n_embd)
+        self.lm_head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False)
+        self.lm_head.weight = self.tok_emb.weight   # weight tying</code></pre>
+            <p>Total parameter count (vocab 12, block 12, 4 layers, 4 heads, $n_\text{embd}=64$): <strong>200,832</strong>. Weight tying means the embedding matrix and the LM head share their $12 \times 64$ weights.</p>
+
+            <h2>Synthetic Dataset</h2>
+            <p>Each example is a 12-character string: sample $A, B \sim \text{Uniform}\{0, \ldots, 999\}$, format as <code>ABC+DEF=</code>, compute $C = A + B$, zero-pad to four digits, reverse. Concatenate to get a 12-character training string.</p>
+            <p><strong>Supervision masking.</strong> We supervise as a standard causal LM but set the target tokens for the prompt portion to $-100$ (<code>CrossEntropyLoss</code>'s <code>ignore_index</code>). Only the four answer positions contribute to the loss. The model still attends to the prompt; we just do not train it to reconstruct the prompt.</p>
+
+            <h2>Training Loop</h2>
+            <pre><code class="language-python">opt = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.01)
+sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
+for epoch in range(epochs):
+    for x_batch, y_batch in batches:
+        _, loss = model(x_batch, y_batch)
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        opt.step()
+    sched.step()</code></pre>
+            <p>Standard recipe: AdamW with weight decay $0.01$, cosine annealing, gradient clipping at $1.0$. Nothing exotic. Batch size $128$, $50$ epochs, $10{,}000$ training examples.</p>
+
+            <h2>Summary</h2>
+            <ul>
+                <li>Attention module: $\sim$30 lines.</li>
+                <li>Block: $\sim$15 lines.</li>
+                <li>Full model with generation and inspection: $\sim$120 lines.</li>
+                <li>Training loop: $\sim$30 lines.</li>
+            </ul>
+            <p>Part 3 runs the experiment, reports the per-position learning curriculum, and inspects the trained attention.</p>
+
+            <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
+                <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
+                <a href="https://github.com/soveshmohapatra/TinyGPT" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/TinyGPT</a>
+            </p>
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</body>
+</html>

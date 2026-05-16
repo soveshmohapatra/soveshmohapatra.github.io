@@ -1,0 +1,121 @@
+---
+layout: null
+title: "Deconstructing TinyGPT: Part 1 — The Math Behind a Working GPT"
+description: "The mathematical foundations of decoder-only Transformers — attention as soft dictionary lookup, scaled dot-product, causal masking, multi-head splitting, pre-norm residuals, and the output-reversal trick. By Sovesh Mohapatra."
+permalink: /projects/tinygpt-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing TinyGPT: Part 1 - The Math Behind a Working GPT | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode"><i class="fas fa-moon"></i></button>
+        </div>
+    </nav>
+    <main class="article-container">
+        <a href="{{ site.baseurl }}/projects/tinygpt/" class="back-link"><i class="fas fa-arrow-left"></i> Back to TinyGPT Hub</a>
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing TinyGPT from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math Behind a Working GPT</h2>
+            <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
+        </header>
+        <article class="article-content">
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>A complete decoder-only Transformer — the architecture behind GPT-2, GPT-3, GPT-4, LLaMA, and every modern large language model — fits in approximately 150 lines of PyTorch. Most of what makes GPT-4 different from GPT-2 is parameter count, training data, and infrastructure, not architecture.</p>
+                <p>This three-part series builds one such Transformer from first principles, trains it on synthetic three-digit addition, and analyses the per-position learning trajectory. Part 1 covers the math.</p>
+            </div>
+
+            <h2>Causal Self-Attention as a Soft Dictionary Lookup</h2>
+            <p>Each token's representation $x_t \in \mathbb{R}^d$ is projected into three vectors:</p>
+            <div class="math-block">$$ q_t = W_q x_t, \qquad k_t = W_k x_t, \qquad v_t = W_v x_t. $$</div>
+            <p>Conceptually, $q$ asks "what am I looking for?", $k$ advertises "what do I represent?", and $v$ carries the content that gets retrieved.</p>
+            <p>Attention is then the soft generalisation of a dictionary lookup:</p>
+            <div class="math-block">$$ \text{attn}(Q, K, V) = \text{softmax}\!\left(\frac{Q K^\top}{\sqrt{d_\text{head}}}\right) V. $$</div>
+            <p>The softmax produces a probability distribution over positions. Each output token is a weighted sum of the value vectors of all positions, where the weights are determined by how well each key matches the query. A hard dictionary lookup is the limit where one weight is 1 and the rest are 0.</p>
+
+            <h2>Why $\sqrt{d_\text{head}}$?</h2>
+            <p>If $q, k \in \mathbb{R}^{d_\text{head}}$ have i.i.d. unit-variance entries, then $q \cdot k = \sum_{i=1}^{d_\text{head}} q_i k_i$ has variance $d_\text{head}$. As $d_\text{head}$ grows, the dot products grow in magnitude. After softmax, large logits push almost all probability onto a single position — the gradient through softmax vanishes for the rest, and the layer becomes hard to train.</p>
+            <p>Dividing by $\sqrt{d_\text{head}}$ keeps the variance of the logits unit-order, which keeps softmax in a regime where multiple positions retain non-negligible probability. This is the smallest possible fix and the one Vaswani et al. adopted.</p>
+
+            <h2>Causal Masking</h2>
+            <p>For a decoder-only language model, each token must only see itself and earlier tokens — otherwise the model could cheat by attending to the very token it is trying to predict. We enforce this by setting the upper-triangular part of the attention logit matrix to $-\infty$:</p>
+            <div class="math-block">$$ \text{logits}_{t, t'} \leftarrow -\infty \quad \text{whenever } t' > t. $$</div>
+            <p>After softmax, those entries become $0$, so future positions contribute nothing to the weighted sum at position $t$.</p>
+
+            <h2>Multi-Head Attention</h2>
+            <p>Instead of running attention once with one large head, we run $H$ heads in parallel, each operating on a $d_\text{head} = d / H$ subspace:</p>
+            <div class="math-block">$$ \text{MHA}(x) = W_o \, \text{concat}\!\left( \text{attn}_1(x), \ldots, \text{attn}_H(x) \right). $$</div>
+            <p>Each head learns its own $W_q, W_k, W_v$. The motivation is empirical: different heads specialise to different relational patterns (relative position, syntactic dependency, identity copy, etc.). The total parameter count is unchanged, but the representational variety is larger.</p>
+
+            <h2>Pre-Norm vs Post-Norm</h2>
+            <p>The original Transformer used post-norm: $x \leftarrow \text{LN}(x + \text{Sublayer}(x))$. GPT-2 switched to pre-norm: $x \leftarrow x + \text{Sublayer}(\text{LN}(x))$.</p>
+            <p>The difference is consequential. In pre-norm, the residual stream is never normalised, only the inputs to each sublayer are. This means the variance of the residual stream grows additively with depth, but each sublayer sees a normalised, well-conditioned input — and gradient signals flow straight back through the residual path without being attenuated by LayerNorm.</p>
+            <p>Empirically, pre-norm models train without warmup and without dying gradients to depths exceeding 100 layers, where post-norm requires careful tuning to make it past 12. Every modern LLM uses pre-norm or a close variant.</p>
+
+            <h2>Weight Tying</h2>
+            <p>The token embedding $E \in \mathbb{R}^{V \times d}$ maps a token id to a vector. The unembedding (lm head) $U \in \mathbb{R}^{d \times V}$ maps a vector back to logits over the vocabulary. Setting $U = E^\top$ — using the same matrix transposed — halves the parameters of these two matrices and works empirically just as well. We adopt this in our implementation.</p>
+
+            <h2>Why Synthetic Addition?</h2>
+            <p>The Transformer is a very general architecture. A toy task lets us see whether the architecture (and our implementation) is correct without the confounds of language modelling. Three-digit addition is well-defined with a clean ground truth, a small vocabulary, and a non-trivial internal dependency structure — the carry chain. Training to 100% accuracy in under two minutes is a strong sanity check for the entire pipeline.</p>
+
+            <h3>The output-reversal trick</h3>
+            <p>A subtle point: if we ask the model to emit the sum left-to-right (e.g., "472" for $127+345$), the leftmost answer digit depends on carries from columns to its right — columns the model has not yet emitted. This is non-causal. By reversing the output ("2740" for $127+345$ with the sum padded to four digits), the units digit comes first and depends only on units of $A$ and $B$. Each subsequent digit depends only on already-emitted carries. The dependency becomes causal, which is precisely the shape a causal Transformer is designed to model.</p>
+            <p>Without this trick, the same architecture struggles to exceed roughly $25\%$ test accuracy on this task. With it, the architecture converges to $100\%$ in tens of seconds. This is the deeper lesson: architectures matter less than how you frame the problem for them.</p>
+
+            <h2>Summary</h2>
+            <ul>
+                <li>Attention is a soft dictionary lookup: query/key dot products produce weights; values get summed.</li>
+                <li>Scaled dot-product, causal masking, multi-head splitting, and pre-norm residuals are the four design choices that distinguish modern GPTs.</li>
+                <li>Position embeddings inject order. Weight tying halves the parameter cost of the I/O layers.</li>
+                <li>The addition task is a clean stress test that exposes whether the architecture and its supervision are aligned — as the reversed-output trick demonstrates.</li>
+            </ul>
+            <p>Part 2 implements all of this in 150 lines of PyTorch.</p>
+        </article>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>

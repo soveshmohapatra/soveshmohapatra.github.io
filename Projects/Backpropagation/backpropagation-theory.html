@@ -1,0 +1,180 @@
+---
+layout: null
+title: "Deconstructing Backpropagation: Part 1 — The Math of Reverse-Mode Autodiff"
+description: "The mathematical foundations of backpropagation — the chain rule on a DAG, forward vs reverse mode, computation graphs, and the role of broadcasting. By Sovesh Mohapatra."
+permalink: /projects/backpropagation-theory/
+---
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing Backpropagation: Part 1 - The Math of Reverse-Mode Autodiff | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+
+    <style>
+        .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { margin-bottom: 3rem; text-align: center; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-light); text-decoration: none; font-weight: 500; transition: color 0.2s ease; }
+        .back-link:hover { color: var(--accent-hover); }
+        .article-title { font-size: 2.5rem; line-height: 1.2; margin-bottom: 1rem; color: var(--text-color); }
+        .article-subtitle { font-size: 1.25rem; color: var(--text-muted); font-weight: 400; margin-bottom: 1.5rem; }
+        .article-meta { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .article-content { font-size: 1.1rem; line-height: 1.8; color: var(--text-color); }
+        .article-content h2 { margin-top: 3rem; margin-bottom: 1rem; font-size: 1.8rem; color: var(--text-color); position: relative; padding-bottom: 0.5rem; }
+        .article-content h2::after { content: ''; position: absolute; bottom: 0; left: 0; width: 50px; height: 3px; background: var(--accent-gradient); border-radius: 2px; }
+        .article-content h3 { margin-top: 2rem; margin-bottom: 1rem; font-size: 1.4rem; color: var(--text-color); }
+        .article-content p { margin-bottom: 1.5rem; }
+        .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content strong { font-weight: 600; color: var(--accent-light); }
+        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
+        .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; box-shadow: 0 4px 6px var(--shadow-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
+        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
+    </style>
+
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a>
+            <div class="nav-links">
+                <a href="{{ site.baseurl }}/">Home</a>
+                <a href="{{ site.baseurl }}/about/">About</a>
+                <a href="{{ site.baseurl }}/research/">Research</a>
+                <a href="{{ site.baseurl }}/projects/" class="active">Projects</a>
+            </div>
+            <button id="theme-toggle" class="theme-btn" aria-label="Toggle Dark/Light Mode">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="article-container">
+
+        <a href="{{ site.baseurl }}/projects/backpropagation/" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Backpropagation Hub
+        </a>
+
+        <header class="article-header">
+            <h1 class="article-title">Deconstructing Backpropagation from Scratch</h1>
+            <h2 class="article-subtitle">Part 1: The Math of Reverse-Mode Autodiff</h2>
+            <div class="article-meta">
+                <span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+
+            <div class="abstract-box">
+                <div class="abstract-title">Introduction</div>
+                <p>Every neural network on Earth is trained by the same algorithm: <strong>reverse-mode automatic differentiation</strong>, popularly called <em>backpropagation</em>. PyTorch's autograd is roughly 60,000 lines of C++ and Python. The algorithm it implements is ten lines.</p>
+                <p>This three-part series strips the engineering away and builds a working autograd engine from first principles in pure NumPy. By the end of Part 3 we will have 245 lines of code whose gradients match PyTorch to within machine epsilon on every parameter of a multilayer perceptron.</p>
+                <p>This first part covers the math: the chain rule, computation graphs, and why reverse mode is the only viable choice when the parameter count exceeds the loss dimension by ten orders of magnitude.</p>
+            </div>
+
+            <h2>The Chain Rule, As You Already Know It</h2>
+            <p>Given $L = f(g(x))$, calculus tells us:</p>
+            <div class="math-block">
+                $$ \frac{dL}{dx} = \frac{dL}{dg}\cdot \frac{dg}{dx}. $$
+            </div>
+            <p>For composed functions $L = h \circ g \circ f$ this generalises:</p>
+            <div class="math-block">
+                $$ \frac{dL}{dx} = \frac{dL}{dh}\cdot \frac{dh}{dg}\cdot \frac{dg}{df}\cdot \frac{df}{dx}. $$
+            </div>
+            <p>This is exactly what neural networks need. Replace each function with a layer, and $L$ becomes the loss. Computing $\partial L / \partial \theta$ for every parameter $\theta$ in the network is just the chain rule, repeated.</p>
+            <p>The only question is the <em>order</em> in which we multiply.</p>
+
+            <h2>Forward Mode vs Reverse Mode</h2>
+            <p>Consider a network with $P$ parameters and a scalar loss $L$. To compute every gradient, we must evaluate $P$ derivatives.</p>
+
+            <h3>Forward Mode</h3>
+            <p>Forward mode propagates derivatives <em>alongside</em> the forward computation. For each input variable $x$, we carry a "dual number" $(v,\, dv/dx)$ through every operation. At the end, the dual associated with the loss gives $dL/dx$.</p>
+            <p><strong>Cost:</strong> one forward pass per input variable. To differentiate the loss with respect to $P$ parameters, we need $P$ forward passes. For a 7-billion-parameter model, that is 7 billion forward passes per training step.</p>
+
+            <h3>Reverse Mode</h3>
+            <p>Reverse mode performs one forward pass and then <em>one</em> backward pass that fans out from the scalar loss into every parameter at once. The trick: at each operation $z = f(x, y)$, we store a function that knows how to convert $\partial L / \partial z$ into $\partial L / \partial x$ and $\partial L / \partial y$. After the forward pass we have a graph of such functions. The backward pass walks this graph from the loss outward.</p>
+            <p><strong>Cost:</strong> one forward pass plus one backward pass, regardless of $P$.</p>
+
+            <h3>Why This Asymmetry Matters</h3>
+            <p>Forward mode is $O(P)$ in parameter count. Reverse mode is $O(1)$. When $P = 7 \times 10^9$ and the loss is a single scalar, reverse mode is a billion times cheaper.</p>
+            <p><strong>Important caveat:</strong> reverse mode is only cheaper when the output is low-dimensional. If we had a vector loss of dimension $D$ and many fewer parameters, forward mode would win. Neural networks land squarely in the reverse-mode regime: a single scalar loss against billions of parameters.</p>
+
+            <h2>Computation Graphs</h2>
+            <p>Reverse mode requires a <em>record</em> of every operation performed during the forward pass. We represent this record as a directed acyclic graph (DAG):</p>
+            <ul>
+                <li>Each <strong>node</strong> is an intermediate value.</li>
+                <li>Each <strong>edge</strong> points from an operation's inputs to its output.</li>
+                <li>The graph is built dynamically as the forward pass executes.</li>
+            </ul>
+            <p>For example, the expression $L = (W x + b)^2$ produces:</p>
+            <div class="math-block">
+                $$ x,\, W,\, b \;\longrightarrow\; u = Wx \;\longrightarrow\; z = u + b \;\longrightarrow\; L = z^2. $$
+            </div>
+            <p>Each node stores both its value and the operation that produced it. After the forward pass, the graph contains everything needed to evaluate the chain rule in reverse.</p>
+            <p><strong>Key design choice:</strong> who stores what?</p>
+            <ul>
+                <li>Each node stores its own value.</li>
+                <li>Each node stores a closure that, given $\partial L / \partial \text{(this node)}$, knows how to update its parents' gradients.</li>
+            </ul>
+            <p>This is the design we will implement in Part 2.</p>
+
+            <h2>The Backward Pass in Three Steps</h2>
+            <p>Given the graph, the backward algorithm is:</p>
+            <ol>
+                <li><strong>Topological sort.</strong> Order the nodes so that every parent appears before all its children.</li>
+                <li><strong>Seed.</strong> Set $\partial L / \partial L = 1$.</li>
+                <li><strong>Reverse walk.</strong> For each node in reverse topological order, invoke its closure. The closure consumes the node's accumulated gradient and pushes contributions into its parents.</li>
+            </ol>
+            <p>That is the entire algorithm. Every modern framework -- PyTorch, JAX, TensorFlow -- implements exactly this, with differences only in graph representation (define-by-run vs.\ define-and-compile) and execution backend.</p>
+
+            <h2>The Backward of Matrix Multiplication</h2>
+            <p>The matmul backward formula is worth deriving by hand because it appears in every neural network. For $Z = X W$ with $X \in \mathbb{R}^{m \times n}$, $W \in \mathbb{R}^{n \times k}$:</p>
+            <div class="math-block">
+                $$ \frac{\partial L}{\partial X} = \frac{\partial L}{\partial Z}\, W^\top, \qquad \frac{\partial L}{\partial W} = X^\top \frac{\partial L}{\partial Z}. $$
+            </div>
+            <p>Two lines. The forward pass is two lines. The backward pass is two lines.</p>
+            <p>This pattern repeats for every operation: a forward formula and a closure that uses incoming gradient $\partial L / \partial Z$ to produce gradients with respect to each input. The art is in the closures; once they are written, the engine works.</p>
+
+            <h2>Broadcasting and Gradient Reduction</h2>
+            <p>NumPy and PyTorch use <em>broadcasting</em>: a shape-$(D,)$ bias added to a shape-$(B, D)$ activation expands to shape $(B, D)$ implicitly. The gradient flowing back into the bias must be summed across the broadcast axes.</p>
+            <p>In general, after broadcasting promoted a tensor of shape $S_\text{in}$ to shape $S_\text{out}$, the gradient with respect to the input is obtained by summing the outgoing gradient over the axes that were inserted or stretched:</p>
+            <div class="math-block">
+                $$ \text{grad}_{\text{in}} = \sum_{\text{broadcast axes}} \text{grad}_{\text{out}}. $$
+            </div>
+            <p>This is the subtle bookkeeping detail that trips up most hand-rolled implementations. Part 2 contains a six-line helper that handles it.</p>
+
+            <h2>Summary</h2>
+            <ul>
+                <li>Reverse-mode autodiff computes all parameter gradients in one backward pass; forward mode would require $O(P)$ passes.</li>
+                <li>The forward pass builds a DAG of operations.</li>
+                <li>The backward pass topologically sorts the DAG, seeds the output gradient to one, and walks the order in reverse, invoking a per-op closure at each node.</li>
+                <li>Each closure is short: matmul is two lines, add is two lines (plus broadcast bookkeeping).</li>
+            </ul>
+
+            <p>In Part 2 we implement all of this in 245 lines of NumPy: a <code>Tensor</code> class, an autograd graph, an MLP, and a numerically stable cross-entropy loss. In Part 3 we benchmark it against PyTorch on the two-moons dataset and verify the gradients match to within $10^{-17}$.</p>
+
+        </article>
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+
+</html>

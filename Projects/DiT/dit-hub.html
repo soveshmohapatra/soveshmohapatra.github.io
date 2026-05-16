@@ -1,0 +1,67 @@
+---
+layout: null
+title: "Deconstructing DiT"
+description: "The Diffusion Transformer (Peebles & Xie, 2023) — the architecture behind Stable Diffusion 3 and Sora. Built from scratch in 250 lines with adaLN-Zero conditioning."
+permalink: /projects/dit/
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deconstructing DiT | Sovesh Mohapatra</title>
+    {% include seo-standalone.html %}
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
+        <style>
+        .hub-container { max-width: 1000px; margin: 0 auto; padding: 4rem 1.5rem; text-align: center; }
+        .hub-header { margin-bottom: 4rem; }
+        .hub-title { font-size: 3rem; line-height: 1.2; margin-bottom: 1rem; background: var(--accent-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
+        .hub-subtitle { font-size: 1.25rem; color: var(--text-muted); max-width: 600px; margin: 0 auto; }
+        .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem; }
+        .hub-card { background: rgba(var(--bg-card-rgb), 0.6); border: 1px solid var(--border-color); border-radius: 16px; padding: 3rem 2rem; transition: transform 0.3s ease, box-shadow 0.3s ease; text-decoration: none; color: var(--text-color); display: flex; flex-direction: column; align-items: center; position: relative; overflow: hidden; backdrop-filter: blur(12px); }
+        .hub-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2); border-color: var(--accent-light); }
+        .hub-card-icon { font-size: 3.5rem; margin-bottom: 1.5rem; color: var(--accent-light); }
+        .hub-card-title { font-size: 1.8rem; font-weight: 600; margin-bottom: 1rem; }
+        .hub-card-desc { font-size: 1rem; color: var(--text-muted); line-height: 1.6; }
+        .hub-card-tag { position: absolute; top: 1rem; right: 1rem; font-size: 0.75rem; font-weight: 600; background: rgba(56, 189, 248, 0.1); color: var(--accent-light); padding: 0.3rem 0.8rem; border-radius: 20px; text-transform: uppercase; }
+        .hub-card.disabled { opacity: 0.7; pointer-events: none; }
+    </style>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+    <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
+    <main class="hub-container">
+        <a href="{{ site.baseurl }}/projects/" class="back-link" style="text-align: left; width: 100%;"><i class="fas fa-arrow-left"></i> Back to Projects</a>
+        <header class="hub-header">
+            <h1 class="hub-title">Deconstructing DiT</h1>
+            <p class="hub-subtitle">The Diffusion Transformer (Peebles & Xie, 2023) — the architecture behind Stable Diffusion 3 and Sora. Built from scratch in 250 lines with adaLN-Zero conditioning.</p>
+        </header>
+        <section class="hub-grid">
+            <a href="{{ site.baseurl }}/projects/dit-theory/" class="hub-card">
+                <div class="hub-card-tag">Part 1</div>
+                <i class="fas fa-brain hub-card-icon"></i>
+                <h2 class="hub-card-title">Diffusion Transformers and adaLN-Zero</h2>
+                <p class="hub-card-desc">The architecture, how adaLN-Zero conditioning replaces cross-attention, why zero-init makes early training stable, the inductive-bias tradeoff with U-Net.</p>
+            </a>
+            <a href="{{ site.baseurl }}/projects/dit-live-code/" class="hub-card">
+                <div class="hub-card-tag">Part 2</div>
+                <i class="fas fa-laptop-code hub-card-icon"></i>
+                <h2 class="hub-card-title">250 Lines of PyTorch</h2>
+                <p class="hub-card-desc">Noise scheduler, PatchEmbed, DiTBlock with adaLN-Zero, full DiT model, sampling.<br><span style="margin-top: 0.5rem; display: inline-block; font-size: 0.9em; font-weight: 500; color: var(--accent-light);"><i class="fab fa-github"></i> View Code on GitHub</span></p>
+            </a>
+            <a href="{{ site.baseurl }}/projects/dit-benchmark/" class="hub-card">
+                <div class="hub-card-tag">Part 3</div>
+                <i class="fas fa-chart-line hub-card-icon"></i>
+                <h2 class="hub-card-title">Inductive Bias as a Resource</h2>
+                <p class="hub-card-desc">Class conditioning works, shape geometry needs scale. UNets win at small data; DiT wins at LAION scale. The crossover is the whole story.</p>
+            </a>
+        </section>
+    </main>
+    <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
+</body>
+</html>
