@@ -1,14 +1,14 @@
 ---
 layout: null
 title: "Deconstructing LoRA: Part 2 — Fifty Lines of PyTorch"
-description: "The whole machinery is 50 lines: a wrapper class, a recursive injector, helper functions for trainable-parameter bookkeeping, plus a 5-line merge function for zero-overhead inference."
+description: "Low-rank adaptation in 50 lines of PyTorch. The wrapper class, the recursive injector, trainable-parameter bookkeeping, and a 5-line merge function for zero-overhead inference."
 permalink: /projects/lora-live-code/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing LoRA: Part 2 — Fifty Lines of PyTorch | Sovesh Mohapatra</title>
+    <title>Deconstructing LoRA: Part 2 - Fifty Lines | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -32,9 +32,6 @@ permalink: /projects/lora-live-code/
         .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
-        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
-        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
@@ -46,37 +43,76 @@ permalink: /projects/lora-live-code/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/lora/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing LoRA Hub</a>
+        <a href="{{ site.baseurl }}/projects/lora/" class="back-link"><i class="fas fa-arrow-left"></i> Back to LoRA Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing LoRA</h1>
             <h2 class="article-subtitle">Part 2: Fifty Lines of PyTorch</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
                 <div class="abstract-title">Overview</div>
-                <p>The whole machinery is 50 lines: a wrapper class, a recursive injector, helper functions for trainable-parameter bookkeeping, plus a 5-line merge function for zero-overhead inference.</p>
+                <p>Part 1 introduced the central claim: weight updates during fine-tuning have very low intrinsic rank, so a rank-$r$ approximation $BA$ to the full delta $\Delta W$ suffices for most tasks. Now we turn that into PyTorch code. The full implementation is roughly $50$ lines: a wrapper class, a recursive injector that swaps every <code>nn.Linear</code> in a model with its LoRA-wrapped version, a few helper functions for parameter bookkeeping, and a $5$-line merge function for zero-overhead inference.</p>
+                <p>The interesting parts are not the data structures — those are obvious — but the subtle correctness points. Why the forward pass is two matmuls instead of one. Why the initialisation has to be asymmetric. How the recursive injector handles arbitrary model architectures. And what the merge function lets you do that the wrapper version cannot.</p>
             </div>
 
-            <h2>The LoRA Wrapper</h2>
+            <h2>The LoRALinear Wrapper</h2>
+
+            <p>The core class wraps any existing <code>nn.Linear</code> with two trainable low-rank matrices. The base linear's weight remains frozen; only $A$ and $B$ receive gradients.</p>
+
             <pre><code class="language-python">class LoRALinear(nn.Module):
     def __init__(self, base: nn.Linear, rank: int = 4, alpha: float = 8.0):
         super().__init__()
         self.base = base
         for p in self.base.parameters():
             p.requires_grad_(False)
-        self.A = nn.Parameter(torch.randn(rank, base.in_features) / rank)
-        self.B = nn.Parameter(torch.zeros(base.out_features, rank))
+        in_features = base.in_features
+        out_features = base.out_features
+        self.rank = rank
         self.scale = alpha / rank
+        self.A = nn.Parameter(torch.randn(rank, in_features) / rank)
+        self.B = nn.Parameter(torch.zeros(out_features, rank))
 
     def forward(self, x):
-        return self.base(x) + (x @ self.A.T) @ self.B.T * self.scale</code></pre>
-            <p>Three things: the base is frozen (no gradients flow into it), $A$ is randomly init / $B$ is zero (initial product is zero), and the forward path keeps the rank-$r$ intermediate to avoid materialising the dense $BA$.</p>
+        base_out = self.base(x)
+        lora_out = (x @ self.A.T) @ self.B.T * self.scale
+        return base_out + lora_out</code></pre>
 
-            <h2>Why the Forward Pass Is Two Matmuls</h2>
-            <p>The naive way — first form $BA$ as a dense $d_\text{out} \times d_\text{in}$ matrix — would cost $O(d_\text{out} \cdot d_\text{in})$ just to construct, defeating the point. Instead, factor through the rank-$r$ intermediate: $A x$ costs $O(r \cdot d_\text{in})$, then $B(Ax)$ costs $O(r \cdot d_\text{out})$. Total $O(r(d_\text{in} + d_\text{out}))$, much smaller than $O(d_\text{in} d_\text{out})$.</p>
+            <p>Three design choices are worth slowing down on.</p>
+
+            <p><strong>The base is frozen via <code>requires_grad_(False)</code>.</strong> Setting <code>requires_grad = False</code> on a parameter tells PyTorch's autograd to not compute or store gradients for it. The parameter remains a valid tensor — you can read its values, use it in forward passes, save it in checkpoints — it just doesn't get updated by the optimizer. The optimizer ignores it because we filter parameters by <code>p.requires_grad</code> when constructing the optimizer (see usage below).</p>
+
+            <p><strong>Asymmetric initialisation: $A$ random, $B$ zero.</strong> The product $BA$ at initialisation is $B \cdot A = 0 \cdot A = 0$. The LoRA-augmented model is therefore <em>exactly</em> identical to the frozen base model at step zero. Gradient descent then nudges $A$ and $B$ to capture whatever delta is needed for the new task. If both $A$ and $B$ were random, the initial $BA$ would be random and the model would start at a worse-than-base configuration — the optimizer would have to spend early iterations un-doing the random damage. The asymmetric initialisation removes this overhead entirely.</p>
+
+            <p><strong>The forward pass is two matmuls, factored through the rank-$r$ intermediate.</strong> The line <code>(x @ self.A.T) @ self.B.T * self.scale</code> first projects $x$ into the rank-$r$ space (cost $O(r \cdot d_\text{in})$), then projects back to the output space (cost $O(r \cdot d_\text{out})$). Total: $O(r(d_\text{in} + d_\text{out}))$ — much smaller than the $O(d_\text{in} d_\text{out})$ that materialising the dense $BA$ matrix would require.</p>
+
+            <p>This factoring is essential, not cosmetic. If we wrote the forward pass as <code>x @ (self.B @ self.A).T * self.scale</code> instead, we would briefly construct a $d_\text{out} \times d_\text{in}$ tensor — exactly the size of the full weight matrix we are trying to avoid. The LoRA memory savings rely on never materialising that intermediate.</p>
+
+            <h2>The Alpha/r Scaling Trick</h2>
+
+            <p>The <code>self.scale = alpha / rank</code> line implements the LoRA scaling factor:</p>
+
+            <div class="math-block">$$ y = W x + \frac{\alpha}{r} \cdot B A \, x. $$</div>
+
+            <p>$\alpha$ is a hyperparameter typically set to $2r$ or to a fixed value like $16$. The division by $r$ might look arbitrary; it's actually load-bearing.</p>
+
+            <p>Consider what happens if you change the rank from $4$ to $8$. With twice the rank, the matrix $BA$ has roughly twice the typical magnitude (more dimensions to accumulate signal in). If you kept the same learning rate, your effective parameter updates would be roughly twice as large for rank-$8$ as for rank-$4$. This means changing the rank would force you to retune the learning rate.</p>
+
+            <p>The $\alpha/r$ scaling decouples this: doubling the rank halves the scale, keeping the effective magnitude of $BA \cdot x$ roughly constant. The same learning rate works across rank choices. This makes ablating rank a much cheaper experiment because you don't have to re-tune $\eta$ each time.</p>
+
+            <h2>Why the Two-Matmul Order Matters</h2>
+
+            <p>One more subtle point about the forward pass. <code>x @ self.A.T</code> has shape $(B, T, r)$ — a small projection. <code>(x @ self.A.T) @ self.B.T</code> has shape $(B, T, d_\text{out})$.</p>
+
+            <p>If you reversed the order — first computed <code>self.B @ self.A</code>, then multiplied by $x$ — you would briefly hold a $d_\text{out} \times d_\text{in}$ tensor in memory. For a $4096 \times 4096$ Linear with rank $8$, that intermediate is $16$M entries instead of the $8$K entries you actually need. On a $70$B-parameter model with LoRA applied to every attention projection, the difference between these two formulations is roughly $50$ GB of avoidable memory pressure.</p>
+
+            <p>PyTorch will not warn you about this. It is a correctness-equivalent transformation that destroys the memory advantage. Always factor through the rank-$r$ intermediate.</p>
 
             <h2>The Recursive Injector</h2>
+
+            <p>To apply LoRA to an existing model, we need to traverse the model tree and replace every <code>nn.Linear</code> with its LoRA-wrapped version. The injector does this recursively:</p>
+
             <pre><code class="language-python">def inject_lora(module, target_class=nn.Linear, rank=4, alpha=8.0):
     injected = []
     for name, child in list(module.named_children()):
@@ -87,28 +123,94 @@ permalink: /projects/lora-live-code/
         else:
             injected.extend(inject_lora(child, target_class, rank, alpha))
     return injected</code></pre>
-            <p>Walks the module tree, replaces every <code>nn.Linear</code> with its LoRA-wrapped version. For Transformers, you typically restrict to attention projections.</p>
+
+            <p>Three things to notice.</p>
+
+            <p><strong>The <code>list(module.named_children())</code>.</strong> We materialise the children iterator into a list <em>before</em> iterating. This is necessary because <code>setattr</code> on the module modifies the underlying <code>_modules</code> OrderedDict, which would invalidate a live iterator. The list copy is a defensive measure that avoids a subtle iterator-invalidation bug.</p>
+
+            <p><strong><code>setattr(module, name, lora)</code> as the replacement mechanism.</strong> PyTorch's module system uses Python's attribute lookup: <code>module.my_linear</code> looks up <code>module._modules['my_linear']</code> automatically. Setting <code>module.my_linear = lora</code> replaces the child module in place, and subsequent forward passes pick up the new wrapped version. No special PyTorch API needed.</p>
+
+            <p><strong>The <code>target_class</code> argument lets you restrict where LoRA gets applied.</strong> In real Transformer fine-tuning, you usually want LoRA only on attention projections, not on MLP layers (which would consume too much parameter budget). The Hugging Face PEFT library uses a similar mechanism with more configurable target filtering (e.g., regex match on layer names). Our version is simpler: any <code>nn.Linear</code> gets wrapped.</p>
+
+            <h2>Trainable-Parameter Bookkeeping</h2>
+
+            <p>Three small helpers handle the parameter inventory:</p>
+
+            <pre><code class="language-python">def count_trainable(module):
+    return sum(p.numel() for p in module.parameters() if p.requires_grad)
+
+def count_total(module):
+    return sum(p.numel() for p in module.parameters())
+
+def freeze_all(module):
+    for p in module.parameters():
+        p.requires_grad_(False)</code></pre>
+
+            <p>The pattern that ties everything together looks like this:</p>
+
+            <pre><code class="language-python">base_model = load_pretrained()              # all params trainable by default
+freeze_all(base_model)                        # nothing trainable
+inject_lora(base_model, rank=4, alpha=8)      # A, B in each layer trainable
+opt = torch.optim.AdamW(
+    p for p in base_model.parameters() if p.requires_grad
+)
+train(base_model, target_data)</code></pre>
+
+            <p>The optimizer construction is the key line. By filtering <code>parameters()</code> with <code>p.requires_grad</code>, the optimizer only manages the LoRA parameters $A$ and $B$ — not the frozen base. This is what cuts the optimizer state (AdamW's $m$ and $v$ buffers) from "billions of entries" down to "tens of millions."</p>
+
+            <p>If you forget the filter — say, just <code>torch.optim.AdamW(base_model.parameters())</code> — the optimizer will track moment buffers for the frozen parameters. Those parameters have <code>requires_grad=False</code> so they will never actually receive gradients, but the optimizer will still allocate AdamW state for them. That eats your memory savings entirely. The filter is non-optional.</p>
 
             <h2>Merging at Inference Time</h2>
-            <pre><code class="language-python">def merge_lora(lora_linear):
+
+            <p>At inference, the LoRA path adds one extra matmul to the forward pass. For most use cases this overhead is acceptable. But there is a way to eliminate it entirely: fold $BA$ into the base weight before inference.</p>
+
+            <pre><code class="language-python">def merge_lora(lora_linear: LoRALinear) -> nn.Linear:
     base = lora_linear.base
     delta = lora_linear.scale * (lora_linear.B @ lora_linear.A)
     base.weight.data += delta
     return base</code></pre>
-            <p>After merging, the model looks structurally identical to the pretrained base. Inference latency is the same.</p>
 
-            <h2>Usage</h2>
-            <pre><code class="language-python">base_model = load_pretrained()
-freeze_all(base_model)
-inject_lora(base_model, rank=4, alpha=8)
-opt = torch.optim.AdamW(p for p in base_model.parameters() if p.requires_grad)
-train(base_model, target_data)</code></pre>
+            <p>Five lines. After merging, the model looks structurally identical to the pretrained base — same architecture, same parameter count, same inference latency. The LoRA adapter has been absorbed into the base weight.</p>
 
+            <p>This is the design property that makes LoRA fundamentally different from earlier "adapter" methods (Houlsby adapters, prefix tuning). Those approaches insert small modules into the model that persist at inference time, adding latency proportional to the number of adapter modules. LoRA's BA delta can be folded into the existing weight, so inference cost is exactly the same as the base model.</p>
+
+            <p><strong>One caveat about merging.</strong> Once you merge, you cannot un-merge — the base weight has been irreversibly changed. To support task switching at serving time (one base model, many adapters, switch between them), you keep the LoRA modules <em>unmerged</em> and toggle which adapter's $A$ and $B$ get used at each forward call. This is what Hugging Face PEFT's <code>set_adapter</code> mechanism does.</p>
+
+            <h2>Why Freezing Matters Beyond Memory</h2>
+
+            <p>The most obvious benefit of freezing is memory: AdamW's state for $70$B parameters is $\sim 280$ GB; for the $\sim 8$M LoRA parameters it's $\sim 32$ MB. That alone moves $70$B fine-tuning from "needs an H100 cluster" to "fits on a single $24$ GB consumer GPU."</p>
+
+            <p>But there is a second, less-obvious benefit: <strong>composability</strong>. Because the base is unchanged, two LoRAs trained on different tasks operate on the <em>same</em> underlying base model. You can sum them, interpolate between them, or load one at a time and switch at inference. This is what makes LoRA the dominant fine-tuning method for stackable image-generation workflows (Civitai, the entire Stable Diffusion ecosystem) — users compose dozens of LoRAs for different styles, characters, and effects, all anchored to the same base.</p>
+
+            <p>If you allow the base to drift even slightly during LoRA training, you lose this property. Two LoRAs trained against slightly different bases cannot be summed cleanly. Freezing is not a memory optimisation — it's what makes adapter-style fine-tuning a deployable production pattern.</p>
+
+            <h2>What This Implementation Skips</h2>
+
+            <p>Production LoRA implementations (Hugging Face PEFT, bitsandbytes' LoRA implementation) add several features we omit for clarity:</p>
+
+            <p><strong>QLoRA quantisation.</strong> Dettmers et al. (2023) showed you can quantise the frozen base to 4-bit precision and still train LoRA adapters in higher precision. This makes the base model fit in much less memory ($70$B becomes $\sim 35$ GB at 4-bit) while LoRA training proceeds normally. Our implementation keeps the base in full precision; QLoRA-style quantisation is a separate piece of engineering.</p>
+
+            <p><strong>Mixed-precision LoRA.</strong> Real implementations train LoRA in bf16/fp16 with selective fp32 accumulation for stability. We use whatever precision PyTorch defaults to.</p>
+
+            <p><strong>Configurable target filtering.</strong> PEFT exposes regex-based target filtering, separate LoRA configurations per layer type, parameter-efficient fine-tuning bookkeeping, etc. Our $\sim 50$ lines handle the algorithm but not the configuration surface.</p>
+
+            <p><strong>Multi-adapter management.</strong> Loading and switching between multiple LoRAs at serving time requires explicit state management. We support one adapter per model. PEFT's <code>PeftModel</code> supports many.</p>
+
+            <h2>The Whole Implementation</h2>
+
+            <p>Counting only substantive code: the wrapper is $20$ lines, the injector is $10$ lines, the helpers are $6$ lines, the merge function is $5$ lines. Total: roughly $40$ lines. With docstrings and a thin module structure, the full <code>lora.py</code> file is around $50$ lines.</p>
+
+            <p>What you can do with this: take any model containing <code>nn.Linear</code> layers, freeze it, inject LoRA, train. What you cannot do: handle the production-deployment surface area that PEFT covers. For learning, the simpler version is the right entry point.</p>
+
+            <h2>What Part 3 Tests</h2>
+
+            <p>With LoRA in hand, Part 3 runs a controlled adaptation experiment: pretrain a $4$-layer MLP on standard two-moons; define a target task as the same data rotated by $45^\circ$; and compare full fine-tuning against LoRA at ranks $2$, $4$, $8$. The result is that rank-$2$ LoRA — $1{,}544$ trainable parameters, $4.59\%$ of the full parameter count — matches or beats full fine-tuning. The intrinsic-rank hypothesis from Part 1 holds up empirically.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/LoRA" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/LoRA</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

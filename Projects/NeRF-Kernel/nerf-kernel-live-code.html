@@ -1,14 +1,14 @@
 ---
 layout: null
 title: "Deconstructing the NeRF Kernel: Part 2 — Forty Lines of PyTorch"
-description: "Two classes — <code>FourierFeatures</code> (no trainable parameters) and <code>CoordMLP</code> — fit in 40 lines of PyTorch. The encoding is the whole trick."
+description: "Two classes — FourierFeatures (zero trainable params) and CoordMLP — fit in 40 lines. The encoding is the whole trick that makes coordinate-based scene representations work."
 permalink: /projects/nerf-kernel-live-code/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing the NeRF Kernel: Part 2 — Forty Lines of PyTorch | Sovesh Mohapatra</title>
+    <title>Deconstructing NeRF Kernel: Part 2 - Forty Lines | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -32,9 +32,6 @@ permalink: /projects/nerf-kernel-live-code/
         .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
-        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
-        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
@@ -46,19 +43,30 @@ permalink: /projects/nerf-kernel-live-code/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/nerf-kernel/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing the NeRF Kernel Hub</a>
+        <a href="{{ site.baseurl }}/projects/nerf-kernel/" class="back-link"><i class="fas fa-arrow-left"></i> Back to NeRF Kernel Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing the NeRF Kernel</h1>
             <h2 class="article-subtitle">Part 2: Forty Lines of PyTorch</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
                 <div class="abstract-title">Overview</div>
-                <p>Two classes — <code>FourierFeatures</code> (no trainable parameters) and <code>CoordMLP</code> — fit in 40 lines of PyTorch. The encoding is the whole trick.</p>
+                <p>Part 1 argued that the pivotal innovation in NeRF — and in every neural-field method since — was not the architecture but the input representation. Replacing raw coordinates with Fourier features turns a coordinate MLP from a low-frequency-only function into a representation rich enough to capture high-frequency visual detail.</p>
+                <p>This part implements the kernel: a <code>FourierFeatures</code> encoder with no trainable parameters and a <code>CoordMLP</code> that consumes the encoded coordinates and produces RGB. Total code: $40$ lines for the kernel, plus a training script that fits a $64 \times 64$ image. The benchmarks in Part 3 will show what those $40$ lines buy you.</p>
             </div>
 
-            <h2>Fourier Features</h2>
+            <h2>Why This Particular Implementation</h2>
+
+            <p>The full NeRF pipeline has three components: a coordinate MLP with Fourier features, a viewing-ray sampling procedure, and a volume-rendering integral that turns per-point colour and density into a final pixel. The first component is the part that <em>made</em> NeRF possible. The other two are essentially geometry — the ray sampling is camera mathematics, the volume rendering is alpha compositing. Both predate NeRF.</p>
+
+            <p>For this series we focus on the first component, which is also the part that transfers to other neural-field methods (SIREN, Instant-NGP, etc.) that do not use ray-based rendering. The benchmark in Part 3 is 2D image regression rather than 3D scene reconstruction, but the underlying numerical phenomenon — spectral bias defeated by Fourier features — is identical.</p>
+
+            <p>If you want full 3D NeRF, you add about $500$ lines of ray-casting and volume-rendering code on top of what's described here. The hard part of NeRF is not the rendering; it is the kernel.</p>
+
+            <h2>The Fourier Features Class</h2>
+
             <pre><code class="language-python">class FourierFeatures(nn.Module):
     def __init__(self, input_dim, num_freqs):
         super().__init__()
@@ -77,9 +85,39 @@ permalink: /projects/nerf-kernel-live-code/
         cos = torch.cos(x_scaled)
         feats = torch.stack([sin, cos], dim=-1)       # (..., D, L, 2)
         return feats.flatten(start_dim=-3)            # (..., 2 L D)</code></pre>
-            <p>Six lines of forward. Frequencies $2^0 \pi, 2^1 \pi, \ldots, 2^{L-1} \pi$ are precomputed once and stored as a buffer. For $L = 6$: $\pi, 2\pi, 4\pi, 8\pi, 16\pi, 32\pi$ — one to thirty-two cycles per unit input.</p>
 
-            <h2>Coordinate MLP</h2>
+            <p>Six lines of forward. No trainable parameters anywhere. Several design choices encoded in this short snippet.</p>
+
+            <p><strong>Frequencies are precomputed and stored as a buffer.</strong> The line <code>freqs = (2.0 ** torch.arange(num_freqs)) * torch.pi</code> computes the $L$ frequencies $\pi, 2\pi, 4\pi, 8\pi, \ldots, 2^{L-1} \pi$ once at construction time. <code>register_buffer</code> makes them part of the module state — they move with <code>.to(device)</code> and appear in checkpoints — but PyTorch knows they are not trainable, so they don't appear in <code>parameters()</code> or receive gradients.</p>
+
+            <p><strong>Why exponentially-spaced frequencies?</strong> Natural signals (images, 3D scenes) have approximately self-similar spectra at different scales — a face has features at scale 10cm (nose, eyes), 1cm (eyebrows, lips), 1mm (pores, hairs), all simultaneously. Linear-spaced frequencies would cluster around one scale and miss the others. Exponential spacing covers many orders of magnitude with a small number of bins. $L = 6$ frequencies cover the range $1$ to $32$ cycles per unit input — five decades of scale, which is enough for most natural-image content.</p>
+
+            <p><strong>Why both sin <em>and</em> cos at each frequency?</strong> Together, $\sin(\omega p)$ and $\cos(\omega p)$ form a basis for any phase at frequency $\omega$. Any waveform $A \sin(\omega p + \phi)$ can be written as a linear combination of $\sin(\omega p)$ and $\cos(\omega p)$, so the MLP can recover any phase by linearly combining the two features.</p>
+
+            <p>If we only included $\sin$, the MLP would be locked to a fixed phase. The encoder has no learnable parameters, so it cannot adjust the phase based on the data. Including $\cos$ as well gives the MLP the flexibility to represent any phase.</p>
+
+            <h2>The Tensor Reshape Magic</h2>
+
+            <p>Three lines of the forward pass deserve attention: how the encoder broadcasts an input of shape $(B, D)$ into an output of shape $(B, 2LD)$.</p>
+
+            <pre><code class="language-python">x_scaled = x.unsqueeze(-1) * self.freqs       # (B, D) * (L,) → (B, D, L)
+sin = torch.sin(x_scaled)
+cos = torch.cos(x_scaled)
+feats = torch.stack([sin, cos], dim=-1)       # (B, D, L, 2)
+return feats.flatten(start_dim=-3)            # (B, 2*L*D)</code></pre>
+
+            <p><strong>Step 1.</strong> <code>x.unsqueeze(-1)</code> turns shape $(B, D)$ into $(B, D, 1)$. Multiplying by <code>self.freqs</code> of shape $(L,)$ broadcasts to $(B, D, L)$: each coordinate scaled by each frequency.</p>
+
+            <p><strong>Step 2.</strong> Apply $\sin$ and $\cos$ element-wise — both produce $(B, D, L)$ tensors.</p>
+
+            <p><strong>Step 3.</strong> <code>torch.stack([sin, cos], dim=-1)</code> stacks them along a new last axis, producing $(B, D, L, 2)$.</p>
+
+            <p><strong>Step 4.</strong> <code>feats.flatten(start_dim=-3)</code> collapses the last three axes $(D, L, 2)$ into one of size $2LD$. The MLP sees a flat vector of $2LD$ features per input.</p>
+
+            <p>This is one of those PyTorch idioms that look impenetrable until you trace the shapes. Once you do, it's just clean broadcasting. No reshape gymnastics, no transpose tricks — every step is shape-preserving in a natural way.</p>
+
+            <h2>The CoordMLP</h2>
+
             <pre><code class="language-python">class CoordMLP(nn.Module):
     def __init__(self, input_dim=2, output_dim=3, hidden=128, n_layers=4,
                  use_pe=True, num_freqs=6):
@@ -98,22 +136,87 @@ permalink: /projects/nerf-kernel-live-code/
 
     def forward(self, x):
         return torch.sigmoid(self.mlp(self.encoder(x)))</code></pre>
-            <p>The <code>use_pe</code> flag toggles the encoder. With it on, the first linear receives $2 L D$ inputs; off, just $D$.</p>
+
+            <p>The <code>use_pe</code> flag toggles the encoder. With it on, the first <code>nn.Linear</code> receives $2 L D$ inputs ($24$ for our $2$D coordinates with $L = 6$). With it off, it receives the raw $D$ inputs ($2$ coordinates).</p>
+
+            <p>Everything else — the layer count, hidden dimension, activation function, output projection — is identical between the two variants. This is essential for the fair comparison in Part 3: we want to isolate the effect of the encoder, not confound it with architecture changes.</p>
+
+            <p><strong>The sigmoid output.</strong> RGB values lie in $[0, 1]$. The sigmoid output activation bounds the model's output to this range, which is both correct (no impossible pixel values) and helpful for optimization (the sigmoid's saturating gradients near $0$ and $1$ are gentler than a clamp's discontinuity at the boundary).</p>
+
+            <p><strong>ReLU activations.</strong> Standard for MLPs. Note that the spectral-bias problem we are solving with Fourier features is <em>specific to ReLU MLPs</em> — sinusoidal-activation MLPs (SIRENs) solve the same problem differently, by making the entire network operate in a more periodic regime. Tanh MLPs would also have spectral bias, just with different rates. The Fourier-feature solution is independent of the activation function; it operates at the input layer.</p>
+
+            <h2>Why the Encoder Has Zero Trainable Parameters</h2>
+
+            <p>This is worth emphasising. Many "feature engineering" steps in classical ML are also trainable: feature scaling parameters, learned tokenization, learned embedding tables. The Fourier features encoder has <em>none</em> of this.</p>
+
+            <p>The frequencies are fixed at construction time. The sin/cos functions are deterministic. The flatten is a reshape, not an operation with parameters. The only thing the model learns is the MLP that consumes the features.</p>
+
+            <p>This is a deliberate design choice. The job of the encoder is to provide a fixed, well-conditioned basis for the MLP. Adding trainable parameters to the encoder would let the model adjust the basis during training, which sounds like it should help — but in practice it makes the optimization landscape much harder because the basis and the MLP are simultaneously moving targets.</p>
+
+            <p>Some later methods (Instant-NGP) <em>do</em> add learnable encoding parameters — but they do so very carefully, with multi-resolution hash grids that decouple different scales. The simple "learnable Fourier features" naive approach doesn't work as well as fixed sin/cos.</p>
 
             <h2>Training Loop</h2>
-            <p>Image regression: build a $(H \cdot W, 2)$ grid of normalised pixel coordinates, the corresponding $(H \cdot W, 3)$ RGB target, minimize MSE. AdamW, lr=5e-4, 2000 iterations.</p>
+
             <pre><code class="language-python">model = CoordMLP(use_pe=True, num_freqs=6).to(device)
 opt = torch.optim.AdamW(model.parameters(), lr=5e-4)
 for _ in range(2000):
-    pred = model(coords)
-    loss = F.mse_loss(pred, target)
-    opt.zero_grad(); loss.backward(); opt.step()</code></pre>
+    pred = model(coords)               # coords: (H*W, 2)
+    loss = F.mse_loss(pred, target)    # target: (H*W, 3)
+    opt.zero_grad()
+    loss.backward()
+    opt.step()</code></pre>
 
+            <p>Image regression. Build a $(H \cdot W, 2)$ grid of normalised pixel coordinates (range $[-1, 1]$), the corresponding $(H \cdot W, 3)$ RGB target. Minimize MSE for $2000$ iterations of full-batch AdamW at $\eta = 5 \times 10^{-4}$.</p>
+
+            <p>"Full batch" is unusual for ML training but appropriate here. The dataset is tiny ($64 \times 64 = 4096$ pixels), so the whole thing fits comfortably in memory. With no mini-batching, every iteration sees the entire image, and the loss landscape is fully deterministic — no stochastic gradient noise.</p>
+
+            <p><strong>The lack of validation set.</strong> For coordinate-based image fitting, there is no train/test split in the usual sense. We are fitting one image, not learning a function that generalises across images. The "test" is whether the fitted model can reproduce the target image, which is essentially the training MSE. Both variants (PE and no-PE) are evaluated on the same fitting task.</p>
+
+            <h2>Computing PSNR</h2>
+
+            <p>Mean squared error is a useful loss but a hard-to-interpret quality metric. Image-quality literature reports peak signal-to-noise ratio (PSNR):</p>
+
+            <div class="math-block">$$ \text{PSNR} = 10 \log_{10}(\text{MAX}^2 / \text{MSE}) $$</div>
+
+            <p>For images normalised to $[0, 1]$, $\text{MAX} = 1$, so PSNR $= -10 \log_{10}(\text{MSE})$. A $10$ dB increase in PSNR corresponds to a $10\times$ reduction in MSE. A few reference points: $20$ dB is "noticeable artifacts", $30$ dB is "good quality JPEG", $40$ dB is "visually indistinguishable from the original".</p>
+
+            <p>The point of converting to PSNR is interpretability. The Part 3 result will be that Fourier features add $+10.64$ dB PSNR over the no-encoding baseline. That tells you immediately: an order-of-magnitude improvement, a real qualitative change, not just a marginal numeric improvement.</p>
+
+            <h2>What Production NeRF Adds</h2>
+
+            <p>To go from our 2D-image-fitting demo to a working 3D NeRF, you would add:</p>
+
+            <p><strong>Ray sampling.</strong> Given camera parameters (origin, viewing direction, focal length), generate rays for each pixel. Sample 3D positions along each ray (stratified sampling or hierarchical sampling for efficiency).</p>
+
+            <p><strong>Volume rendering.</strong> For each ray's sampled positions, query the coordinate MLP to predict $(c_i, \sigma_i)$ — colour and density. Composite them via $C(\mathbf{r}) = \sum_i T_i (1 - \exp(-\sigma_i \delta_i)) c_i$ where $T_i = \exp(-\sum_{j<i} \sigma_j \delta_j)$ is the transmittance.</p>
+
+            <p><strong>View-direction encoding.</strong> NeRF encodes both position $\mathbf{x}$ and view direction $\mathbf{d}$ with separate Fourier features. The view direction enters late in the MLP (after the density is computed) so that density depends only on position but colour can vary with viewing angle.</p>
+
+            <p><strong>Two-stage sampling.</strong> A coarse network samples uniformly along the ray; its density predictions are used to importance-sample for a fine network. This is the "hierarchical sampling" trick that gives NeRF most of its quality.</p>
+
+            <p>None of this changes the kernel. The MLP is still <code>CoordMLP</code>. The encoder is still <code>FourierFeatures</code>. The difference is in what gets queried and how outputs are aggregated.</p>
+
+            <h2>Generalisation: Beyond NeRF</h2>
+
+            <p>The Fourier feature trick appears across the entire neural-field literature:</p>
+
+            <p><strong>SIREN (Sitzmann et al., 2020)</strong> uses sinusoidal activations <em>everywhere</em> in the network, not just at the input. The whole MLP operates in a periodic regime, which gives even higher fidelity than fixed Fourier features at the cost of trickier optimization.</p>
+
+            <p><strong>Instant-NGP (Müller et al., 2022)</strong> replaces fixed sin/cos with a learnable multi-resolution hash encoding. Same idea — replace raw coordinates with a richer representation — implemented with hash tables for efficiency. Achieves higher fidelity than fixed Fourier features and trains in seconds rather than hours.</p>
+
+            <p><strong>Gaussian Splatting (Kerbl et al., 2023)</strong> abandons the implicit neural field entirely. Represents the scene as a cloud of anisotropic 3D Gaussians. Renders by alpha-compositing them directly. No coordinate MLP at all. Trains in minutes, renders in milliseconds. But still descended from NeRF — the loss function is the same.</p>
+
+            <p>Each successor improved on the input representation, not the MLP architecture. The pattern: <em>architecture is not the bottleneck; input representation is</em>. A 4-layer MLP is enough capacity to represent a 3D scene; what was missing for years was the right way to feed coordinates into it.</p>
+
+            <h2>What Part 3 Tests</h2>
+
+            <p>Part 3 runs the head-to-head: same MLP, same data, same training budget — with and without Fourier features. The PSNR difference is $10.64$ dB. The visual difference between the two reconstructions is the difference between "blurry blob" and "recognisable image". This single design choice — encode coordinates through sin/cos at exponentially-spaced frequencies — is what makes coordinate-based neural fields a viable representation for visual content at all.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/NeRF-Kernel" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/NeRF-Kernel</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

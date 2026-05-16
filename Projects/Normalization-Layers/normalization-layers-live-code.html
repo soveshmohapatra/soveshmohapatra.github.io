@@ -1,14 +1,14 @@
 ---
 layout: null
-title: "Deconstructing Normalization: Part 2 — Four Layers, 20 Lines Each"
-description: "Four normalization layers in ~60 lines of PyTorch total. The differences are tiny but every one shapes a model class."
+title: "Deconstructing Normalization: Part 2 — Four Layers, Twenty Lines Each"
+description: "BatchNorm, LayerNorm, RMSNorm, and GroupNorm implemented from scratch in pure PyTorch. The differences are tiny in code but every one shapes a model class."
 permalink: /projects/normalization-layers-live-code/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing Normalization: Part 2 — Four Layers, 20 Lines Each | Sovesh Mohapatra</title>
+    <title>Deconstructing Normalization: Part 2 - Twenty Lines Each | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -32,9 +32,6 @@ permalink: /projects/normalization-layers-live-code/
         .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
-        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
-        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
@@ -46,23 +43,46 @@ permalink: /projects/normalization-layers-live-code/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/normalization-layers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Normalization Hub</a>
+        <a href="{{ site.baseurl }}/projects/normalization-layers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Normalization Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing Normalization</h1>
-            <h2 class="article-subtitle">Part 2: Four Layers, 20 Lines Each</h2>
+            <h2 class="article-subtitle">Part 2: Four Layers, Twenty Lines Each</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
                 <div class="abstract-title">Overview</div>
-                <p>Four normalization layers in ~60 lines of PyTorch total. The differences are tiny but every one shapes a model class.</p>
+                <p>Part 1 made the structural argument: every normalization layer is a particular choice of which axis to reduce over, whether to subtract the mean, and how to apply a learnable affine. Part 2 implements all four — BatchNorm1d, LayerNorm, RMSNorm, GroupNorm — in pure PyTorch. Total code: about $60$ lines.</p>
+                <p>The differences in code are tiny — RMSNorm differs from LayerNorm by exactly three lines of removal. The differences in behaviour, as Part 3 will demonstrate, are not tiny. Reading the four implementations side by side makes precise what those design decisions actually are.</p>
             </div>
 
-            <h2>BatchNorm1d</h2>
+            <h2>The Common Shape</h2>
+
+            <p>Every normalization layer has the same skeleton:</p>
+
+            <ol>
+                <li>Compute summary statistics along some axis of the input tensor.</li>
+                <li>Subtract the mean (optionally).</li>
+                <li>Divide by the square root of the variance plus a small epsilon.</li>
+                <li>Apply a learnable affine transformation $\gamma \odot x + \beta$.</li>
+            </ol>
+
+            <p>The four normalizations differ in two places: <strong>which axis the statistics are computed over</strong> (batch dimension? feature dimension? groups of features?), and <strong>whether the mean subtraction step happens at all</strong> (RMSNorm skips it). Everything else is shared.</p>
+
+            <p>For all four implementations below, we assume the input has shape $(B, C)$ where $B$ is batch size and $C$ is the number of features. In practice, normalization layers are usually applied to higher-dimensional tensors (e.g., $(B, T, C)$ for sequences or $(B, C, H, W)$ for images), but the core math is the same — only the axes change.</p>
+
+            <h2>BatchNorm1d — Normalize Across the Batch</h2>
+
+            <p>BatchNorm computes statistics per feature, averaged across the batch dimension:</p>
+
+            <div class="math-block">$$ \mathrm{BN}(x)_{b,c} = \gamma_c \cdot \frac{x_{b,c} - \mu_c}{\sqrt{\sigma_c^2 + \varepsilon}} + \beta_c, \qquad \mu_c = \frac{1}{B} \sum_b x_{b,c}. $$</div>
+
             <pre><code class="language-python">class BatchNorm1d(nn.Module):
     def __init__(self, num_features, eps=1e-5, momentum=0.1):
         super().__init__()
-        self.eps = eps; self.momentum = momentum
+        self.eps = eps
+        self.momentum = momentum
         self.gamma = nn.Parameter(torch.ones(num_features))
         self.beta  = nn.Parameter(torch.zeros(num_features))
         self.register_buffer("running_mean", torch.zeros(num_features))
@@ -70,44 +90,94 @@ permalink: /projects/normalization-layers-live-code/
 
     def forward(self, x):
         if self.training:
-            mean = x.mean(dim=0); var = x.var(dim=0, unbiased=False)
+            mean = x.mean(dim=0)
+            var  = x.var(dim=0, unbiased=False)
             with torch.no_grad():
-                self.running_mean.mul_(1-self.momentum).add_(self.momentum * mean)
-                self.running_var.mul_(1-self.momentum).add_(self.momentum * var)
+                self.running_mean.mul_(1 - self.momentum).add_(self.momentum * mean)
+                self.running_var.mul_(1 - self.momentum).add_(self.momentum * var)
         else:
             mean, var = self.running_mean, self.running_var
         return self.gamma * (x - mean) / torch.sqrt(var + self.eps) + self.beta</code></pre>
 
-            <h2>LayerNorm</h2>
+            <p>The interesting design decisions are not in the math, which is rote, but in the bookkeeping.</p>
+
+            <p><strong>The train/eval split.</strong> During training, we use statistics computed from the current mini-batch. During inference (where you may not have a meaningful batch), we use running statistics accumulated during training. The model switches between these via <code>model.train()</code> and <code>model.eval()</code>. Forgetting to call <code>model.eval()</code> at inference time is one of the most common PyTorch bugs — it can produce dramatically different outputs because BatchNorm starts using single-sample statistics on isolated inputs.</p>
+
+            <p><strong>The EMA update.</strong> <code>self.running_mean.mul_(1 - self.momentum).add_(self.momentum * mean)</code> is an exponential moving average update. After many training batches, <code>running_mean</code> converges to roughly the long-run average of mini-batch means, weighted toward recent batches. The default <code>momentum=0.1</code> means the EMA has an effective horizon of about $1/0.1 = 10$ batches.</p>
+
+            <p><strong>Why <code>register_buffer</code> instead of <code>nn.Parameter</code>.</strong> The running statistics are <em>not</em> trainable — they are computed from the data, not learned by gradient descent. <code>register_buffer</code> tells PyTorch this is a stateful tensor that should move with <code>.to(device)</code> and be saved in checkpoints, but should not receive gradients and should not appear in <code>parameters()</code>. The optimizer ignores it.</p>
+
+            <p><strong>The <code>unbiased=False</code> on variance.</strong> By default PyTorch's <code>var()</code> uses Bessel's correction ($N-1$ in the denominator). For batch normalization the original paper uses the biased estimator ($N$ in the denominator). The difference matters for very small batch sizes; for $B \geq 64$ it is negligible. We match the paper.</p>
+
+            <p>BatchNorm dominates CNN training on ImageNet-scale data. It struggles on small batches and on architectures with variable-length inputs (sequences, attention), which is why Transformers use LayerNorm instead.</p>
+
+            <h2>LayerNorm — Normalize Across Features (Per Sample)</h2>
+
+            <p>LayerNorm flips the reduction axis: statistics are computed per sample, across the feature dimension.</p>
+
+            <div class="math-block">$$ \mathrm{LN}(x)_{b,c} = \gamma_c \cdot \frac{x_{b,c} - \mu_b}{\sqrt{\sigma_b^2 + \varepsilon}} + \beta_c, \qquad \mu_b = \frac{1}{C} \sum_c x_{b,c}. $$</div>
+
             <pre><code class="language-python">class LayerNorm(nn.Module):
     def __init__(self, num_features, eps=1e-5):
         super().__init__()
         self.eps = eps
         self.gamma = nn.Parameter(torch.ones(num_features))
         self.beta  = nn.Parameter(torch.zeros(num_features))
+
     def forward(self, x):
         mean = x.mean(dim=-1, keepdim=True)
         var  = x.var(dim=-1, keepdim=True, unbiased=False)
         return self.gamma * (x - mean) / torch.sqrt(var + self.eps) + self.beta</code></pre>
 
-            <h2>RMSNorm</h2>
+            <p>Ten lines total. No running statistics, no train/eval split, no batch dependence. The only state is the learnable affine $\gamma$ and $\beta$.</p>
+
+            <p><strong>Why no running statistics?</strong> Because LayerNorm's statistics are computed from a single sample, the "batch of 1 at inference" problem disappears entirely. The single sample at inference time has exactly the same kind of statistics as a sample during training — just compute them on the fly.</p>
+
+            <p><strong>The <code>dim=-1, keepdim=True</code> idiom.</strong> Reducing along the last axis with <code>keepdim=True</code> preserves the broadcast-compatible shape. If <code>x</code> is $(B, T, C)$, then <code>mean</code> is $(B, T, 1)$ — broadcasting correctly when we subtract <code>(x - mean)</code> to get back a $(B, T, C)$ tensor. Without <code>keepdim</code>, mean would be $(B, T)$ and the subtraction would broadcast wrong.</p>
+
+            <p><strong>Why Transformers love LayerNorm.</strong> Transformer training is full of mini-batches with wildly varying sequence lengths and effective batch sizes. With sequence-packed inputs, the "batch" is sometimes a few thousand tokens; with single-example inference, it is one. BatchNorm's batch-dependent statistics would fluctuate enormously. LayerNorm's per-sample statistics are stable regardless.</p>
+
+            <h2>RMSNorm — LayerNorm Without the Mean</h2>
+
+            <p>RMSNorm is LayerNorm with the mean subtraction removed and the additive bias dropped:</p>
+
+            <div class="math-block">$$ \mathrm{RMS}(x)_{b,c} = \gamma_c \cdot \frac{x_{b,c}}{\sqrt{\frac{1}{C} \sum_{c'} x_{b,c'}^2 + \varepsilon}}. $$</div>
+
             <pre><code class="language-python">class RMSNorm(nn.Module):
     def __init__(self, num_features, eps=1e-6):
         super().__init__()
         self.eps = eps
         self.gamma = nn.Parameter(torch.ones(num_features))
+
     def forward(self, x):
         rms = torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
         return self.gamma * x / rms</code></pre>
-            <p>Eight lines. Compared to LayerNorm: no mean, no subtraction, no additive bias.</p>
 
-            <h2>GroupNorm</h2>
+            <p>Eight lines total. Three structural simplifications relative to LayerNorm:</p>
+
+            <p><strong>(1) No mean reduction.</strong> LayerNorm computes both the mean and the variance, requiring two reductions over the feature dimension. RMSNorm only needs the mean of $x^2$ (which gives the squared RMS), so one reduction instead of two.</p>
+
+            <p><strong>(2) No subtraction step.</strong> LayerNorm subtracts the mean before dividing. RMSNorm divides directly, leaving the data's mean intact.</p>
+
+            <p><strong>(3) No additive bias.</strong> LayerNorm has both $\gamma$ (multiplicative) and $\beta$ (additive) learnable parameters. RMSNorm drops $\beta$ entirely. The bias's role would have been to allow the normalized output to be shifted; RMSNorm pushes that responsibility to subsequent layers (which can usually shift via their own biases).</p>
+
+            <p>The cumulative savings: roughly $30\%$ fewer FLOPs per call, $\frac{1}{2}$ the parameter count of the normalization layer itself, and reduced memory bandwidth pressure during the forward pass. These savings are uninteresting on a $4$-layer MLP. They are very interesting on a $80$-layer Transformer applied to trillions of tokens, which is why every modern LLM since Llama has switched to RMSNorm.</p>
+
+            <p>The empirical claim from Zhang & Sennrich (2019), confirmed at scale by Llama, Mistral, and Gemma: the mean subtraction makes no measurable difference to downstream model quality. Part 3 verifies this on a controlled benchmark.</p>
+
+            <h2>GroupNorm — Normalize Within Groups</h2>
+
+            <p>GroupNorm splits the feature dimension into $G$ groups and normalizes within each group, per sample:</p>
+
             <pre><code class="language-python">class GroupNorm(nn.Module):
     def __init__(self, num_features, num_groups=8, eps=1e-5):
         super().__init__()
-        self.num_groups = num_groups; self.eps = eps
+        assert num_features % num_groups == 0
+        self.num_groups = num_groups
+        self.eps = eps
         self.gamma = nn.Parameter(torch.ones(num_features))
         self.beta  = nn.Parameter(torch.zeros(num_features))
+
     def forward(self, x):
         B, C = x.shape
         x = x.view(B, self.num_groups, C // self.num_groups)
@@ -116,14 +186,48 @@ permalink: /projects/normalization-layers-live-code/
         x_hat = (x - mean) / torch.sqrt(var + self.eps)
         return self.gamma * x_hat.view(B, C) + self.beta</code></pre>
 
-            <h2>FLOPs per Call</h2>
-            <p>Approximate counts for $B = 128$, $C = 64$: BatchNorm/LayerNorm/GroupNorm $\approx 65{,}536$; <strong>RMSNorm $\approx 32{,}896$ (half).</strong></p>
+            <p>The structural trick is the reshape: we view the $C$-dimensional feature vector as $G$ groups of $C/G$ features each, normalize within each group, then reshape back. The math is identical to LayerNorm applied within each of the $G$ groups.</p>
 
+            <p><strong>What GroupNorm buys you over LayerNorm.</strong> LayerNorm normalizes using statistics from <em>all</em> $C$ features at once. GroupNorm only uses $C/G$ features. This makes the normalization more <em>local</em>: features in different groups don't influence each other's normalization. For images, where nearby channels often represent related features (e.g., edge detectors at different orientations), grouping makes structural sense.</p>
+
+            <p><strong>The <code>num_groups</code> choice.</strong> Typical values are $G \in \{8, 16, 32\}$. With $C = 64$ and $G = 8$, each group has $8$ features. With $G = 1$, GroupNorm reduces to LayerNorm. With $G = C$ (one feature per group), it becomes InstanceNorm — which has its own use cases in style transfer.</p>
+
+            <p>GroupNorm is the standard in modern image diffusion (U-Net architectures of DDPM, Latent Diffusion, Stable Diffusion). Two reasons: image diffusion typically uses very small batch sizes (often $1$–$4$ per GPU), where BatchNorm's batch statistics are too noisy; and within-group normalization respects the channel structure of CNN feature maps better than full LayerNorm.</p>
+
+            <h2>FLOPs per Call</h2>
+
+            <p>Approximate FLOP counts for $B = 128$, $C = 64$:</p>
+
+            <ul>
+                <li><strong>BatchNorm:</strong> ~$65{,}536$ FLOPs (mean + var + scale + shift).</li>
+                <li><strong>LayerNorm:</strong> ~$65{,}536$ FLOPs (same operations, different axes).</li>
+                <li><strong>RMSNorm:</strong> ~$32{,}896$ FLOPs (no mean, no subtraction, no additive bias).</li>
+                <li><strong>GroupNorm:</strong> ~$65{,}536$ FLOPs (essentially LayerNorm applied in pieces).</li>
+            </ul>
+
+            <p>The FLOP savings of RMSNorm look modest on this $128 \times 64$ example. They become significant at LLM scale. A $70$B-parameter Llama applies RMSNorm twice per Transformer block, across $80$ blocks, for every token, across trillions of training tokens. Saving $30\%$ on each call accumulates into a meaningful fraction of the total compute budget — and an even more meaningful fraction of the memory bandwidth, which is often the actual bottleneck at scale.</p>
+
+            <h2>The Common Skeleton</h2>
+
+            <p>Side-by-side, the four implementations look almost identical: same imports, same <code>nn.Module</code> inheritance, same forward-pass structure (compute statistic, subtract, divide, affine). The differences live in three places.</p>
+
+            <p>First: <strong>which axis the statistics are computed over</strong>. <code>dim=0</code> for BatchNorm (batch axis), <code>dim=-1</code> for LayerNorm and RMSNorm (feature axis), <code>dim=-1</code> after reshape for GroupNorm (within groups).</p>
+
+            <p>Second: <strong>whether the mean subtraction happens</strong>. Yes for BatchNorm, LayerNorm, GroupNorm. No for RMSNorm.</p>
+
+            <p>Third: <strong>whether running statistics are tracked</strong>. Only for BatchNorm.</p>
+
+            <p>These three switches define all four normalization layers — and indeed all the variants you may encounter (InstanceNorm, WeightNorm, ScaleNorm). The space of useful normalization layers is small. Knowing the skeleton lets you read any new normalization paper in about thirty seconds.</p>
+
+            <h2>What Part 3 Tests</h2>
+
+            <p>With all four normalizations implemented, Part 3 runs them head-to-head on a $20$-layer non-residual MLP from identical initialisation. The result is genuinely surprising — no-normalization wins on this toy benchmark, BatchNorm actively hurts, and RMSNorm beats LayerNorm on every measured axis. The "norms are essential for deep networks" wisdom turns out to be regime-dependent.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/Normalization-Layers" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/Normalization-Layers</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

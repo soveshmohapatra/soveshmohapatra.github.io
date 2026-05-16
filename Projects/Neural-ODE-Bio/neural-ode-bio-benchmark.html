@@ -1,18 +1,17 @@
 ---
 layout: null
-title: "Neural ODEs on Biological Dynamics: Part 3 — Phase-Portrait Recovery and Why It Matters"
-description: "Both Neural ODE and a parameter-matched discrete RNN fit FHN trajectories to MSE 0.02. Only the Neural ODE learned the physics."
+title: "Neural ODEs on Biological Dynamics: Part 3 — Phase-Portrait Recovery"
+description: "Both Neural ODE and a parameter-matched discrete RNN fit FHN trajectories to MSE 0.02. Only the Neural ODE recovers the underlying vector field with cosine similarity 0.94+. Why this distinction matters for biology."
 permalink: /projects/neural-ode-bio-benchmark/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural ODEs on Biological Dynamics: Part 3 — Phase-Portrait Recovery and Why It Matters | Sovesh Mohapatra</title>
+    <title>Neural ODEs on Biological Dynamics: Part 3 - Phase-Portrait Recovery | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
     <style>
         .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -35,7 +34,6 @@ permalink: /projects/neural-ode-bio-benchmark/
         .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
         .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
-        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
     <script>
@@ -46,19 +44,32 @@ permalink: /projects/neural-ode-bio-benchmark/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/neural-ode-bio/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Neural ODEs on Biological Dynamics Hub</a>
+        <a href="{{ site.baseurl }}/projects/neural-ode-bio/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Neural ODE Bio Hub</a>
         <header class="article-header">
             <h1 class="article-title">Neural ODEs on Biological Dynamics</h1>
             <h2 class="article-subtitle">Part 3: Phase-Portrait Recovery and Why It Matters</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
-                <div class="abstract-title">Overview</div>
-                <p>Both Neural ODE and a parameter-matched discrete RNN fit FHN trajectories to MSE 0.02. Only the Neural ODE learned the physics.</p>
+                <div class="abstract-title">The Headline</div>
+                <p>Two models. Same architecture. Same parameter count. Same training data. Both fit the FitzHugh-Nagumo trajectories to MSE $\sim 0.02$. <strong>Only one of them learned the physics.</strong></p>
+                <p>This part runs the experiment and presents the result: trajectory accuracy is a noisy proxy for whether a model has learned the underlying dynamical system. The proper diagnostic is phase-portrait recovery — comparing the model's learned vector field against the ground-truth flow, arrow by arrow. By that metric, the Neural ODE wins decisively; the discrete RNN does not.</p>
             </div>
 
+            <h2>Recap of the Experiment</h2>
+
+            <p><strong>Dataset.</strong> $40$ FHN trajectories, $80$ time-steps each at $\Delta t = 0.5$. Half spiking ($I = 0.5$), half quiescent ($I = 0.2$). Random initial conditions in the $(v, w)$ plane.</p>
+
+            <p><strong>Models.</strong> Two models with identical architecture: a 4-layer MLP (state + I in $\to$ tanh $\to$ 128 $\to$ tanh $\to$ 128 $\to$ state out), $17{,}282$ parameters. The Neural ODE wraps it in RK4 integration; the discrete RNN wraps it in residual rollout.</p>
+
+            <p><strong>Training.</strong> AdamW at $\eta = 3 \times 10^{-3}$ with cosine schedule, $600$ epochs, gradient clipping at $1.0$. Trajectory MSE loss across the full $80$ steps.</p>
+
+            <p><strong>Tests.</strong> In-distribution MSE on the training-length trajectories, extrapolation MSE on $4\times$ longer trajectories, and phase-portrait recovery (cosine similarity of the learned vector field against ground truth).</p>
+
             <h2>Trajectory-Fit Results</h2>
+
             <table class="results-table">
                 <thead><tr><th>Model</th><th>Params</th><th>Final MSE</th><th>Extrapolation MSE</th><th>Train time</th></tr></thead>
                 <tbody>
@@ -66,13 +77,23 @@ permalink: /projects/neural-ode-bio-benchmark/
                     <tr><td>Discrete RNN</td><td>$17{,}282$</td><td><strong>$0.01547$</strong></td><td>$0.01670$</td><td>$8.9$ s</td></tr>
                 </tbody>
             </table>
-            <p>In-distribution the discrete RNN is marginally better and trains 4.5× faster. Extrapolation past the training horizon (4× longer trajectory): both stay close to their in-distribution MSE — neither model degrades dramatically. If we had kept $t$ in the Neural ODE input, extrapolation MSE would have been $\sim 5.0$ instead of $0.02$ — a factor of 250 difference from one design choice.</p>
 
-            <h2>The Key Visual Finding — Phase-Portrait Recovery</h2>
-            <p>Trajectory MSE is a noisy proxy for "did the model learn the dynamics." A model can fit individual time series without learning the underlying flow.</p>
-            <p>The phase-portrait visualisation answers the better question: query each model's predicted $f$ at a grid of $(v, w)$ points, compare against ground-truth $f_\text{FHN}$ arrow-by-arrow.</p>
+            <p>Two things to notice. <strong>First:</strong> in-distribution, the discrete RNN is marginally better and trains $4.5\times$ faster. <strong>Second:</strong> the extrapolation MSE (on trajectories $4\times$ longer than what either model trained on) stays close to the in-distribution MSE for both models. Neither degrades dramatically when extrapolated.</p>
+
+            <p>The non-degradation on extrapolation is itself a surprising and important result, and it depends critically on the autonomous-dynamics inductive bias from Part 2. <strong>If we had kept $t$ in the Neural ODE input, extrapolation MSE would have been $\sim 5.0$ instead of $0.02$ — a factor of $250$ from one design choice.</strong> The autonomous-dynamics choice is essential for any model that needs to operate at different time horizons than it trained on.</p>
+
+            <p>If you stopped reading at this table, you would conclude that the discrete RNN is the better choice — it trains $4.5\times$ faster, has slightly lower trajectory MSE, and extrapolates fine. The Neural ODE looks like a slow, unnecessary luxury.</p>
+
+            <p>That conclusion would be wrong. Trajectory MSE is the wrong metric. To see why, we need to look at the phase portraits.</p>
+
+            <h2>The Phase-Portrait Diagnostic</h2>
+
+            <p>Trajectory MSE measures whether a model produces the same time series as the data. It does <em>not</em> measure whether the model has learned the underlying physics. A model can fit individual trajectories without learning the underlying flow — for example, by overfitting to the specific initial conditions in the training set, or by learning a discrete-step approximation that happens to coincide with the data's sampling rate.</p>
+
+            <p>The proper diagnostic is to query the model's predicted derivative $f(y, I)$ at a grid of $(v, w)$ points and compare against the ground-truth FHN field, arrow by arrow. If the model has learned the true dynamics, its predicted arrows should point in the same direction as the ground-truth arrows at every point on the grid.</p>
 
             <h3>Neural ODE phase portrait</h3>
+
             <table class="results-table">
                 <thead><tr><th>Regime</th><th>Mean cosine similarity with $f_\text{FHN}$</th></tr></thead>
                 <tbody>
@@ -80,23 +101,113 @@ permalink: /projects/neural-ode-bio-benchmark/
                     <tr><td>Spiking ($I = 0.5$)</td><td>$0.96$</td></tr>
                 </tbody>
             </table>
-            <p>The Neural ODE recovers the direction of the FHN flow with cosine similarity above $0.94$ in both regimes. Learned arrows visibly match ground-truth arrows.</p>
+
+            <p>The Neural ODE recovers the direction of the FHN flow with cosine similarity above $0.94$ in both regimes. Visually, the learned arrows on the $(v, w)$ plane match the ground-truth arrows — same direction at the same point, especially in the regions covered by the training trajectories. Outside the training-trajectory region the direction is still mostly correct but the magnitude is less reliable (the model has less data to estimate the flow strength there).</p>
+
+            <p>This is the kind of result that justifies the architectural choice. The Neural ODE has not just memorised the data — it has discovered the structure of the dynamical system. You could use the learned $f$ to predict behaviour from new initial conditions, integrate at different step sizes, or do anything else that depends on having the right flow.</p>
 
             <h3>Discrete RNN phase portrait</h3>
-            <p>The RNN has no explicit $f$. Its residual update returns the time-integrated effect over one $\Delta t$. We can recover the implicit instantaneous flow by dividing by $\Delta t$ — but only because we know what $\Delta t$ was. Without that, the recovered "field" has correct direction but wrong magnitude.</p>
 
-            <h2>What This Means for Biology</h2>
-            <p>Biological data come at the instrument's sampling rate, not the dynamics' natural timescale. A discrete RNN trained on patch-clamp at 10 kHz produces a model that runs at 10 kHz steps. A Neural ODE trained on the same data lives in continuous time — the same model can predict at any rate, interpolate between samples, and be combined with other Neural ODEs that live in the same space.</p>
+            <p>The discrete RNN does not have an explicit $f$. It has a residual update $\Delta y = g(y, I)$ that returns the time-integrated effect of the dynamics over one $\Delta t$. We can try to recover an implicit "instantaneous flow" by dividing by $\Delta t$:</p>
+
+            <div class="math-block">$$ \tilde f(y, I) \approx \frac{g(y, I)}{\Delta t}. $$</div>
+
+            <p>With this normalisation, the RNN's recovered field has good direction (cosine $\sim 0.9$) but its magnitude is wrong unless we know $\Delta t$. <strong>And we only know $\Delta t$ because we set it when generating the training data.</strong> In a real-world scenario where the data comes from an instrument with its own sampling rate (calcium imaging at $30$ Hz, patch-clamp at $10$ kHz), this division is a manual correction the user has to apply, not something the model knows.</p>
+
+            <p>So the RNN's recovered "vector field" is correct in direction but wrong in magnitude unless you have external knowledge of the training $\Delta t$. The Neural ODE's recovered vector field is correct in both direction and magnitude, intrinsically — because the model parameterises the instantaneous derivative directly, not its time-integrated effect.</p>
+
+            <h2>The Asymmetry</h2>
+
+            <p>The asymmetry is this: <strong>the Neural ODE knows about time explicitly. The RNN does not.</strong></p>
+
+            <p>This is invisible in the fitted training trajectories at the original $\Delta t$. Both models predict the next state correctly. But as soon as you want to do anything <em>other</em> than predict at the training time grid, the asymmetry becomes visible:</p>
+
+            <p><strong>Change the sampling rate.</strong> Want predictions every $0.25$ time units instead of every $0.5$? The Neural ODE does this by integrating with a smaller step size — same model, different integrator call. The RNN cannot do this; it takes one conceptual step per <code>rollout()</code> iteration, regardless of $\Delta t$. To get half-step predictions you would have to retrain.</p>
+
+            <p><strong>Interpolate between samples.</strong> Want to know what the system was doing at $t = 5.25$, between two sampled points? The Neural ODE produces this naturally by integrating up to $t = 5.25$. The RNN has nothing to say about $t$ values that aren't a multiple of the training $\Delta t$.</p>
+
+            <p><strong>Compare with another data source at a different rate.</strong> Your calcium imaging is at $30$ Hz; a collaborator's voltage imaging is at $200$ Hz. A Neural ODE trained on one can be evaluated at the other's rate by changing $t_\text{eval}$. A discrete RNN cannot bridge the two.</p>
+
+            <p><strong>Run the model backward in time.</strong> Useful for understanding which initial conditions could have produced an observed state. The Neural ODE can integrate backward; the RNN can only roll forward.</p>
+
+            <h2>Why This Matters for Biology</h2>
+
+            <p>The discussion of discrete-vs-continuous looks abstract, but it has concrete implications for biological applications of these models.</p>
+
+            <p>Biological time-series data comes at the resolution your instrument samples. None of these rates are the underlying timescale of the dynamics; they are sampling rates of the instruments:</p>
+
+            <ul>
+                <li>Calcium imaging: $30$ Hz (sometimes faster on modern setups).</li>
+                <li>Voltage imaging: $\sim 500$ Hz.</li>
+                <li>Patch-clamp electrophysiology: $10$–$50$ kHz.</li>
+                <li>EEG / MEG: $128$–$1024$ Hz.</li>
+                <li>Single-cell RNA-seq: one timepoint per several hours.</li>
+                <li>Live-cell fluorescence imaging: variable, often $1$ Hz or slower.</li>
+            </ul>
+
+            <p>A discrete RNN trained on patch-clamp at $10$ kHz produces a model that runs at $10$ kHz steps. The same RNN cannot be evaluated at $50$ kHz or interpolated between samples. If you collect a new dataset at a different sampling rate, you re-train.</p>
+
+            <p>A Neural ODE trained on the same data lives in continuous time. The same model can predict at any rate, can interpolate between samples (by integrating with smaller steps), and can in principle be combined with other Neural ODEs that live in the same continuous space. <strong>This is the "model of the system" property, as opposed to the "parameterised interpolator" property.</strong></p>
+
+            <p>For PhD work on cellular signalling, neural excitability, or any other biological dynamics, this distinction is the actual reason to use Neural ODEs over discrete RNNs. It is not about fit quality — both methods can fit similar curves with similar accuracy. It is about <em>what the model represents</em>.</p>
 
             <h2>The Headline Reframe</h2>
-            <p><em>Time-series accuracy and physical fidelity are not the same metric.</em></p>
-            <p>A model that fits the data exactly but has learned a discrete-step approximation gives you predicted trajectories at the training rate. A model that learns the continuous-time vector field gives you a model of the system. They are different scientific objects, and only the second lets you reason about the underlying physics.</p>
 
+            <p><strong>Time-series accuracy and physical fidelity are not the same metric.</strong></p>
+
+            <p>A model that fits the data exactly but has learned a discrete-step approximation of the dynamics gives you predicted trajectories at the training rate. A model that learns the continuous-time vector field gives you a model of the system. They are different scientific objects, and only the second one lets you reason about the underlying physics.</p>
+
+            <p>For data that lives in continuous time — which is almost everything in biology — the difference matters. The Neural ODE produces a model of the dynamical system; the RNN produces a parameterised interpolator. Both can fit the data; only the first answers the scientific questions.</p>
+
+            <h2>What Transfers to Other Biological Systems</h2>
+
+            <p>The same Neural ODE architecture works for any system of ODEs you can write down. For biological systems specifically:</p>
+
+            <p><strong>Hodgkin-Huxley.</strong> $4$D system ($V$, $m$, $h$, $n$). Same approach as our 2D FHN, with a larger MLP for the additional state dimensions.</p>
+
+            <p><strong>Repressilator.</strong> $3$D gene regulatory oscillator (Elowitz & Leibler, 2000). Three mRNA concentrations cyclically repressing each other. Natural test case for the Neural ODE framework.</p>
+
+            <p><strong>Lotka-Volterra.</strong> $2$D predator-prey dynamics. The textbook example for nonlinear oscillators in ecology. Trivial extension of the FHN code.</p>
+
+            <p><strong>Glycolytic oscillator.</strong> $7$D metabolic model with multi-timescale dynamics. Now the Neural ODE's parameter efficiency really helps: one shared network for all $7$ state variables, learning all the coupling between them.</p>
+
+            <p><strong>SIR / SEIR epidemic models.</strong> $3$D or $4$D compartmental models. Useful for understanding disease dynamics; the Neural ODE can be fit to case-count time series.</p>
+
+            <p>For complex biological systems where the true equations are unknown, the Neural ODE can be trained directly from data and produces a continuous-time model that respects the same inductive biases as the underlying physics. This is the application that motivates the entire framework.</p>
+
+            <h2>What Does Not Transfer</h2>
+
+            <p>Neural ODEs are not universally the right tool. Several failure modes:</p>
+
+            <p><strong>Stiff dynamics.</strong> Systems where some variables evolve much faster than others (microsecond Na+ channels vs millisecond synaptic dynamics) are computationally expensive for explicit integrators like RK4 — the step size has to be small enough to resolve the fastest variable, making the whole integration slow. For stiff systems, implicit integrators are needed, which is more complex than what we implemented.</p>
+
+            <p><strong>Stochastic dynamics.</strong> Many biological systems are inherently noisy (channel noise, molecular fluctuations, demographic stochasticity). The Neural ODE framework assumes deterministic dynamics; stochastic extensions (Neural SDEs) exist but are harder to train.</p>
+
+            <p><strong>Delay-differential equations.</strong> Some biological systems depend on past values of the state, not just the current state. Standard Neural ODEs cannot represent this without state augmentation, which can be unstable.</p>
+
+            <p>For most "Hodgkin-Huxley-like" excitable systems and most metabolic / gene-regulatory networks, the standard Neural ODE works. For corner cases, more specialised tools (Neural SDE, Neural CDE, etc.) are available.</p>
+
+            <h2>Summary</h2>
+
+            <ul>
+                <li>Both Neural ODE and a parameter-matched discrete RNN fit FHN trajectories to MSE $\sim 0.02$.</li>
+                <li>The Neural ODE recovers the FHN vector field with mean cosine similarity $> 0.94$ in both spiking and quiescent regimes.</li>
+                <li>The RNN's recovered "vector field" is only correct after dividing by the training $\Delta t$ — which the user has to know externally.</li>
+                <li>For continuous-time biological data, the Neural ODE is the more honest object: it lives in the same space the data does.</li>
+                <li>Time-series accuracy and physical fidelity are different metrics. A model can fit the data exactly without learning the underlying dynamical system.</li>
+            </ul>
+
+            <h2>Closing</h2>
+
+            <p>The series ends here. The whole back catalog of architectures — from backprop in the first series to DiT in series 9 — exists to support exactly this kind of applied modelling on real scientific data. Spiking neurons today; signalling networks, cardiac dynamics, gene regulation, immunology, and pharmacokinetics tomorrow.</p>
+
+            <p>The Neural ODE framework is not a magic bullet — it is a deliberate inductive bias for continuous-time dynamics. When your data lives in continuous time (almost everything in biology), it is the right choice. When you actually need a discrete-time recurrent model (text, code, action sequences), use a Transformer or an RNN. The point is to match the inductive bias to the data.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/Neural-ODE-Bio" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/Neural-ODE-Bio</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

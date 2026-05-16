@@ -1,18 +1,17 @@
 ---
 layout: null
 title: "Deconstructing the NeRF Kernel: Part 3 — 10.64 dB From One Trick"
-description: "Two MLPs. Same architecture. Same data. Same training budget. The only difference: one of them encodes coordinates through sin/cos at 6 exponentially-spaced frequencies before the MLP sees them. The P"
+description: "Same MLP, same data, same training budget — only difference is whether the input coordinates pass through Fourier features. The PSNR difference is 10.64 dB."
 permalink: /projects/nerf-kernel-benchmark/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing the NeRF Kernel: Part 3 — 10.64 dB From One Trick | Sovesh Mohapatra</title>
+    <title>Deconstructing NeRF Kernel: Part 3 - 10.64 dB From One Trick | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
     <style>
         .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -35,7 +34,6 @@ permalink: /projects/nerf-kernel-benchmark/
         .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
         .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
-        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
     <script>
@@ -46,55 +44,138 @@ permalink: /projects/nerf-kernel-benchmark/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/nerf-kernel/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing the NeRF Kernel Hub</a>
+        <a href="{{ site.baseurl }}/projects/nerf-kernel/" class="back-link"><i class="fas fa-arrow-left"></i> Back to NeRF Kernel Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing the NeRF Kernel</h1>
-            <h2 class="article-subtitle">Part 3: 10.64 dB From One Trick</h2>
+            <h2 class="article-subtitle">Part 3: 10.64 dB PSNR From One Trick</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
-                <div class="abstract-title">Overview</div>
-                <p>Two MLPs. Same architecture. Same data. Same training budget. The only difference: one of them encodes coordinates through sin/cos at 6 exponentially-spaced frequencies before the MLP sees them. The PSNR difference is 10.64 dB.</p>
+                <div class="abstract-title">The Experiment</div>
+                <p>Two MLPs. Same architecture ($4$ layers, hidden dim $128$, ReLU + sigmoid). Same training data (a $64 \times 64$ image). Same training budget ($2{,}000$ iterations of AdamW at $\eta = 5 \times 10^{-4}$). Same initialisation seed. The only difference: one of them encodes its input coordinates through sin/cos at $6$ exponentially-spaced frequencies before the MLP sees them.</p>
+                <p>The PSNR difference is $10.64$ dB. The visual difference is qualitative: the unencoded MLP produces a smooth blob; the encoded MLP produces a recognisable image. This single design choice — change the input representation, not the architecture — is what made NeRF possible.</p>
             </div>
 
-            <h2>Setup</h2>
-            <p><strong>Target.</strong> 64×64 RGB image: 8×8 checkerboard, red circle, blue square, yellow diagonal line. <strong>Model.</strong> 4-layer MLP, hidden 128. ReLU + sigmoid. AdamW lr=5e-4, 2000 iterations.</p>
+            <h2>The Image We Fit</h2>
+
+            <p>The target is a synthetic $64 \times 64$ RGB image designed to be hard for low-frequency-biased models. It contains four distinct features:</p>
+
+            <ul>
+                <li>An $8 \times 8$ black-and-white checkerboard occupying the top half (high spatial frequency, regular structure).</li>
+                <li>A solid red circle in the bottom-left (smooth interior, sharp curved boundary).</li>
+                <li>A solid blue square in the bottom-right (smooth interior, sharp straight boundaries).</li>
+                <li>A 2-pixel-thick yellow diagonal line cutting across the bottom half (the highest-frequency feature in the image).</li>
+            </ul>
+
+            <p>These four features span a spectrum of difficulty. Solid regions are easy for any MLP (low spatial frequency, smooth gradients). Sharp shape boundaries become representable with Fourier features (mid-to-high frequency). The diagonal yellow line tests the limit — it requires both high frequency and oriented structure, the kind of detail that pre-NeRF coordinate MLPs simply could not produce.</p>
 
             <h2>Results</h2>
+
             <table class="results-table">
-                <thead><tr><th>Metric</th><th>No PE</th><th>With PE (L = 6)</th></tr></thead>
+                <thead><tr><th>Metric</th><th>No PE</th><th>With PE ($L = 6$)</th></tr></thead>
                 <tbody>
                     <tr><td>Parameters</td><td>$33{,}795$</td><td>$36{,}611$</td></tr>
                     <tr><td>Final MSE</td><td>$0.0771$</td><td>$0.0067$</td></tr>
                     <tr><td>Final PSNR</td><td>$11.13$ dB</td><td><strong>$21.77$ dB</strong></td></tr>
-                    <tr><td>Improvement</td><td>—</td><td><strong>$+10.64$ dB</strong></td></tr>
+                    <tr><td>PSNR improvement</td><td>—</td><td><strong>$+10.64$ dB</strong></td></tr>
+                    <tr><td>MSE ratio</td><td>—</td><td>$11.6\times$ lower</td></tr>
                     <tr><td>Training time</td><td>$6.7$ s</td><td>$6.1$ s</td></tr>
                 </tbody>
             </table>
-            <p>A $10.64$ dB PSNR improvement corresponds to a $10.6\times$ reduction in MSE. The Fourier-encoded model fits the image more than an order of magnitude better with $8\%$ more parameters and the same training time.</p>
 
-            <h2>Training Trajectories</h2>
-            <p>The encoded model reaches the no-encoding model's <em>final</em> PSNR ($11.13$ dB) after fewer than 100 iterations — $20\times$ fewer training steps. It plateaus around iteration 1400 at $\sim 22$ dB. The unencoded model is still descending at iteration 2000 but heading toward an asymptote in the low teens.</p>
+            <p>The MLP weights ($33{,}795$) are the same in both. The encoded variant adds $2{,}816$ input weights (the first linear layer goes from $2 \to 128$ to $24 \to 128$), an $8\%$ parameter increase. The training time is essentially identical — the encoder is so cheap (no parameters, just a few elementwise operations) that the per-iteration cost is dominated by the MLP, which is unchanged.</p>
+
+            <p><strong>A $10.64$ dB PSNR improvement corresponds to an $11.6\times$ reduction in MSE.</strong> This is not "marginal improvement" — it is the difference between an order-of-magnitude unrecognisable reconstruction and an order-of-magnitude recognisable one. The numerical metric is what we can report in a table; the visual difference is what makes the encoding indispensable in practice.</p>
+
+            <h2>The Training Trajectories</h2>
+
+            <p>The training curves tell a story the final numbers don't. The Fourier-encoded model reaches the unencoded model's <em>final</em> PSNR of $11.13$ dB after fewer than $100$ iterations — $20\times$ fewer training steps than the unencoded variant needs to reach the same point. The encoded model then continues to improve, plateauing around iteration $1400$ at $\sim 22$ dB.</p>
+
+            <p>The unencoded model is still slowly descending at iteration $2000$, but its trajectory suggests an asymptote in the low teens of dB — never enough to recover the sharp features of the image. Even with infinite training time, the unencoded MLP would not reach the encoded MLP's quality. The bottleneck is not optimization; it is representational capacity for high-frequency content.</p>
+
+            <p>This is what spectral bias means in practice. A ReLU MLP is not <em>refusing</em> to fit high frequencies — it is genuinely unable to, with realistic training budgets. The fitting time grows exponentially with frequency, so high-frequency components have effectively never converged within reasonable training budgets.</p>
 
             <h2>Visual Reconstruction</h2>
-            <p><strong>No PE:</strong> a smooth gradient of muted colors. Checkerboard invisible. Circle and square are fuzzy blobs. Diagonal line has disappeared entirely.</p>
-            <p><strong>With Fourier features:</strong> recognisable. Checkerboard cells visible. Sharp circle and square boundaries. Yellow diagonal streak present.</p>
+
+            <p>The qualitative reconstructions confirm the numerical result.</p>
+
+            <p><strong>No positional encoding.</strong> The reconstruction is a smooth gradient of muted colors. The checkerboard region appears as a uniform gray patch — the alternating black and white squares blur into their pixel-wise average. The red circle is a fuzzy reddish blob with no defined edge. The blue square is a fuzzy bluish blob with no corners. The yellow diagonal line has disappeared entirely — its frequency is too high for the unencoded MLP to represent at all.</p>
+
+            <p><strong>With Fourier features.</strong> The reconstruction is recognisable. The individual checkerboard cells are visible, though slightly soft at the edges. The circle has a crisp curved boundary; the square has corners. The yellow diagonal line is present as a continuous yellow streak. None of this is photographically perfect — the MLP is small and the encoding has limited frequency range — but the image is unambiguously the target image.</p>
+
+            <p>This is the qualitative difference that $10.64$ dB makes. Anyone looking at the two reconstructions side by side would describe the unencoded one as "broken" and the encoded one as "OK, with some softening at edges". The transition between those two qualitative regimes is what the entire neural-field literature is about.</p>
 
             <h2>Why Fourier Features Fix Spectral Bias</h2>
-            <p>The ReLU MLP's spectral bias is provable: its NTK decays at high frequencies, so gradient descent converges faster on low-frequency components. Fourier features change the input representation in a way that flattens the effective kernel across frequencies. After encoding, the input is the same set of features regardless of where in coordinate space we are — the MLP no longer has to manufacture high frequencies; it has to linearly combine them.</p>
 
-            <h2>From 2D to NeRF</h2>
-            <p>The 3D NeRF pipeline takes the same coordinate-MLP-plus-Fourier-features kernel and adds: cast a ray, sample 3D positions, run each sample through the coordinate MLP to predict color + density, accumulate via the volume-rendering integral. The architecture and the encoding are the same as ours. The geometry is in the rendering, not the model.</p>
+            <p>The ReLU MLP's spectral bias is not just an empirical observation — it is provable. Tancik et al. (2020) showed that the Neural Tangent Kernel (NTK) of a ReLU MLP decays at high frequencies. The NTK essentially describes how gradient descent moves the function during training; the decay means that high-frequency components of the target function converge slowly, while low-frequency components converge quickly. Same total training time, same final MSE on the low frequencies, dramatically different final MSE on the high frequencies.</p>
+
+            <p>Fourier feature encoding changes the input representation in a way that flattens the effective kernel across frequencies. After encoding, the input contains the high-frequency information explicitly. The MLP no longer has to <em>manufacture</em> high frequencies (which is what its spectral bias prevents); it has to <em>linearly combine</em> high-frequency features that are already present in the input.</p>
+
+            <p>Tancik et al.'s key result: the NTK of the encoded model is approximately stationary across frequencies, which is exactly the property gradient descent needs to converge uniformly. The empirical $10.64$ dB improvement is a direct consequence of this kernel-level change.</p>
+
+            <h2>Why Exponential Frequencies Specifically</h2>
+
+            <p>The choice of frequency spacing matters. Several alternatives one might consider:</p>
+
+            <p><strong>Linear spacing.</strong> Use frequencies $1, 2, 3, \ldots, L$. This concentrates the bins around low frequencies — the highest frequency at $L = 6$ is $6\pi$, only $6\times$ the lowest. Misses high-frequency content entirely.</p>
+
+            <p><strong>Single high frequency.</strong> Use just one large frequency, say $32\pi$. This captures high-frequency detail but misses everything else — the MLP would have to manufacture low frequencies from the high-frequency input, which is also a form of spectral bias in reverse.</p>
+
+            <p><strong>Exponential spacing.</strong> Use frequencies $\pi, 2\pi, 4\pi, 8\pi, 16\pi, 32\pi$ — five decades of scale. Covers low, medium, and high frequencies in a single pass. This is what works empirically and what Tancik et al. recommend.</p>
+
+            <p>Natural signals (images, 3D scenes, audio) have approximately self-similar spectra at different scales. The exponential spacing matches this self-similarity, ensuring the model has access to information at the relevant scales of the data.</p>
+
+            <h2>From 2D Image-Fitting to 3D NeRF</h2>
+
+            <p>The 3D NeRF pipeline takes the same coordinate-MLP-plus-Fourier-features kernel and adds geometric machinery:</p>
+
+            <ul>
+                <li>For each pixel of each training image, cast a viewing ray through the scene.</li>
+                <li>Sample 3D positions along the ray (typically 64 to 192 samples per ray).</li>
+                <li>For each sample, query the coordinate MLP to predict color and density.</li>
+                <li>Accumulate the per-sample predictions via the volume-rendering integral.</li>
+                <li>Compare the accumulated pixel color to the ground-truth pixel.</li>
+                <li>Backpropagate through the integral, the MLP, and the encoder.</li>
+            </ul>
+
+            <p>The architecture and the encoding are unchanged from our 2D experiment. The geometry lives in the rendering pipeline, not in the model.</p>
+
+            <p>This split is conceptually important. Pre-NeRF "neural scene representations" tried to bake the geometry into the architecture (voxel-grid CNNs, scene-graph networks, etc.). NeRF kept the geometry simple (just ray casting) and put the representational power in the input encoding. The latter approach scales much better.</p>
+
+            <h2>Generalisation Beyond NeRF</h2>
+
+            <p>The Fourier-feature trick (and its descendants) appears across the neural-field literature:</p>
+
+            <p><strong>SIREN (Sitzmann et al., 2020):</strong> sinusoidal activations <em>everywhere</em>, not just at the input. Achieves similar or better fidelity than Fourier features with end-to-end periodicity, but trickier to optimize.</p>
+
+            <p><strong>Instant-NGP (Müller et al., 2022):</strong> replaces fixed Fourier features with a learnable multi-resolution hash encoding. Same core idea — replace raw coordinates with a richer representation — but with hash tables. Faster training, even higher fidelity.</p>
+
+            <p><strong>Tri-Plane / Triplane encoding:</strong> represents a 3D scene as three 2D feature planes that the MLP samples from. Trades the simple Fourier-feature encoding for explicit spatial feature storage.</p>
+
+            <p><strong>3D Gaussian Splatting (Kerbl et al., 2023):</strong> abandons the implicit neural field entirely. Represents the scene as a cloud of anisotropic 3D Gaussians, rendered by alpha-compositing. Trains in minutes, renders in milliseconds. But still descended from NeRF in spirit — the loss function is the same (rendered pixel vs ground truth).</p>
+
+            <p>The throughline: <strong>every successful follow-up to NeRF improved the input representation, not the MLP architecture</strong>. The MLP stayed a small fully-connected network. The encoding became fancier (hash tables, triplanes, explicit Gaussians). This is consistent with the broader thesis: architecture is rarely the bottleneck; input representation is.</p>
+
+            <h2>What This Demonstrates</h2>
+
+            <ul>
+                <li>Fourier feature encoding lifts coordinate MLPs out of the low-frequency-only regime imposed by spectral bias.</li>
+                <li>On a $64 \times 64$ image-fit task, the encoding produces a $+10.64$ dB PSNR improvement (= $11.6\times$ lower MSE) with $8\%$ more parameters and the same training time.</li>
+                <li>This is the kernel of NeRF and every successor neural-field method. The architecture is incidental; the input representation is everything.</li>
+                <li>The same trick generalises across SIREN, Instant-NGP, Gaussian Splatting, and the broader neural-rendering literature — each method improves the input representation, never the MLP.</li>
+            </ul>
 
             <h2>The Bigger Lesson</h2>
-            <p>Architecture is not always the answer. The pivotal innovation behind every neural-field method — NeRF, SIREN, Instant-NGP, every Gaussian-splatting precursor — was an input-representation trick. A 4-layer MLP is enough capacity to represent a 3D scene; what was missing was the right way to feed coordinates into it.</p>
 
+            <p>Architecture is not always the answer. The pivotal innovation behind every neural-field method since 2020 was an input-representation trick, not a new layer type. A $4$-layer MLP is enough capacity to represent a 3D scene; what was missing for years was the right way to feed coordinates into it. This pattern recurs across ML: positional encodings in Transformers, byte-pair encoding for LLMs, feature engineering in classical ML. Sometimes the hard problem is not "what to do with the inputs" but "what are the inputs".</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/NeRF-Kernel" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/NeRF-Kernel</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

@@ -1,18 +1,17 @@
 ---
 layout: null
-title: "Deconstructing Tokenization: Part 3 — Compression and Failure Modes"
-description: "BPE trained on a 33-KB English corpus at four vocabulary sizes. The compression curve is universal; the failure mode is specific."
+title: "Deconstructing Tokenization: Part 3 — Compression, Linguistic Structure, and the Failure Mode"
+description: "Training BPE on a synthetic 33-KB English corpus at four vocabulary sizes. The compression curve is universal; the failure mode at merge #200 explains a lot of LLM weirdness."
 permalink: /projects/bpe-tokenizer-benchmark/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing Tokenization: Part 3 — Compression and Failure Modes | Sovesh Mohapatra</title>
+    <title>Deconstructing Tokenization: Part 3 - Compression and Failure Modes | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
     <style>
         .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -29,74 +28,163 @@ permalink: /projects/bpe-tokenizer-benchmark/
         .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
         .article-content li { margin-bottom: 0.5rem; }
         .article-content strong { font-weight: 600; color: var(--accent-light); }
-        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
         .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
         .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
-        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
-    <script>
-        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
-    </script>
-    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/bpe-tokenizer/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Tokenization Hub</a>
+        <a href="{{ site.baseurl }}/projects/bpe-tokenizer/" class="back-link"><i class="fas fa-arrow-left"></i> Back to BPE Tokenizer Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing Tokenization</h1>
-            <h2 class="article-subtitle">Part 3: Compression and Failure Modes</h2>
+            <h2 class="article-subtitle">Part 3: Compression, Linguistic Structure, and the Failure Mode</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
-                <div class="abstract-title">Overview</div>
-                <p>BPE trained on a 33-KB English corpus at four vocabulary sizes. The compression curve is universal; the failure mode is specific.</p>
+                <div class="abstract-title">The Three Questions</div>
+                <p>With our 80-line BPE tokenizer in hand from Part 2, three questions naturally follow. How well does it compress natural text? What does it actually learn — does it discover anything linguistically meaningful, or just arbitrary byte clusters? And critically, what happens when we feed it the kind of structured, repetitive input that production LLMs see all the time?</p>
+                <p>This part trains BPE at four vocabulary sizes ($300$, $500$, $1{,}000$, $2{,}000$) on a deliberately mixed corpus: prose, templated sentences, and intentionally repetitive code patterns. The compression curve confirms a universal shape. The first merges confirm that linguistic structure emerges from pure frequency counting. And the corpus's repetitive segment exposes the failure mode that explains a substantial fraction of strange LLM behaviour.</p>
             </div>
 
-            <h2>Compression Curve</h2>
-            <table class="results-table">
-                <thead><tr><th>Vocab size</th><th>Encoded length (tokens)</th><th>Compression ratio</th></tr></thead>
-                <tbody>
-                    <tr><td>300</td><td>39,593</td><td>$1.63\times$</td></tr>
-                    <tr><td>500</td><td>16,693</td><td>$3.86\times$</td></tr>
-                    <tr><td>1000</td><td>4,564</td><td>$14.11\times$</td></tr>
-                    <tr><td>2000</td><td>3,432</td><td>$18.77\times$</td></tr>
-                </tbody>
-            </table>
-            <p>Sharp initial improvement, sharply diminishing returns. The first 700 merges absorb most of the structural redundancy. Same shape as GPT-2's tokenizer trained on the Pile.</p>
+            <h2>The Corpus</h2>
 
-            <h2>The First Five Merges (English Text)</h2>
+            <p>The training corpus is $32{,}945$ characters ($64{,}419$ bytes in UTF-8) assembled from three components, each chosen to expose a different aspect of BPE's behaviour.</p>
+
+            <p>The first component is several paragraphs of natural English prose — the kind of writing you would find in a textbook or technical blog post. This is BPE's home turf: where it is expected to perform well and where its learned merges should look linguistically sensible.</p>
+
+            <p>The second is $800$ templated sentences generated from a small lexicon: <em>"The clever scientist analyzed the brilliant experiment"</em>, <em>"After many years the ancient tree grew through the small river"</em>, and so on. These have natural English structure but limited vocabulary, which should let BPE saturate the high-frequency merges quickly.</p>
+
+            <p>The third is the trap: seven Python-like code lines (<code>model.parameters()</code>, <code>torch.nn.functional</code>, <code>loss.backward()</code>, etc.) repeated $80$ times in a block. This is included specifically to demonstrate the failure mode — BPE should aggressively compress this repetitive structure in a way that exposes its greedy-compression nature.</p>
+
+            <h2>The Compression Curve</h2>
+
+            <p>Training BPE at four vocabulary sizes and measuring the number of tokens needed to encode the full corpus:</p>
+
             <table class="results-table">
-                <thead><tr><th>Merge #</th><th>Frequency</th><th>Resulting token</th></tr></thead>
+                <thead><tr><th>Vocab size</th><th>Encoded length (tokens)</th><th>Compression ratio vs bytes</th><th>Train time</th></tr></thead>
                 <tbody>
-                    <tr><td>1</td><td>2159</td><td><code>"e "</code></td></tr>
-                    <tr><td>2</td><td>1792</td><td><code>"he "</code></td></tr>
-                    <tr><td>3</td><td>1588</td><td><code>" t"</code></td></tr>
-                    <tr><td>4</td><td>1412</td><td><code>" the "</code></td></tr>
-                    <tr><td>5</td><td>1133</td><td><code>"er"</code></td></tr>
+                    <tr><td>$300$</td><td>$39{,}593$</td><td>$1.63\times$</td><td>$0.5$ s</td></tr>
+                    <tr><td>$500$</td><td>$16{,}693$</td><td>$3.86\times$</td><td>$1.7$ s</td></tr>
+                    <tr><td>$1{,}000$</td><td>$4{,}564$</td><td>$14.11\times$</td><td>$2.7$ s</td></tr>
+                    <tr><td>$2{,}000$</td><td>$3{,}432$</td><td>$18.77\times$</td><td>$3.3$ s</td></tr>
                 </tbody>
             </table>
-            <p>Every one of these is structurally driven: word boundaries, suffixes, and the most common word in English. BPE discovers linguistic structure through pure frequency counting.</p>
+
+            <p>The shape of this curve is universal across BPE training runs on natural-language corpora. A sharp initial improvement (the first few hundred merges absorb most of the redundancy) is followed by sharply diminishing returns (the next thousand merges add only a few extra percent of compression).</p>
+
+            <p>Look at the jump from vocab $500$ to vocab $1{,}000$: doubling the vocabulary reduced the token count from $16{,}693$ to $4{,}564$ — a $3.66\times$ compression improvement from a $2\times$ vocabulary increase. Now look at vocab $1{,}000$ to $2{,}000$: another doubling, but the token count only drops from $4{,}564$ to $3{,}432$ — a $1.33\times$ compression improvement. The first $1{,}000$ merges are doing $73\%$ of the work; the next $1{,}000$ are doing $27\%$.</p>
+
+            <p>The same diminishing-returns curve appears at every scale. When GPT-2 grew from a $50{,}000$ vocabulary to GPT-3.5's $100{,}000$, the second $50{,}000$ tokens yielded much less per-token compression than the first. The shape is preserved across orders of magnitude in vocabulary size and corpus size — it is essentially a property of natural-language token distributions, not of any particular BPE implementation.</p>
+
+            <p><strong>Why does the curve flatten?</strong> Information-theoretically, BPE is approximating the entropy of the corpus. After a certain number of merges, the remaining pairs all have low frequency — there is not enough repetition in the corpus to justify spending vocabulary slots on them. Adding more merges captures rare patterns that contribute very little to total compression. The flattening point depends on the corpus's intrinsic redundancy.</p>
+
+            <h2>The First Five Merges Are Recognisably Linguistic</h2>
+
+            <p>Looking at what BPE chose to merge at each step, ranked by frequency at the time of merging:</p>
+
+            <table class="results-table">
+                <thead><tr><th>Merge #</th><th>Pair frequency</th><th>Resulting token (UTF-8)</th></tr></thead>
+                <tbody>
+                    <tr><td>$1$</td><td>$2{,}159$</td><td><code>"e "</code> (e + space)</td></tr>
+                    <tr><td>$2$</td><td>$1{,}792$</td><td><code>"he "</code></td></tr>
+                    <tr><td>$3$</td><td>$1{,}588$</td><td><code>" t"</code> (space + t)</td></tr>
+                    <tr><td>$4$</td><td>$1{,}412$</td><td><code>" the "</code></td></tr>
+                    <tr><td>$5$</td><td>$1{,}133$</td><td><code>"er"</code></td></tr>
+                </tbody>
+            </table>
+
+            <p>Every one of these is structurally meaningful to a human reader of English. Merge $1$ is the end-of-word "e" followed by a space — the most common bigram in English because so many words end in "e" (the, time, more, made, like). Merge $2$ is the suffix "he" followed by space, which captures the endings of "he", "she", "the", "where", and similar — one of the most common letter sequences in English. Merge $3$ is a space followed by "t", which appears before every "t"-initial word. Merge $4$ is the whole word "the" with both spaces — by merge $4$, BPE has rediscovered the most common word in the English language.</p>
+
+            <p>Merge $5$ is "er", the standard English comparative suffix and a very common interior bigram. By the fifth merge, BPE has identified word boundaries, the definite article, and one of the most common morphological suffixes — all without ever being told what a word is, what English is, or what a suffix is.</p>
+
+            <p>This is the standard result on English text. BPE recovers word boundaries and morphological structure as a side effect of counting frequencies. The discovery happens because spaces and common words are by far the most frequent things in the corpus. <strong>It is critical to internalise that this is not language understanding</strong> — BPE has no notion of words. It is pure statistical compression that happens to find linguistically meaningful units when applied to natural language.</p>
 
             <h2>The Failure Mode — Merge #200</h2>
-            <p>The corpus deliberately contained a seven-line block of Python-like syntax repeated 80 times. After 200 merges, BPE produced a single token whose UTF-8 expansion is:</p>
+
+            <p>The previous section was BPE on its best behaviour. Now the failure mode.</p>
+
+            <p>Our corpus deliberately included a seven-line block of Python-like syntax repeated $80$ times. By the time BPE has done $200$ merges, it has not just merged individual lines of this block — it has merged the entire block together. The token at id $455$ (the $200$th new vocabulary entry) is:</p>
+
             <pre><code>"model.parameters()\ntorch.nn.functional\nloss.backward()\noptimizer.step()\nfor epoch in range(num_epochs)"</code></pre>
-            <p><strong>116 characters of source code encoded as one token id.</strong> Because the same block appeared 80 times, BPE merged it from the bottom up — individual lines first, then pairs, then larger combinations.</p>
-            <p>This is exactly the pathology that affects production tokenizers when their training data contains repetitive code, log files, structured outputs, or commonly-repeated prompts. It explains why GPT-3 famously could not count letters in words (characters disappear into multi-char tokens) and why subtle whitespace changes alter LLM behavior.</p>
 
-            <h2>Takeaway</h2>
-            <p>BPE is greedy compression. It is not language understanding. Every LLM behaviour that depends on character counting, position-within-word, or sub-token reasoning is downstream of this design. The tokenizer is the silent foundation under everything.</p>
+            <p>That is $116$ characters encoded as a single token id. Five lines of code, three newlines, multiple identifiers, a function call with parentheses, a control-flow keyword, several dots and underscores — all compressed into one token.</p>
 
+            <p>The compression happened from the bottom up. First BPE merged the individual identifiers (<code>"parameters"</code>, <code>"functional"</code>), then the method-call patterns (<code>"backward()"</code>, <code>"step()"</code>), then full lines (<code>"loss.backward()\n"</code>), then pairs of lines, then larger combinations. Because the same $7$-line block appeared $80$ times, every level of this hierarchy had enough frequency to justify its own merge — and the merges chained together until a substantial fraction of the block had been collapsed.</p>
+
+            <h2>Why This Failure Mode Matters</h2>
+
+            <p>The Python-code example is illustrative but the same pathology affects production tokenizers when their training data contains <em>any</em> systematically repetitive content:</p>
+
+            <p><strong>Repetitive code.</strong> If GPT-2's training corpus contained $80$ copies of a common Stack Overflow boilerplate block, BPE would collapse the entire block into one token. The model would then have to learn the function from "this giant token" to "whatever comes after the boilerplate." But the model's effective context is much shorter than it appears — the giant token is one slot in the context window, but it contains an enormous amount of structure the model is treating as atomic.</p>
+
+            <p><strong>Log files and structured outputs.</strong> Log lines often share a common prefix ("$ERROR$ $2024$-$01$-$05$T$12$:$34$:$56$Z $\,$ ..."). If BPE was trained on data containing many such lines, the entire prefix collapses into one token. The model can predict what comes after that prefix but cannot easily reason about its components — e.g., asking "what year is this log from?" the model would have to invert the giant token to recover the year, which is a much harder operation than reading it from a smaller-grained tokenization.</p>
+
+            <p><strong>Common prompts.</strong> Instruction-tuning datasets often contain repeated phrasings — "You are a helpful assistant. Please answer the following question:" or similar. If BPE was trained on data that included thousands of copies of this prefix, the entire prefix could collapse into one token. The model then learns associations from "that giant token" to the response, which is part of why fine-tuned LLMs are sometimes brittle to phrasing changes — a slight wording variation breaks the giant-token shortcut.</p>
+
+            <h2>Specific LLM Failures Traceable to Tokenization</h2>
+
+            <p>This failure mode explains several famous LLM behaviours:</p>
+
+            <p><strong>Letter counting.</strong> "How many R's are in <em>strawberry</em>?" GPT-3 and many follow-ups fail this question. The reason: <code>"strawberry"</code> is typically a single token in their vocabularies. The model literally cannot see individual letters — they have been collapsed into one opaque id. Asking the model to count letters is asking it to invert tokenization, which it was never trained to do.</p>
+
+            <p><strong>Arithmetic with specific digit lengths.</strong> LLMs are weirdly bad at certain arithmetic — say, adding $3$-digit numbers — even when they handle $2$-digit and $4$-digit just fine. The reason: $3$-digit numbers like <code>"371"</code> may have tokenized as one token in training data, while $2$-digit and $4$-digit numbers tokenized differently. The model's arithmetic abilities are fragmented across token boundaries the user does not see.</p>
+
+            <p><strong>Whitespace sensitivity.</strong> The same prompt with subtle whitespace changes (a leading space, a trailing newline, a different indentation level) can produce dramatically different LLM behaviour. The reason: those whitespace variations tokenize differently. The model never sees "the same prompt with different formatting" — it sees "two completely different token sequences." Tokenization variance is invisible to the user but is the single largest source of prompt-engineering instability.</p>
+
+            <p>Andrej Karpathy's tokenizer videos make this exact point: every "weird thing" about LLMs has its roots in tokenization choices the user cannot see and the model cannot inspect.</p>
+
+            <h2>How Vocabulary Size Affects a Specific Sentence</h2>
+
+            <p>To make the compression concrete, here is the sentence "<em>The tokenizer compresses common substrings into single tokens. Every modern large language model uses some variant of byte-level BPE for this reason.</em>" encoded by each of our four tokenizers:</p>
+
+            <table class="results-table">
+                <thead><tr><th>Vocab size</th><th>Tokens</th><th>Notes</th></tr></thead>
+                <tbody>
+                    <tr><td>$300$</td><td>$105$</td><td>Mostly bytes — barely any compression of words</td></tr>
+                    <tr><td>$500$</td><td>$85$</td><td>"The ", "ing", "the " merged</td></tr>
+                    <tr><td>$1{,}000$</td><td>$61$</td><td>"tokenizer", "modern", "large" become single tokens</td></tr>
+                    <tr><td>$2{,}000$</td><td>$45$</td><td>"single tokens" becomes one token</td></tr>
+                </tbody>
+            </table>
+
+            <p>The transition between vocab sizes is informative. At $300$ tokens of vocabulary, very little has been merged beyond individual letters and a few common bigrams — the sentence is encoded almost byte-per-byte. By vocab $500$, common short words and morphological suffixes are single tokens. By vocab $1{,}000$, content words like "tokenizer" and "language" fit in one token each. By vocab $2{,}000$, even two-word phrases ("single tokens") can collapse.</p>
+
+            <p>For reference, GPT-4 uses the cl100k_base tokenizer with vocab $\sim 100{,}000$. The same sentence in cl100k_base encodes to roughly $28$ tokens. The compression ratio at GPT-4's vocab size is roughly $5\times$ what our toy tokenizer achieves at vocab $2{,}000$, and roughly $20\times$ what byte-level encoding produces.</p>
+
+            <h2>What This Proves</h2>
+
+            <p>The three results together tell a consistent story:</p>
+
+            <p><strong>BPE is greedy compression.</strong> It is not language understanding. On natural-language corpora it incidentally produces linguistically meaningful tokens (words, morphemes, prefixes, suffixes) because those are the high-frequency patterns. On repetitive or structured corpora it produces absurdly long single tokens because those are <em>also</em> high-frequency patterns. The algorithm makes no distinction between "good" and "bad" patterns to compress.</p>
+
+            <p><strong>The tokenizer is frozen and shapes everything downstream.</strong> Once trained, the merges are fixed. The model is trained on top of those merges. Every weird LLM behaviour that traces back to tokenization is essentially permanent — fixing it would require retraining the model from scratch with a different tokenizer.</p>
+
+            <p><strong>Tokenization is the silent foundation under every LLM.</strong> Every behaviour that depends on character counting, position-within-word, or sub-token reasoning is downstream of these decisions. The tokenizer is a separate piece of frozen software, trained once, and the model has no introspection into it. The next time you see a strange LLM output, the first question to ask is: "what does the tokenizer do to this input?"</p>
+
+            <h2>Open Research Directions</h2>
+
+            <p>Several recent research threads explore whether BPE is the right substrate at all:</p>
+
+            <p><strong>Byte-level Transformers (ByT5, MegaByte)</strong> train directly on raw bytes, skipping tokenization entirely. This costs more compute per character (sequences are longer) but eliminates the tokenization-induced pathologies. Empirically these models close most of the gap with BPE-tokenized models but at substantially higher compute cost.</p>
+
+            <p><strong>Learned tokenizers</strong> jointly optimise the tokenizer and the model. The motivation: tokenization currently gets one shot, before training, with no feedback from how well the resulting tokens work for the task. Joint optimisation could in principle produce tokens better suited to downstream performance. This has not yet succeeded at large scale.</p>
+
+            <p><strong>Patch-based input (V-JEPA, Patches Scale Better)</strong> abandons tokens entirely in favour of fixed-size patches. This is more natural for image and video models. The text analogue is still under exploration.</p>
+
+            <p>For now, byte-level BPE remains the dominant choice. Every production LLM in 2026 — GPT-4o, Claude 3, Llama 3, Gemini, Mistral Large — uses a BPE variant. The pathologies described here are present in all of them. They are not going away soon.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/BPE-Tokenizer" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/BPE-Tokenizer</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

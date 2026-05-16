@@ -1,14 +1,14 @@
 ---
 layout: null
 title: "Deconstructing CLIP: Part 2 — Eighty Lines of PyTorch"
-description: "Three files: <code>dataset.py</code> (synthetic colored shapes + captions), <code>clip.py</code> (encoders + InfoNCE), <code>train.py</code> (training loop + zero-shot eval). Total CLIP machinery: ~80"
+description: "ImageEncoder, TextEncoder, the symmetric InfoNCE loss, and the learnable temperature — built from scratch in pure PyTorch. The whole CLIP machinery is ~80 lines."
 permalink: /projects/clip-live-code/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing CLIP: Part 2 — Eighty Lines of PyTorch | Sovesh Mohapatra</title>
+    <title>Deconstructing CLIP: Part 2 - Eighty Lines | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -32,9 +32,6 @@ permalink: /projects/clip-live-code/
         .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
-        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
-        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
@@ -46,19 +43,34 @@ permalink: /projects/clip-live-code/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/clip/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing CLIP Hub</a>
+        <a href="{{ site.baseurl }}/projects/clip/" class="back-link"><i class="fas fa-arrow-left"></i> Back to CLIP Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing CLIP</h1>
             <h2 class="article-subtitle">Part 2: Eighty Lines of PyTorch</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
                 <div class="abstract-title">Overview</div>
-                <p>Three files: <code>dataset.py</code> (synthetic colored shapes + captions), <code>clip.py</code> (encoders + InfoNCE), <code>train.py</code> (training loop + zero-shot eval). Total CLIP machinery: ~80 lines.</p>
+                <p>Part 1 made the structural argument: CLIP is two encoders, one shared embedding space, and one symmetric InfoNCE loss. The supervision comes from pairing (an image and its caption) rather than from labels. Now we implement it from scratch in pure PyTorch. The full CLIP machinery — image encoder, text encoder, normalisation, learnable temperature, symmetric loss — is about $80$ lines of code.</p>
+                <p>The interesting parts are not the encoder architectures (a small CNN, a small token-pool) but the small choices that turn out to be load-bearing: the L2 normalisation that makes dot product into cosine similarity, the learnable temperature parameterised in log-space, and the bidirectional formulation of InfoNCE.</p>
             </div>
 
-            <h2>ImageEncoder (CNN)</h2>
+            <h2>File Map</h2>
+
+            <p>Three files: <code>dataset.py</code> generates the synthetic colored-shapes corpus with templated captions; <code>clip.py</code> defines the two encoders and the CLIP wrapper class plus the InfoNCE loss; <code>train.py</code> runs the training loop and zero-shot evaluation. The substantive CLIP code lives in <code>clip.py</code> at roughly $80$ lines; the dataset and training scripts add another $\sim 200$ lines of glue.</p>
+
+            <h2>Synthetic Dataset</h2>
+
+            <p>Four colors (red, blue, green, yellow) crossed with four shapes (circle, square, triangle, cross) gives $16$ classes. Each example is a $32 \times 32$ image of one shape drawn in one color on a near-black background, paired with the caption "<code>a {color} {shape}</code>".</p>
+
+            <p>The vocabulary contains only $10$ tokens: <code>{<pad>, a, red, blue, green, yellow, circle, square, triangle, cross}</code>. Captions are encoded as fixed-length $4$-token sequences with padding when needed. This is deliberately small — it lets us inspect every learned token embedding directly, and the fixed length avoids the masking complexity that variable-length captions would require.</p>
+
+            <p>$200$ examples per class times $16$ classes is $3{,}200$ total pairs, with $85\%$ used for training and $15\%$ held out for zero-shot evaluation. This is roughly $5$ orders of magnitude smaller than OpenAI's WIT-400M corpus. What survives at this scale is the algorithm itself; what doesn't is the diversity of real-world data.</p>
+
+            <h2>ImageEncoder (Small CNN)</h2>
+
             <pre><code class="language-python">class ImageEncoder(nn.Module):
     def __init__(self, embed_dim=64):
         super().__init__()
@@ -72,10 +84,19 @@ permalink: /projects/clip-live-code/
             nn.AdaptiveAvgPool2d(1),
         )
         self.proj = nn.Linear(64, embed_dim)
-    def forward(self, x):
-        return self.proj(self.conv(x).flatten(1))</code></pre>
 
-            <h2>TextEncoder (token-embed + mean pool)</h2>
+    def forward(self, x):
+        h = self.conv(x).flatten(1)
+        return self.proj(h)</code></pre>
+
+            <p>A standard small CNN: five conv layers with GELU activations, two max-pool downsamples ($32 \to 16 \to 8$), then adaptive average pooling to $1 \times 1$, then a linear projection to the shared $64$-dimensional embedding space.</p>
+
+            <p><strong>The architecture is incidental.</strong> Real CLIP uses ViT-B/32 or ResNet-50 with around $100$M parameters. Our small CNN has about $40{,}000$. The architecture choice is independent of the contrastive objective — the same loss and training procedure work with any encoder that produces a fixed-dimensional output vector per image.</p>
+
+            <p><strong>AdaptiveAvgPool2d as the global aggregator.</strong> After the convolutions, the feature map is $64 \times 8 \times 8$. Adaptive average pooling reduces this to $64 \times 1 \times 1$ — a single $64$-dimensional summary of the image. This is the standard "global pooling" approach to converting a spatial feature map into a vector. ViT-based encoders use the [CLS] token instead; both serve the same role.</p>
+
+            <h2>TextEncoder (Token Embedding + Mean Pool)</h2>
+
             <pre><code class="language-python">class TextEncoder(nn.Module):
     def __init__(self, vocab_size, max_len, embed_dim=64, hidden=64):
         super().__init__()
@@ -83,6 +104,7 @@ permalink: /projects/clip-live-code/
         self.pos = nn.Embedding(max_len, hidden)
         self.norm = nn.LayerNorm(hidden)
         self.proj = nn.Linear(hidden, embed_dim)
+
     def forward(self, captions):
         B, T = captions.shape
         pos = torch.arange(T, device=captions.device).unsqueeze(0)
@@ -91,7 +113,31 @@ permalink: /projects/clip-live-code/
         h = (h * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
         return self.proj(self.norm(h))</code></pre>
 
-            <h2>The Full CLIP</h2>
+            <p>For a $10$-word vocabulary a Transformer is theatre. Instead: token embeddings, positional embeddings, sum, mask out padding, mean-pool over non-padding positions, LayerNorm, project.</p>
+
+            <p><strong>The <code>padding_idx=0</code> argument.</strong> This tells PyTorch that token id $0$ is padding and should have a zero embedding that is never updated by gradients. Without it, the model would learn an embedding for the pad token, which is wrong — pad tokens should contribute nothing to the caption representation.</p>
+
+            <p><strong>The mean-pool with explicit masking.</strong> <code>(h * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)</code> computes the mean only over non-padding positions. <code>mask</code> is $1$ for real tokens and $0$ for padding. The <code>clamp(min=1.0)</code> prevents division by zero in the (impossible-here but defensive) case of an all-padding caption.</p>
+
+            <p><strong>Why not a Transformer?</strong> For a 10-word vocabulary and 4-token captions, a Transformer would have nothing to do. Mean-pooling captures the bag-of-tokens information that the captions provide. Real CLIP uses a 12-layer Transformer text encoder ($\sim 60$M parameters); on natural language with variable structure and dependencies, the Transformer adds real value. At our scale, it doesn't.</p>
+
+            <p>The principle: the architecture has to be at least <em>capable</em> of representing the necessary distinctions in the dataset. For 16 classes built from 8 vocabulary tokens, mean-pool is enough.</p>
+
+            <h2>L2 Normalization — The First Critical Detail</h2>
+
+            <pre><code class="language-python">img_emb = F.normalize(self.image_encoder(images), dim=-1)
+txt_emb = F.normalize(self.text_encoder(captions), dim=-1)</code></pre>
+
+            <p>Both encoders' outputs are L2-normalized to unit length before computing similarities. This is essential, not cosmetic. Three reasons:</p>
+
+            <p><strong>(1) Dot product becomes cosine similarity.</strong> For unit vectors, $u \cdot v = \|u\| \|v\| \cos \theta = \cos \theta$. The similarity is bounded to $[-1, 1]$ regardless of the raw encoder output magnitudes. This is exactly what we want: a scale-free measure of how similar two embeddings are.</p>
+
+            <p><strong>(2) It removes the magnitude degree of freedom.</strong> Without normalization, the model could trivially minimise the contrastive loss by making the embedding magnitudes huge (positive pairs) or tiny (negative pairs) without changing the angles at all. Normalization forces the model to learn <em>directions</em>, not scales.</p>
+
+            <p><strong>(3) It bounds the temperature search.</strong> The similarities are guaranteed to lie in $[-1, 1]$, which means the temperature $\tau$ can be reasoned about: $1/\tau = 100$ gives a maximum logit of $100$, well within softmax's usable range. Without normalization, the temperature would have to absorb arbitrary encoder magnitudes — making it both unstable and impossible to tune.</p>
+
+            <h2>The CLIP Wrapper</h2>
+
             <pre><code class="language-python">class CLIP(nn.Module):
     def __init__(self, vocab_size, max_len, embed_dim=64):
         super().__init__()
@@ -106,16 +152,56 @@ permalink: /projects/clip-live-code/
         logits = scale * img_emb @ txt_emb.T
         return logits, img_emb, txt_emb</code></pre>
 
-            <h2>InfoNCE Loss</h2>
+            <h2>The Learnable Temperature</h2>
+
+            <p>The line <code>self.logit_scale = nn.Parameter(torch.tensor(math.log(1.0 / 0.07)))</code> deserves attention. CLIP makes $\tau$ a learnable scalar — parameterised in log-space, initialised at $\log(1/0.07) \approx 2.66$, and clamped to keep $1/\tau \leq 100$.</p>
+
+            <p>Why log-space? Because $\tau > 0$. If we parameterised $\tau$ directly and the optimizer ever tried to push it negative, you would get a sign-flipped softmax with bizarre dynamics. By storing $\log(1/\tau)$ instead, the actual temperature $\exp(\text{logit\_scale})$ is guaranteed positive regardless of what value the optimizer gradient-updates it to.</p>
+
+            <p>Why clamp $1/\tau \leq 100$? Because runaway temperatures destroy training. Imagine the optimizer pushes $1/\tau$ to $10^{10}$. The softmax becomes a one-hot distribution — all probability on the maximum entry, zero everywhere else. Gradients through softmax vanish for the non-maximum entries, the model can no longer distinguish "almost matches" from "doesn't match at all", and training collapses. The clamp prevents this failure mode at the cost of fixing the maximum softmax sharpness.</p>
+
+            <p>What does $\tau$ control? <strong>The softmax temperature determines how peaked the matching distribution is.</strong> Low $\tau$ (= large $1/\tau$) makes the softmax sharp: only the single best match gets significant probability, gradients focus narrowly. High $\tau$ flattens the distribution: many candidates retain non-trivial probability, gradients spread across them.</p>
+
+            <p>By making $\tau$ learnable, CLIP lets the model adapt its own sharpness during training. Early on, when embeddings are uninformative, a flat distribution is appropriate — many candidates are plausibly correct. Late in training, when embeddings are sharp, a peaked distribution is appropriate — the matching pair should dominate. The learnable $\tau$ adapts to this naturally; in practice it approaches the clamp value during late training.</p>
+
+            <h2>The InfoNCE Loss</h2>
+
             <pre><code class="language-python">def info_nce_loss(logits):
     B = logits.size(0)
     targets = torch.arange(B, device=logits.device)
     loss_i = F.cross_entropy(logits,   targets)
     loss_t = F.cross_entropy(logits.T, targets)
     return (loss_i + loss_t) / 2</code></pre>
+
             <p>Five lines. The negatives are automatic — they are the other examples in the same batch.</p>
 
+            <p><strong>The targets are <code>torch.arange(B)</code>.</strong> For each row $i$ of the $B \times B$ logit matrix, the correct match is column $i$. So the targets are simply $[0, 1, 2, \ldots, B-1]$. PyTorch's <code>cross_entropy</code> then computes the standard softmax cross-entropy with these targets.</p>
+
+            <p><strong>Why two losses, not one?</strong> One direction is "given image $i$, which caption matches?" — that's <code>F.cross_entropy(logits, targets)</code>. The other direction is "given caption $i$, which image matches?" — that's <code>F.cross_entropy(logits.T, targets)</code>. CLIP averages both. This is the "symmetric" in symmetric InfoNCE.</p>
+
+            <p>Empirically, the symmetric version converges noticeably faster than either direction alone. The reason is structural: training only image-to-text produces an embedding space optimised for that direction; the reverse direction may not be well-conditioned. Training both keeps the embedding space symmetric.</p>
+
+            <h2>Training Loop</h2>
+
+            <pre><code class="language-python">opt = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.05)
+sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
+
+for epoch in range(epochs):
+    for images, captions in dataloader:
+        logits, _, _ = model(images, captions)
+        loss = info_nce_loss(logits)
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        opt.step()
+    sched.step()</code></pre>
+
+            <p>Standard AdamW + cosine schedule. The $\eta = 5 \times 10^{-4}$ and weight decay $0.05$ are chosen to match what real CLIP papers use. Gradient clipping at $1.0$ keeps the temperature from runaway updates when the logit scale parameter receives large gradients.</p>
+
+            <p><strong>The batch size matters more than usual.</strong> Recall: in each batch of $B$ pairs, each image is contrasted against $B - 1$ negative captions. Larger $B$ = more negatives per positive = a harder contrastive problem = sharper learned embeddings. We use $B = 64$ here. OpenAI's CLIP trained at $B = 32{,}768$. That is not a typo; that is genuinely the most important hyperparameter at scale.</p>
+
             <h2>Zero-Shot Evaluation</h2>
+
             <pre><code class="language-python">@torch.no_grad()
 def zero_shot_accuracy(model, X, Y, class_captions):
     model.eval()
@@ -124,11 +210,37 @@ def zero_shot_accuracy(model, X, Y, class_captions):
     preds = (img_emb @ txt_emb.T).argmax(dim=1)
     return (preds == Y).float().mean().item()</code></pre>
 
+            <p>Encode all $16$ class captions ("a red circle", "a red square", ..., "a yellow cross") once. Encode each test image. Compute the $16$-way similarity for each image. Argmax to predict the class. Compare to ground truth.</p>
+
+            <p>This is the "zero-shot" classification pattern, and it deserves slowing down on. <strong>We never trained a classifier head.</strong> No softmax over class indices, no fitted linear layer mapping image embeddings to $16$ outputs. The classification capability emerges from the contrastive training: the model learned to put image embeddings near their matching caption embeddings, and "classifying" a new image is just looking up which class caption is closest.</p>
+
+            <p>The classifier <em>is</em> the text encoder. To add a new class, you don't retrain — you encode the new class caption and add it to the similarity computation. To swap to a different classification task, you swap the class captions. The same trained CLIP model can do dog/cat classification, indoor/outdoor classification, or any other taxonomy you express in natural language, with no parameter updates.</p>
+
+            <p>This generality is the headline claim of the CLIP paper. The model learns one embedding space; downstream tasks select directions in it via natural-language prompts.</p>
+
+            <h2>What This Implementation Skips</h2>
+
+            <p>Real CLIP implementations add several things we leave out for clarity:</p>
+
+            <p><strong>Larger encoders.</strong> ViT-B/32 or ResNet-50 for images; 12-layer Transformer for text. Our toy uses a small CNN and mean-pool because the dataset is small.</p>
+
+            <p><strong>Mixed-precision training.</strong> Real CLIP trains in bf16/fp16 with selective fp32 accumulation around the InfoNCE loss for numerical stability at large batch sizes. We use whatever precision PyTorch defaults to.</p>
+
+            <p><strong>Distributed-batch InfoNCE.</strong> At $B = 32{,}768$ across many GPUs, the InfoNCE loss requires all-gathering embeddings across the cluster so each GPU's loss sees the full batch's negatives. This is non-trivial engineering. We run on a single device.</p>
+
+            <p><strong>Tokenization.</strong> Real CLIP uses BPE for text (a $49{,}152$-token vocabulary). We use a fixed $10$-word vocabulary.</p>
+
+            <p>What survives at our scale: the contrastive recipe itself works at any data scale. What doesn't survive: the impressive zero-shot generalisation that emerges only at LAION-400M scale.</p>
+
+            <h2>What Part 3 Tests</h2>
+
+            <p>With CLIP in hand, Part 3 trains the model for $30$ epochs on $2{,}720$ image-caption pairs and evaluates zero-shot accuracy on the $480$ held-out images. The result: $100\%$ zero-shot on 16-way classification in $14$ seconds. The t-SNE projection of the learned embedding space reveals $16$ tight clusters — one per (color, shape) combination — emerging from the contrastive objective alone, without ever being told that "color" and "shape" are separable attributes.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/CLIP" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/CLIP</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

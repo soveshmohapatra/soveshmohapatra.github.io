@@ -1,14 +1,14 @@
 ---
 layout: null
 title: "Deconstructing DiT: Part 2 — 250 Lines of PyTorch"
-description: "Three files: <code>diffusion.py</code> (noise scheduler), <code>dit.py</code> (PatchEmbed, DiTBlock, DiT model), <code>train.py</code>. Total: ~250 lines of PyTorch."
+description: "Building the Diffusion Transformer from scratch in pure PyTorch — noise scheduler, patch embedding, DiTBlock with adaLN-Zero, full model, training and sampling loops. About 250 lines total."
 permalink: /projects/dit-live-code/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing DiT: Part 2 — 250 Lines of PyTorch | Sovesh Mohapatra</title>
+    <title>Deconstructing DiT: Part 2 - 250 Lines | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -32,9 +32,6 @@ permalink: /projects/dit-live-code/
         .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
-        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
-        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
@@ -46,82 +43,284 @@ permalink: /projects/dit-live-code/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/dit/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing DiT Hub</a>
+        <a href="{{ site.baseurl }}/projects/dit/" class="back-link"><i class="fas fa-arrow-left"></i> Back to DiT Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing DiT</h1>
             <h2 class="article-subtitle">Part 2: 250 Lines of PyTorch</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
                 <div class="abstract-title">Overview</div>
-                <p>Three files: <code>diffusion.py</code> (noise scheduler), <code>dit.py</code> (PatchEmbed, DiTBlock, DiT model), <code>train.py</code>. Total: ~250 lines of PyTorch.</p>
+                <p>Part 1 explained why DiT replaced the U-Net: not because attention is inherently better than convolution, but because attention's lack of architectural inductive bias becomes an asset once you have enough training data. Now we implement DiT from scratch — patch embedding, the DiTBlock with adaLN-Zero conditioning, the full model, the DDPM training procedure, and ancestral sampling.</p>
+                <p>The full implementation is roughly $250$ lines across three files. The interesting parts are the conditioning mechanism (adaLN-Zero is genuinely different from anything in earlier Transformer literature), the zero-initialisation trick that makes early training stable, and the surprising amount of standard ViT machinery that the model inherits unchanged.</p>
             </div>
 
-            <h2>Noise Scheduler (DDPM)</h2>
+            <h2>File Map</h2>
+
+            <p>Three files: <code>diffusion.py</code> contains the DDPM noise scheduler and the sinusoidal time-embedding function (~80 lines). <code>dit.py</code> contains PatchEmbed, Attention, DiTBlock, and the full DiT model (~170 lines). <code>train.py</code> handles dataset generation, the training loop, and sampling.</p>
+
+            <p>The DDPM machinery is separated from the model because it is reusable across architectures — the same noise scheduler works with a U-Net, a DiT, or any other noise predictor. The model file is self-contained: PatchEmbed and Attention are private to it, no shared modules with other series.</p>
+
+            <h2>The Noise Scheduler</h2>
+
             <pre><code class="language-python">class DiffusionScheduler:
     def __init__(self, T=200, device="cpu"):
         betas = torch.linspace(1e-4, 0.02, T)
         alphas = 1.0 - betas
         alpha_bars = torch.cumprod(alphas, dim=0)
+        alpha_bars_prev = torch.cat([torch.ones(1), alpha_bars[:-1]])
+
+        self.T = T
         self.betas = betas.to(device)
         self.alphas = alphas.to(device)
         self.alpha_bars = alpha_bars.to(device)
+        self.alpha_bars_prev = alpha_bars_prev.to(device)
         self.sqrt_alpha_bars = torch.sqrt(alpha_bars).to(device)
         self.sqrt_one_minus_alpha_bars = torch.sqrt(1 - alpha_bars).to(device)
-        # posterior_var for ancestral sampling...
+        self.posterior_var = (betas * (1 - alpha_bars_prev) /
+                              (1 - alpha_bars)).to(device)</code></pre>
 
-    def q_sample(self, x0, t, eps):
-        sqrt_ab   = self.sqrt_alpha_bars[t].reshape(-1, 1, 1, 1)
-        sqrt_omab = self.sqrt_one_minus_alpha_bars[t].reshape(-1, 1, 1, 1)
-        return sqrt_ab * x0 + sqrt_omab * eps</code></pre>
+            <p>The constructor precomputes every quantity that the training and sampling loops will need. Storing these as buffers (instead of recomputing them each step) is the standard performance optimisation; the redundancy is roughly $6T$ float values for $T = 200$, which is nothing in memory but saves several FLOPs per training step.</p>
 
-            <h2>PatchEmbed</h2>
+            <p><strong>The linear $\beta$ schedule.</strong> $\beta_t$ controls how much noise is added at step $t$. Ho et al.'s DDPM paper used $\beta$ linearly interpolating from $10^{-4}$ to $0.02$ over $T = 1000$ steps. Our $T = 200$ uses the same endpoints with a steeper slope, which gives faster diffusion at the cost of slightly worse final-noise quality. For toy experiments this is fine; for production image generation you would use $T = 1000$ and a cosine schedule (which adds noise more uniformly over $t$).</p>
+
+            <p><strong>The cumulative product $\bar{\alpha}_t = \prod_{s \leq t} \alpha_s$.</strong> This is the key derived quantity for DDPM. It tells you: starting from $x_0$, after $t$ diffusion steps, the resulting $x_t$ has the closed form $x_t = \sqrt{\bar{\alpha}_t} \, x_0 + \sqrt{1 - \bar{\alpha}_t} \, \varepsilon$, where $\varepsilon \sim \mathcal{N}(0, I)$. The cumulative product means we never have to iteratively apply the noise step — we can jump straight to any $t$.</p>
+
+            <p><strong>The single-shot forward process.</strong></p>
+
+            <pre><code class="language-python">def q_sample(self, x0, t, eps):
+    sqrt_ab   = self.sqrt_alpha_bars[t].reshape(-1, 1, 1, 1)
+    sqrt_omab = self.sqrt_one_minus_alpha_bars[t].reshape(-1, 1, 1, 1)
+    return sqrt_ab * x0 + sqrt_omab * eps</code></pre>
+
+            <p>Two coefficients are looked up by indexing into the precomputed tensors with the timestep $t$. The <code>.reshape(-1, 1, 1, 1)</code> turns the scalar coefficients into broadcast-compatible $(B, 1, 1, 1)$ tensors that multiply with images of shape $(B, C, H, W)$. This is the only PyTorch idiom that takes a moment to recognise; once you do, the four-line implementation maps directly to the DDPM equations.</p>
+
+            <h2>Sinusoidal Time Embedding</h2>
+
+            <pre><code class="language-python">def timestep_embedding(t, dim, max_period=10000):
+    half = dim // 2
+    freqs = torch.exp(-math.log(max_period) * torch.arange(0, half, device=t.device) / half)
+    args = t.float().unsqueeze(-1) * freqs.unsqueeze(0)
+    embed = torch.cat([torch.cos(args), torch.sin(args)], dim=-1)
+    if dim % 2 == 1:
+        embed = torch.cat([embed, torch.zeros_like(embed[:, :1])], dim=-1)
+    return embed</code></pre>
+
+            <p>This is the same sinusoidal embedding as in the original Transformer paper — but applied to diffusion timesteps instead of token positions. The intuition: we want each timestep $t \in [0, T-1]$ to get a unique, smooth representation. The sinusoidal embedding satisfies both properties: different $t$ values produce different embeddings, but adjacent $t$ values produce similar embeddings (which is what gradient descent needs to learn smooth time-dependent functions).</p>
+
+            <p>The $\max\_\text{period}$ controls the lowest frequency. With $\max\_\text{period} = 10{,}000$ and $\dim/2 = 32$ frequencies, the wavelengths span roughly $1$ to $10{,}000$ — covering all $T = 200$ timesteps with plenty of resolution. The implementation matches the original Transformer's exactly.</p>
+
+            <h2>The PatchEmbed</h2>
+
             <pre><code class="language-python">class PatchEmbed(nn.Module):
     def __init__(self, img_size, patch_size, in_channels, hidden):
         super().__init__()
-        self.proj = nn.Conv2d(in_channels, hidden, kernel_size=patch_size, stride=patch_size)
-    def forward(self, x):
-        return self.proj(x).flatten(2).transpose(1, 2)</code></pre>
-            <p>A stride-$p$ conv2d. For 16×16 images with patch size 4, we get 16 tokens.</p>
+        assert img_size % patch_size == 0
+        self.num_patches = (img_size // patch_size) ** 2
+        self.patch_size = patch_size
+        self.proj = nn.Conv2d(in_channels, hidden, kernel_size=patch_size,
+                              stride=patch_size)
 
-            <h2>DiT Block with adaLN-Zero</h2>
-            <pre><code class="language-python">class DiTBlock(nn.Module):
+    def forward(self, x):
+        x = self.proj(x)                       # (B, hidden, H/p, W/p)
+        return x.flatten(2).transpose(1, 2)    # (B, N_patches, hidden)</code></pre>
+
+            <p>A stride-$p$ convolution does the patch embedding in one operation. Each $p \times p$ patch of input pixels gets convolved into one $\text{hidden}$-dimensional token. For a $16 \times 16$ image with patch size $4$, the output is $4 \times 4 = 16$ tokens of dimension $\text{hidden}$.</p>
+
+            <p>This conv-as-patch-embed trick is the standard ViT pattern. Alternative implementations use <code>nn.Unfold</code> + <code>nn.Linear</code> — mathematically equivalent, slightly less efficient because the conv kernel fuses the two operations. The conv version is also more familiar to anyone who has read existing ViT code.</p>
+
+            <p>After the conv, the output is a $4$D tensor $(B, \text{hidden}, H/p, W/p)$. The <code>flatten(2).transpose(1, 2)</code> converts it to the Transformer-friendly $(B, N, C)$ shape that the rest of the model expects.</p>
+
+            <h2>The Attention Module</h2>
+
+            <pre><code class="language-python">class Attention(nn.Module):
     def __init__(self, hidden, n_heads):
+        super().__init__()
+        assert hidden % n_heads == 0
+        self.n_heads = n_heads
+        self.d_head = hidden // n_heads
+        self.qkv = nn.Linear(hidden, 3 * hidden)
+        self.proj = nn.Linear(hidden, hidden)
+
+    def forward(self, x):
+        B, N, C = x.shape
+        q, k, v = self.qkv(x).split(C, dim=-1)
+        q = q.reshape(B, N, self.n_heads, self.d_head).transpose(1, 2)
+        k = k.reshape(B, N, self.n_heads, self.d_head).transpose(1, 2)
+        v = v.reshape(B, N, self.n_heads, self.d_head).transpose(1, 2)
+        att = (q @ k.transpose(-2, -1)) / math.sqrt(self.d_head)
+        att = F.softmax(att, dim=-1)
+        y = (att @ v).transpose(1, 2).contiguous().reshape(B, N, C)
+        return self.proj(y)</code></pre>
+
+            <p>Standard multi-head self-attention. <em>No causal mask</em> — this is the key difference from the TinyGPT attention in an earlier series. DiT is processing an image as a set of patches; we want each patch to attend to all others, including "future" ones in the patch ordering. The lack of a mask is what makes this bidirectional attention (the same as a ViT, not the same as a GPT).</p>
+
+            <p>The QKV projection into a single linear, then split, is the standard efficiency trick. Reshape to expose the head dimension, transpose to put heads as the second axis (so the matmul $q @ k^T$ operates over the right axes), compute attention, transpose back, project. Twelve lines of forward; this is unchanged from any other ViT.</p>
+
+            <h2>The DiTBlock with adaLN-Zero</h2>
+
+            <p>This is where DiT diverges from standard ViT. The block applies attention and MLP with residual connections, but the LayerNorms are <em>data-dependent</em> — scale and shift come from the conditioning vector $c$ rather than from learned per-layer parameters.</p>
+
+            <pre><code class="language-python">class DiTBlock(nn.Module):
+    def __init__(self, hidden, n_heads, mlp_ratio=4.0):
         super().__init__()
         self.norm1 = nn.LayerNorm(hidden, elementwise_affine=False)
         self.attn = Attention(hidden, n_heads)
         self.norm2 = nn.LayerNorm(hidden, elementwise_affine=False)
+        h = int(hidden * mlp_ratio)
         self.mlp = nn.Sequential(
-            nn.Linear(hidden, 4 * hidden), nn.GELU(),
-            nn.Linear(4 * hidden, hidden))
+            nn.Linear(hidden, h), nn.GELU(),
+            nn.Linear(h, hidden),
+        )
         self.adaLN_modulation = nn.Linear(hidden, 6 * hidden)
         nn.init.zeros_(self.adaLN_modulation.weight)
         nn.init.zeros_(self.adaLN_modulation.bias)
 
     def forward(self, x, c):
-        params = self.adaLN_modulation(c).unsqueeze(1)
+        params = self.adaLN_modulation(c).unsqueeze(1)        # (B, 1, 6H)
         gamma1, beta1, alpha1, gamma2, beta2, alpha2 = params.chunk(6, dim=-1)
         x = x + alpha1 * self.attn(self.norm1(x) * (1 + gamma1) + beta1)
         x = x + alpha2 * self.mlp (self.norm2(x) * (1 + gamma2) + beta2)
         return x</code></pre>
-            <p>The whole adaLN-Zero recipe is visible here. <code>elementwise_affine=False</code> on the LayerNorm. The modulation MLP is initialised to zero so the block starts as identity.</p>
 
-            <h2>Training Loop</h2>
-            <pre><code class="language-python">for x0, y in batches:
-    t   = torch.randint(0, T, (x0.size(0),))
-    eps = torch.randn_like(x0)
-    x_t = scheduler.q_sample(x0, t, eps)
-    eps_pred = model(x_t, t, y)
-    loss = F.mse_loss(eps_pred, eps)
-    opt.zero_grad(); loss.backward(); opt.step()</code></pre>
-            <p>Standard DDPM. Sample timestep, sample noise, predict noise, MSE. That is it.</p>
+            <p>Four critical design choices are visible here.</p>
 
+            <p><strong>(1) <code>elementwise_affine=False</code> on the LayerNorms.</strong> The standard <code>nn.LayerNorm</code> has learnable $\gamma$ and $\beta$ parameters per element. We turn those off — the LayerNorm just normalizes, the affine comes from elsewhere. This is essential because adaLN's whole point is to replace the per-layer learned affine with a data-dependent one.</p>
+
+            <p><strong>(2) Six modulation parameters per block.</strong> The line <code>self.adaLN_modulation = nn.Linear(hidden, 6 * hidden)</code> projects the $\text{hidden}$-dimensional conditioning vector to $6 \times \text{hidden}$ parameters: scale ($\gamma$) and shift ($\beta$) for each LayerNorm, plus a residual-gate ($\alpha$) for each sub-layer. The <code>.chunk(6, dim=-1)</code> splits this into the six pieces.</p>
+
+            <p><strong>(3) Zero initialisation of <code>adaLN_modulation</code>.</strong> The two <code>nn.init.zeros_</code> lines are non-negotiable. At initialisation, this gives $\gamma = 0$, $\beta = 0$, $\alpha = 0$, so each sub-layer's residual contribution is exactly zero. The block is identity at step zero: $x \to x$. The model gradually learns to un-zero the modulation MLP as training proceeds. Empirically this is the difference between "trains stably" and "training collapses in the first 100 steps".</p>
+
+            <p><strong>(4) The modulation pattern.</strong> Reading the forward pass: $\text{LayerNorm}(x) \cdot (1 + \gamma) + \beta$ is the data-dependent affine — multiply by $1 + \gamma$ rather than $\gamma$ because we want the default $\gamma = 0$ behaviour to be "scale by 1" (identity). Then $\alpha \cdot \text{sub-layer}(\cdot)$ is the residual gate — when $\alpha = 0$, the sub-layer contributes nothing.</p>
+
+            <h2>Why adaLN-Zero Works So Well</h2>
+
+            <p>adaLN-Zero is one of those design choices that looks arbitrary at first glance and turns out to be load-bearing. The benefits compared to cross-attention conditioning (the alternative used in earlier diffusion models):</p>
+
+            <p><strong>Simplicity:</strong> adaLN-Zero only adds a small linear layer per block. Cross-attention adds full attention modules.</p>
+
+            <p><strong>Same expressivity for scalar conditioning:</strong> When the conditioning is a single vector (time + class), there is no sequence to attend over. Modulation is mathematically sufficient.</p>
+
+            <p><strong>Zero initialisation stability:</strong> Cross-attention has random initial weights and contributes random output from step zero. adaLN-Zero contributes nothing from step zero. The latter is much easier to train.</p>
+
+            <p><strong>For text-conditioning at scale:</strong> Models like SD3 and Sora <em>add</em> a small text cross-attention back to handle variable-length text inputs, but they keep adaLN-Zero for the time-conditioning side. The pattern is: adaLN-Zero for everything you can express as a single vector, cross-attention for sequences.</p>
+
+            <h2>The Full DiT Model</h2>
+
+            <pre><code class="language-python">class DiT(nn.Module):
+    def __init__(self, img_size=16, patch_size=4, in_channels=3,
+                 hidden=64, n_layers=4, n_heads=4, num_classes=16,
+                 use_class_cond=True):
+        super().__init__()
+        self.cfg = ...  # store config
+        self.patch_embed = PatchEmbed(img_size, patch_size, in_channels, hidden)
+        n_patches = self.patch_embed.num_patches
+        self.pos_embed = nn.Parameter(torch.zeros(1, n_patches, hidden))
+        nn.init.normal_(self.pos_embed, std=0.02)
+
+        self.t_embed = nn.Sequential(nn.Linear(hidden, hidden), nn.GELU(),
+                                     nn.Linear(hidden, hidden))
+        if use_class_cond:
+            self.y_embed = nn.Embedding(num_classes, hidden)
+        self.blocks = nn.ModuleList([DiTBlock(hidden, n_heads) for _ in range(n_layers)])
+
+        self.final_norm   = nn.LayerNorm(hidden, elementwise_affine=False)
+        self.final_mod    = nn.Linear(hidden, 2 * hidden)
+        self.final_linear = nn.Linear(hidden, patch_size * patch_size * in_channels)
+        nn.init.zeros_(self.final_mod.weight)
+        nn.init.zeros_(self.final_mod.bias)
+        nn.init.zeros_(self.final_linear.weight)
+        nn.init.zeros_(self.final_linear.bias)</code></pre>
+
+            <p>The model is a stack of DiT blocks bookended by patch-embed-in and un-patchify-and-project-out. The final projection is also zero-initialised, so the very first forward pass predicts zero noise — equivalent to "predict that $x_0 \approx x_t$", a safe starting point that gives gradients useful information from the start.</p>
+
+            <p><strong>The conditioning pipeline.</strong> The model conditions on (timestep, class):</p>
+
+            <pre><code class="language-python">def _condition(self, t, y):
+    t_e = timestep_embedding(t, self.cfg.hidden)        # (B, H) sinusoidal
+    t_e = self.t_embed(t_e)                              # MLP refinement
+    if self.use_class_cond and y is not None:
+        y_e = self.y_embed(y)
+        return t_e + y_e
+    return t_e</code></pre>
+
+            <p>Sinusoidal time embedding, MLP refinement, class embedding added if available. The result is one conditioning vector per (image, timestep, class) that every DiT block sees. This conditioning is what flows into the adaLN-Zero modulation MLPs in each block.</p>
+
+            <h2>Un-Patchifying the Output</h2>
+
+            <pre><code class="language-python">def unpatchify(self, x):
+    B = x.size(0)
+    p = self.patch_size
+    H = W = self.img_size // p
+    x = x.reshape(B, H, W, p, p, self.in_channels)
+    x = x.permute(0, 5, 1, 3, 2, 4).contiguous()
+    return x.reshape(B, self.in_channels, H * p, W * p)</code></pre>
+
+            <p>The model outputs $(B, N, P^2 \cdot C)$ — one feature vector per patch, where the feature is the flattened pixel patch. We need to fold this back to $(B, C, H, W)$ for the loss computation.</p>
+
+            <p>The reshape into $(B, H, W, p, p, C)$ recovers the patch grid plus per-patch pixel layout. The <code>permute(0, 5, 1, 3, 2, 4)</code> interleaves the patch index and within-patch index correctly. The final reshape merges them into pixel coordinates.</p>
+
+            <p>This is the most error-prone part of any ViT-style model. The standard mistake is getting the permute axis order wrong, which produces an image with the right pixel values but the wrong spatial layout — patches arranged correctly relative to each other but flipped or transposed internally. The fix is testing: ensure that <code>patchify(unpatchify(x)) == x</code> for some test pattern. If you write a ViT from scratch, write that test first.</p>
+
+            <h2>The DDPM Training Loop</h2>
+
+            <pre><code class="language-python">for epoch in range(EPOCHS):
+    for x0, y in batches:
+        t   = torch.randint(0, T, (x0.size(0),))
+        eps = torch.randn_like(x0)
+        x_t = scheduler.q_sample(x0, t, eps)
+        eps_pred = model(x_t, t, y)
+        loss = F.mse_loss(eps_pred, eps)
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        opt.step()</code></pre>
+
+            <p>Standard DDPM. Sample a random timestep, sample fresh Gaussian noise, apply the closed-form forward process to get the noisy image, ask the model to predict the noise, compute MSE between predicted and actual noise. That is the entire training objective.</p>
+
+            <p><strong>Why predicting $\varepsilon$ instead of $x_0$.</strong> The DDPM loss can be written equivalently as predicting the noise $\varepsilon$ or predicting the clean image $x_0$. The two are linearly related given $x_t$ and $t$. Empirically, $\varepsilon$-prediction gives more stable training because the target has a fixed distribution ($\mathcal{N}(0, I)$) regardless of $t$, while $x_0$-prediction has different per-timestep target distributions. We follow Ho et al.'s original convention.</p>
+
+            <p><strong>Gradient clipping at $1.0$.</strong> Diffusion training is occasionally numerically unstable, especially at large $t$ where $\sqrt{\bar\alpha_t}$ becomes very small. Clipping prevents single bad batches from destabilising the entire training run. Production diffusion training always has gradient clipping; the value $1.0$ is a reasonable default.</p>
+
+            <h2>Sampling (Ancestral)</h2>
+
+            <pre><code class="language-python">x = torch.randn(image_shape)
+for t in reversed(range(T)):
+    eps_pred = model(x, t, y)
+    mean = (1/sqrt(alpha_t)) * (x - (beta_t/sqrt(1-alpha_bar_t)) * eps_pred)
+    if t > 0:
+        x = mean + sqrt(posterior_var_t) * torch.randn_like(x)
+    else:
+        x = mean</code></pre>
+
+            <p>Start from pure Gaussian noise. Walk back from $t = T-1$ to $t = 0$. At each step, predict the noise that was added at that step, compute the posterior mean of $x_{t-1}$ given $x_t$ and the predicted $\varepsilon$, add a small amount of fresh Gaussian noise (except at the final step, $t = 0$, where we just take the mean).</p>
+
+            <p>The formulas come from the DDPM posterior derivation. After $T$ such steps, the model has denoised pure noise into an image from the training distribution. For our $T = 200$, that is $200$ forward passes per sample — much slower than the single forward pass of a GAN, but with much better stability and mode coverage.</p>
+
+            <p>Production diffusion models accelerate this with DDIM (deterministic sampling, fewer steps), advanced solvers (DPM-Solver++, EDM), or by training the model with classifier-free guidance to enable sampling at fewer effective steps. Our ancestral DDPM is the textbook version; the others are layered on top of the same noise prediction model.</p>
+
+            <h2>Total Code Inventory</h2>
+
+            <ul>
+                <li><strong>DiffusionScheduler:</strong> $\sim 80$ lines (cached buffers, $q$-sample, $p$-sample, full sampling loop).</li>
+                <li><strong>DiT model (PatchEmbed + Attention + DiTBlock + DiT):</strong> $\sim 170$ lines.</li>
+                <li><strong>Training loop:</strong> $\sim 30$ lines.</li>
+                <li><strong>Synthetic dataset + plotting:</strong> $\sim 200$ lines.</li>
+            </ul>
+
+            <p>Total: ~$250$ lines for the diffusion machinery, ~$200$ lines of glue. This implements the architecture behind Stable Diffusion 3 and Sora — with the caveat that those use vastly larger models and additional engineering (latent diffusion in a pre-trained autoencoder, classifier-free guidance, text-conditional cross-attention, mixed precision, etc.).</p>
+
+            <h2>What Part 3 Tests</h2>
+
+            <p>Part 3 trains this model on $3{,}200$ synthetic 16$\times$16 colored-shape images. The result is not "perfect generation" — at toy scale, with $323K$ parameters and no pretraining, the samples are blurry. What it <em>is</em>: a real demonstration of the inductive-bias tradeoff. U-Nets bake in image priors (locality, translation equivariance) that help at small data; DiT doesn't. At LAION scale that becomes an asset; at toy scale it's a liability. The honest result is informative even when it isn't impressive.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/DiT" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/DiT</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

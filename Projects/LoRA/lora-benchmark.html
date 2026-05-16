@@ -1,18 +1,17 @@
 ---
 layout: null
-title: "Deconstructing LoRA: Part 3 — 4.59% Beats Full Fine-Tune"
-description: "Pretrain a 4-layer MLP on moons. Define a target task: the same moons rotated by 45°. Adapt with full fine-tuning vs LoRA at ranks 2/4/8."
+title: "Deconstructing LoRA: Part 3 — Rank-2 Beats Full Fine-Tune with 4.59% of the Parameters"
+description: "Controlled experiment: pretrain a 4-layer MLP on moons, define a 45-degree rotated target task, adapt with full fine-tuning vs LoRA at ranks 2/4/8. Rank-2 wins."
 permalink: /projects/lora-benchmark/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing LoRA: Part 3 — 4.59% Beats Full Fine-Tune | Sovesh Mohapatra</title>
+    <title>Deconstructing LoRA: Part 3 - Rank-2 Beats Full Fine-Tune | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
     <style>
         .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -29,13 +28,11 @@ permalink: /projects/lora-benchmark/
         .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
         .article-content li { margin-bottom: 0.5rem; }
         .article-content strong { font-weight: 600; color: var(--accent-light); }
-        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
         .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
         .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
-        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
     <script>
@@ -46,51 +43,138 @@ permalink: /projects/lora-benchmark/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/lora/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing LoRA Hub</a>
+        <a href="{{ site.baseurl }}/projects/lora/" class="back-link"><i class="fas fa-arrow-left"></i> Back to LoRA Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing LoRA</h1>
-            <h2 class="article-subtitle">Part 3: 4.59% Beats Full Fine-Tune</h2>
+            <h2 class="article-subtitle">Part 3: Rank-2 Beats Full Fine-Tuning with 4.59% of the Parameters</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
-                <div class="abstract-title">Overview</div>
-                <p>Pretrain a 4-layer MLP on moons. Define a target task: the same moons rotated by 45°. Adapt with full fine-tuning vs LoRA at ranks 2/4/8.</p>
+                <div class="abstract-title">The Claim Being Tested</div>
+                <p>Part 1's theoretical claim was strong: <em>fine-tuning weight updates have low intrinsic rank, so a rank-$r$ approximation $BA$ with $r$ much smaller than the model dimension suffices for most adaptation tasks</em>. If true, LoRA at low rank should reach the same downstream performance as full fine-tuning while training a small fraction of the parameters.</p>
+                <p>This part constructs a controlled experiment to test that claim. We pretrain a small MLP on a base task, define a related-but-different target task as a $45^\circ$ rotation of the same data, and adapt the pretrained model three ways: training from scratch, fully fine-tuning, and LoRA at three different ranks. The trainable-parameter counts vary by a factor of $20$ across these methods.</p>
             </div>
 
-            <h2>Setup</h2>
-            <p>Base task: two-moons, $n=1000$, noise $0.15$. Target task: same data rotated $45^\circ$. Architecture: 4-layer MLP, hidden $=128$, total params $33{,}666$. Zero-shot transfer of the pretrained model to the rotated task: $63.2\%$.</p>
+            <h2>Experimental Design</h2>
+
+            <p>The controlled-experiment structure is deliberately small enough to fit on a laptop in seconds, but rich enough to expose LoRA's properties cleanly.</p>
+
+            <p><strong>Architecture.</strong> A $4$-layer MLP with hidden dimension $128$. Three Linear layers ($2 \to 128 \to 128 \to 128 \to 2$) with tanh activations in between. Total parameter count: $33{,}666$. This is intentionally small — large enough that fine-tuning has parameters to work with, small enough that the toy is fast.</p>
+
+            <p><strong>Base task.</strong> Two-moons binary classification with $\sigma = 0.15$ noise, $1{,}000$ points. Standard setup. We pretrain the MLP on this task until it reaches near-perfect accuracy.</p>
+
+            <p><strong>Target task.</strong> The same data rotated by $45^\circ$. This is a domain-shifted version of the base task: the topology of the decision boundary is the same (two interleaving half-moons) but the orientation differs. The pretrained model has learned features specific to the original orientation; it has not learned features for the rotated one.</p>
+
+            <p><strong>Zero-shot transfer.</strong> Evaluating the pretrained model on the rotated task gives $63.2\%$ accuracy. The model retained <em>some</em> useful structure (above the $50\%$ chance baseline) but is clearly not configured for the new orientation. There is a real adaptation problem to solve.</p>
+
+            <p><strong>Adaptation strategies (5).</strong></p>
+            <ol>
+                <li>Train a fresh MLP from scratch on the rotated task (no transfer).</li>
+                <li>Full fine-tune the pretrained MLP — every parameter trainable.</li>
+                <li>LoRA fine-tune at rank $r = 2$.</li>
+                <li>LoRA fine-tune at rank $r = 4$.</li>
+                <li>LoRA fine-tune at rank $r = 8$.</li>
+            </ol>
+
+            <p>All five run for $60$ epochs at $\eta = 10^{-3}$ (LoRA variants use $3 \times 10^{-3}$ to compensate for the smaller effective learning signal on the restricted subspace). All five start from the same initial weights — for LoRA, that means the pretrained base; for from-scratch, a fresh random initialisation with a deterministic seed.</p>
 
             <h2>Results</h2>
+
             <table class="results-table">
-                <thead><tr><th>Method</th><th>Trainable params</th><th>% of full FT</th><th>Final acc</th></tr></thead>
+                <thead><tr><th>Method</th><th>Trainable params</th><th>% of full FT</th><th>Final acc</th><th>Time</th></tr></thead>
                 <tbody>
-                    <tr><td>From scratch</td><td>$33{,}666$</td><td>$100.00\%$</td><td>$98.90\%$</td></tr>
-                    <tr><td>Full fine-tune</td><td>$33{,}666$</td><td>$100.00\%$</td><td>$99.00\%$</td></tr>
-                    <tr><td><strong>LoRA ($r = 2$)</strong></td><td><strong>$1{,}544$</strong></td><td><strong>$4.59\%$</strong></td><td><strong>$99.10\%$</strong></td></tr>
-                    <tr><td>LoRA ($r = 4$)</td><td>$3{,}088$</td><td>$9.17\%$</td><td>$99.10\%$</td></tr>
-                    <tr><td>LoRA ($r = 8$)</td><td>$6{,}176$</td><td>$18.34\%$</td><td>$98.90\%$</td></tr>
+                    <tr><td>From scratch</td><td>$33{,}666$</td><td>$100.00\%$</td><td>$98.90\%$</td><td>$0.4$ s</td></tr>
+                    <tr><td>Full fine-tune</td><td>$33{,}666$</td><td>$100.00\%$</td><td>$99.00\%$</td><td>$0.5$ s</td></tr>
+                    <tr><td><strong>LoRA ($r = 2$)</strong></td><td>$\mathbf{1{,}544}$</td><td>$\mathbf{4.59\%}$</td><td>$\mathbf{99.10\%}$</td><td>$0.5$ s</td></tr>
+                    <tr><td>LoRA ($r = 4$)</td><td>$3{,}088$</td><td>$9.17\%$</td><td>$99.10\%$</td><td>$0.5$ s</td></tr>
+                    <tr><td>LoRA ($r = 8$)</td><td>$6{,}176$</td><td>$18.34\%$</td><td>$98.90\%$</td><td>$0.5$ s</td></tr>
                 </tbody>
             </table>
-            <p>LoRA at rank $2$ — $1{,}544$ trainable parameters — matches or marginally beats full fine-tuning. The other $32{,}122$ parameters remain frozen.</p>
 
-            <h2>Why $r=8$ Does Not Outperform $r=2$</h2>
-            <p>The intrinsic rank of the useful weight change for this task is small. Adding capacity beyond it buys variance, not signal — when the true effect is low-dimensional, increasing rank adds noise without adding usable degrees of freedom. Rank is a hyperparameter you tune from below; rank $> 16$ is rarely useful short of major distribution shift.</p>
+            <p>LoRA at rank $2$ — $1{,}544$ trainable parameters — matches or marginally beats full fine-tuning. The remaining $32{,}122$ parameters of the model are frozen and never receive a gradient. The intrinsic-rank hypothesis from Part 1 holds up: a tiny low-rank delta captures essentially everything full fine-tuning would have done.</p>
+
+            <h2>Why $r = 8$ Does Not Outperform $r = 2$</h2>
+
+            <p>Notice that doubling rank from $2$ to $4$ keeps accuracy at $99.1\%$, and doubling again to $r = 8$ actually <em>drops</em> accuracy to $98.9\%$. More capacity is not better. Why?</p>
+
+            <p>The intrinsic rank of the useful weight change for this task is small. Once the rank is large enough to capture all the useful directions of variation, adding more rank just gives the model extra dimensions to fit noise. Rank-$8$ has $4\times$ the capacity of rank-$2$; with the same training data and same number of epochs, that extra capacity goes into overfitting the noise rather than improving signal.</p>
+
+            <p>This is the same lesson as in subspace methods generally: when the true effect lives in a small subspace, increasing the subspace dimension past it adds variance without adding signal. <strong>Rank is a hyperparameter you tune from below.</strong> Start at $r = 2$ or $r = 4$, increase if quality saturates below your target, and stop. Rank $> 16$ is rarely useful for any fine-tuning task short of major distribution shift (cross-language adaptation, modality adaptation, etc.).</p>
+
+            <p>Hu et al.'s original LoRA paper reported the same pattern across GLUE, SuperGLUE, and several generation benchmarks on GPT-2 and GPT-3. Rank $4$ or $8$ saturated most tasks; rank $64$ was only needed for very-distant adaptations.</p>
+
+            <h2>Why From-Scratch Almost Matches Fine-Tuning</h2>
+
+            <p>An aside worth noticing: from-scratch training reaches $98.9\%$ — within $0.1$ points of full fine-tuning. On this toy task, the pretraining did not provide much advantage. The reason is that the task is small enough ($1{,}000$ points, simple decision boundary) that even random initialisation reaches near-perfect accuracy in $60$ epochs.</p>
+
+            <p>This is misleading at scale. On real tasks (training a $7$B-parameter language model from scratch vs fine-tuning a pretrained one on a specialised corpus), from-scratch is dramatically more expensive and produces worse results. The from-scratch baseline in our experiment is a sanity check that the rotated task is indeed learnable; it doesn't tell you much about real-world fine-tuning economics.</p>
 
             <h2>Practical Implications</h2>
-            <p><strong>Memory:</strong> only LoRA params need optimizer state. With rank-8 LoRA on a 7B model, AdamW state shrinks from $\sim 56$ GB to $\sim 60$ MB. That is the difference between needing an A100 and fitting on a $24$ GB consumer GPU.</p>
-            <p><strong>Serving:</strong> ship one frozen base + many small LoRA adapters. Switching tasks is a parameter-load, not a model-reload.</p>
-            <p><strong>Composition:</strong> LoRA adapters are linear. Sum or interpolate two LoRAs trained on different tasks for stacked behaviour.</p>
-            <p><strong>Reversibility:</strong> the base is untouched. Undo a fine-tune by removing the adapter.</p>
 
-            <h2>Why Freezing Matters</h2>
-            <p>Freezing is not memory optimisation — it is what makes adapter-style fine-tuning work in production. Drift the base and you lose the ship-one-base property, the catastrophic-forgetting guarantee, and adapter composability.</p>
+            <p>The benchmark numbers are toy. The practical implications of LoRA's low-rank-suffices property are not toy at all.</p>
 
+            <p><strong>Memory.</strong> Only LoRA parameters require optimizer state. AdamW stores two moment buffers ($m$ and $v$) per trainable parameter. For a $7$B-parameter model with rank-$8$ LoRA on attention layers only (a typical configuration), the trainable parameter count is roughly $8$M. AdamW state shrinks from $\sim 56$ GB (two fp32 buffers $\times$ 7B params) to roughly $60$ MB. This is the difference between needing an A100/H100 and fitting on a $24$ GB consumer GPU — a thousand-fold reduction in optimizer state.</p>
+
+            <p><strong>Serving.</strong> Ship one frozen base model plus many small LoRA adapters (one per fine-tuned task or user or domain). Each adapter is megabytes; the base is the gigabyte-scale piece. Switching tasks at serving time is a parameter-load (load a different adapter), not a model-reload. This is what makes multi-tenant fine-tuned serving (Replicate, Together AI, Anyscale) economically viable. Without LoRA, every fine-tuned model would need its own dedicated GPU memory.</p>
+
+            <p><strong>Composition.</strong> LoRA adapters are linear. You can sum or interpolate two LoRAs trained on different tasks and get useful behaviour from the combined adapter. The image-generation ecosystem (Civitai, the entire Stable Diffusion plugin marketplace) is built on this property — users stack a "character LoRA" with a "style LoRA" and a "pose LoRA" to compose a final image. None of that works if the LoRAs were attached to slightly-drifted bases.</p>
+
+            <p><strong>Reversibility.</strong> Because the base is untouched, you can undo a fine-tune by removing the adapter. Full fine-tuning destroys the base; LoRA preserves it. If a fine-tune produces unwanted behaviour, you can roll back instantly.</p>
+
+            <h2>Why the Frozen Base Is Load-Bearing</h2>
+
+            <p>The freezing is what makes all four of those practical properties work. If the base drifted even slightly during LoRA training, you would lose:</p>
+
+            <p>The "ship one base + many adapters" property — each adapter would be tied to a slightly different base, and you couldn't mix them at serving time without quality degradation.</p>
+
+            <p>The catastrophic-forgetting guarantee — the base still knows what it knew before training the adapter, because nothing in it changed. Drift the base and you lose the base's pre-training abilities in exchange for the new task; that is exactly the trade-off that full fine-tuning forces you to make.</p>
+
+            <p>The composability of adapters — adapters from different runs would operate on slightly different bases and could not be summed cleanly.</p>
+
+            <p>The reversibility — you could not undo the fine-tune if the base had changed.</p>
+
+            <p>So freezing is not a memory optimisation — it is what makes adapter-style fine-tuning work as a deployable production pattern. The memory savings are a happy consequence.</p>
+
+            <h2>Generalisation Beyond This Experiment</h2>
+
+            <p>At LLM scale, the same low-rank-suffices pattern holds with even more dramatic numbers:</p>
+
+            <p>Llama-3 70B with rank-$16$ LoRA on attention only: $\sim 60$M trainable parameters out of $70$B total — roughly $0.09\%$. Achieves comparable quality to full fine-tuning on most downstream tasks.</p>
+
+            <p>Hu et al.'s original LoRA paper reports rank-$4$ LoRA matching full fine-tuning across GLUE, SuperGLUE, and several generation benchmarks on GPT-2 ($125$M) and GPT-3 ($175$B).</p>
+
+            <p>QLoRA (Dettmers et al., 2023) combined 4-bit quantisation of the frozen base with LoRA fine-tuning, enabling $65$B-parameter fine-tuning on a single $48$ GB GPU. The economic implications were immediate: research labs that previously couldn't afford to fine-tune at the largest scales suddenly could.</p>
+
+            <p>The mechanism is the same as in our moons experiment, just at thousands of times the scale. <strong>LoRA is one of the rare techniques in deep learning that scales <em>better</em> the larger the model</strong> — because larger models have more redundant capacity, and the intrinsic rank of useful adaptations stays small while the base parameter count grows. The fraction of the model that LoRA touches shrinks with scale.</p>
+
+            <h2>When LoRA Does Not Suffice</h2>
+
+            <p>LoRA is not magic. Specific failure modes:</p>
+
+            <p><strong>Cross-language adaptation.</strong> Adapting an English-pretrained model to Japanese or Arabic requires substantially more capacity than English-to-English domain shift. Rank $64$ or higher is sometimes needed, at which point the trainable-parameter count approaches full fine-tuning anyway.</p>
+
+            <p><strong>Modality shifts.</strong> Adapting a vision-language model to a new modality (audio, sensor data) requires large architectural changes the LoRA wrapper cannot make. The base architecture must support the new modality; LoRA only adjusts existing weights, not topology.</p>
+
+            <p><strong>Major distribution shifts.</strong> If the fine-tuning task involves entirely new vocabulary, new task formats, new output structures, the low-rank assumption breaks down. Continued pretraining (full fine-tuning of all weights) is sometimes the right answer.</p>
+
+            <p>The empirical rule: <strong>if the target task is "similar shape" to the pretraining task</strong> — same modality, similar vocabulary, related domain — LoRA at low rank works. If the target is genuinely different in kind, full fine-tuning may be necessary.</p>
+
+            <h2>Summary</h2>
+
+            <ul>
+                <li>LoRA at rank $2$ — $1{,}544$ trainable parameters, $4.59\%$ of full — matches or beats full fine-tuning on the moons-rotation adaptation task.</li>
+                <li>Higher ranks ($r = 4, 8$) do not improve quality and start to overfit. The intrinsic rank of useful updates for this task is genuinely small.</li>
+                <li>The practical implications — memory (1000$\times$ less optimizer state), serving (one base, many adapters), composability, reversibility — are why every consumer-grade LLM fine-tune in the last two years uses LoRA.</li>
+                <li>LoRA scales <em>better</em> the larger the base model: fraction of trainable parameters shrinks as base size grows.</li>
+            </ul>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/LoRA" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/LoRA</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

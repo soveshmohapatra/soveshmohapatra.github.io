@@ -1,14 +1,14 @@
 ---
 layout: null
-title: "Deconstructing Tokenization: Part 2 — BPE in Eighty Lines"
-description: "The tokenizer is a single class with three methods: <code>train</code>, <code>encode</code>, <code>decode</code>. State: an ordered list of merges and a vocab dictionary."
+title: "Deconstructing Tokenization: Part 2 — BPE in Eighty Lines of Python"
+description: "A complete byte-level BPE tokenizer in 80 lines of pure Python. Train, encode, decode — no external libraries beyond collections.Counter."
 permalink: /projects/bpe-tokenizer-live-code/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing Tokenization: Part 2 — BPE in Eighty Lines | Sovesh Mohapatra</title>
+    <title>Deconstructing Tokenization: Part 2 - BPE in Eighty Lines | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,85 +29,162 @@ permalink: /projects/bpe-tokenizer-live-code/
         .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
         .article-content li { margin-bottom: 0.5rem; }
         .article-content strong { font-weight: 600; color: var(--accent-light); }
-        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
-        .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
-        .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
         pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
-        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
-    <script>
-        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
-    </script>
-    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/bpe-tokenizer/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Tokenization Hub</a>
+        <a href="{{ site.baseurl }}/projects/bpe-tokenizer/" class="back-link"><i class="fas fa-arrow-left"></i> Back to BPE Tokenizer Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing Tokenization</h1>
-            <h2 class="article-subtitle">Part 2: BPE in Eighty Lines</h2>
+            <h2 class="article-subtitle">Part 2: BPE in Eighty Lines of Python</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
                 <div class="abstract-title">Overview</div>
-                <p>The tokenizer is a single class with three methods: <code>train</code>, <code>encode</code>, <code>decode</code>. State: an ordered list of merges and a vocab dictionary.</p>
+                <p>Part 1 established that byte-level BPE is the algorithm behind every modern LLM tokenizer. Now we implement it from scratch in pure Python. The full tokenizer is a single class with three methods — <code>train</code>, <code>encode</code>, <code>decode</code> — and around 80 lines of code. The only standard-library import we need is <code>collections.Counter</code>; everything else is plain Python lists and byte arithmetic.</p>
+                <p>The interesting parts are not the data structures (which are obvious) but the subtle correctness points: how to apply merges in order so that earlier merges produce tokens that later merges can themselves combine, how to handle the boundary between bytes and strings that Python forces you to think about, and what defensive choices keep the code safe on adversarial inputs.</p>
             </div>
 
-            <h2>Skeleton</h2>
+            <h2>Why a Class with Two Pieces of State</h2>
+
+            <p>The full tokenizer needs two pieces of state: an ordered list of merges and a vocabulary dictionary that maps token ids to byte sequences. The vocabulary is initialised to the 256 raw bytes; the merges list is empty until <code>train</code> is called.</p>
+
             <pre><code class="language-python">class BPETokenizer:
     def __init__(self):
         self.merges = []
         self.vocab = {i: bytes([i]) for i in range(256)}</code></pre>
 
-            <h2>Training</h2>
+            <p>Two design choices to notice. First, the merges are stored as a <strong>list, not a set or dict</strong> — the order matters at encoding time, because a merge that creates token id $300$ may itself be the input to a later merge that creates token id $500$. If we shuffled the order, encoding would no longer be deterministic.</p>
+
+            <p>Second, the vocabulary maps to <strong><code>bytes</code> objects, not strings</strong>. This is the most important data-type choice in the entire tokenizer. A single Unicode codepoint may take 1-4 bytes in UTF-8, and BPE operates on the byte level, not the codepoint level. Storing vocabulary entries as <code>bytes</code> means we can concatenate them with <code>b"" + b""</code> without worrying about codepoint boundaries — and the eventual <code>.decode("utf-8")</code> at output time handles any boundary issues that arise.</p>
+
+            <h2>The Training Loop</h2>
+
+            <p>BPE training is iterative: at each step, find the most common adjacent pair in the corpus, replace it with a new token id, repeat until you reach the target vocabulary size. The full loop fits in a dozen lines:</p>
+
             <pre><code class="language-python">def train(self, text, vocab_size):
-    tokens = list(text.encode("utf-8"))
+    tokens = list(text.encode("utf-8"))    # bytes → list of ints (0..255)
     next_id = 256
     while next_id < vocab_size:
         pairs = self._count_pairs(tokens)
-        if not pairs: break
+        if not pairs:
+            break
         (a, b), freq = pairs.most_common(1)[0]
-        if freq < 2: break
+        if freq < 2:
+            break                          # nothing repeated — stop
         tokens = self._merge(tokens, (a, b), next_id)
         self.merges.append(((a, b), next_id))
         self.vocab[next_id] = self.vocab[a] + self.vocab[b]
         next_id += 1</code></pre>
 
+            <p>The bytes-to-tokens conversion happens on the first line: <code>text.encode("utf-8")</code> turns a Python string into a <code>bytes</code> object, and <code>list(...)</code> turns that into a list of integers in the range $0$ to $255$. This is the canonical Python boundary between string-land (where indexing yields codepoints) and byte-land (where indexing yields integers). BPE lives entirely in byte-land.</p>
+
+            <p><strong>Why we break when <code>freq &lt; 2</code>.</strong> If the most frequent pair appears only once, there is no point creating a new vocabulary entry for it — adding a token id that compresses exactly one occurrence saves us zero tokens at encoding time while costing one slot in the vocabulary. In practice this guard rarely triggers because corpora have plenty of repeated bigrams long before the vocabulary is exhausted, but it is a safety net.</p>
+
+            <p><strong>Why we update both <code>merges</code> and <code>vocab</code>.</strong> The merges list records the recipe (in order) so we can replay it at encoding time. The vocab dictionary records the byte expansion of every token, so we can reverse the process at decoding time. Both are needed and they encode different views of the same information: merges as instructions, vocab as state.</p>
+
+            <p><strong>The new token's byte expansion.</strong> <code>self.vocab[next_id] = self.vocab[a] + self.vocab[b]</code> concatenates the two parent byte sequences. Crucially, the parents may themselves be merged tokens (with multi-byte expansions), so this is a recursive structure: every token's full byte sequence is built up from its parents' sequences, which were built up from their parents' sequences, all the way down to the 256 raw bytes. This recursive expansion is what makes decoding trivial — we look up each token id and concatenate.</p>
+
             <h2>The Merge Helper</h2>
+
+            <p>The inner loop is the merge operation: scan the token list left to right, replace every occurrence of the target pair with the new token id. It looks simple, but there is one subtle correctness point:</p>
+
             <pre><code class="language-python">@staticmethod
 def _merge(tokens, pair, new_id):
-    out = []; i = 0; a, b = pair
+    out = []
+    i = 0
+    a, b = pair
     while i < len(tokens):
-        if i < len(tokens) - 1 and tokens[i] == a and tokens[i+1] == b:
-            out.append(new_id); i += 2
+        if i < len(tokens) - 1 and tokens[i] == a and tokens[i + 1] == b:
+            out.append(new_id)
+            i += 2
         else:
-            out.append(tokens[i]); i += 1
+            out.append(tokens[i])
+            i += 1
     return out</code></pre>
-            <p>A single left-to-right pass. The conditional <code>i += 2</code> after a successful merge prevents the new token from combining with its own right neighbour on the same pass.</p>
+
+            <p>The subtlety is the <code>i += 2</code> after a successful merge. Consider what happens to a sequence like <code>[a, b, b]</code> when we are merging <code>(a, b)</code>. With <code>i += 2</code>, the new token id $z$ replaces the first <code>(a, b)</code> and we move past both, producing <code>[z, b]</code>. With <code>i += 1</code>, the iterator would still be sitting on what used to be position $1$ (now containing $z$), and the next comparison would test $z$ against the trailing $b$ — creating ambiguity in what got merged. The <code>i += 2</code> convention is the standard "left-to-right, non-overlapping" interpretation that every BPE implementation uses.</p>
+
+            <p>The other detail worth flagging: this implementation does <strong>one full left-to-right pass per merge</strong>, returning a new list. Production tokenizers (tiktoken, sentencepiece) use linked-list or suffix-array data structures so each merge runs in $O(\log n)$ instead of $O(n)$, but the algorithmic content is the same. Our $O(n)$ pass is fine for educational purposes and small corpora.</p>
+
+            <h2>Counting Pairs</h2>
+
+            <p>The pair-counting helper is one short loop:</p>
+
+            <pre><code class="language-python">@staticmethod
+def _count_pairs(tokens):
+    c = Counter()
+    for i in range(len(tokens) - 1):
+        c[(tokens[i], tokens[i + 1])] += 1
+    return c</code></pre>
+
+            <p><code>collections.Counter</code> is a dict subclass with two useful properties: <code>+=</code> on missing keys initialises to $0$ instead of throwing, and <code>.most_common(1)[0]</code> returns the highest-frequency entry in $O(n \log n)$ time. We could write this with a plain <code>dict</code> and <code>max(d.items(), key=lambda kv: kv[1])</code>, but <code>Counter</code> is idiomatic Python.</p>
+
+            <p>This is the function that gets called once per merge. For a vocabulary of $2{,}000$ entries on a $33$ KB corpus, that is around $1{,}700$ pair-count passes over a list that starts at $64{,}000$ tokens and shrinks as merges progress. Total time: about $3$ seconds on a laptop. Most of it is the pair-counting loop, not the merge step. Production implementations cache pair frequencies and incrementally update them after each merge, which is where the $1000\times$ speedup comes from.</p>
 
             <h2>Encoding</h2>
+
+            <p>At inference time, we need to convert arbitrary new text into the same token-id space the model was trained on. The encoding procedure is to replay the trained merges in the order they were recorded:</p>
+
             <pre><code class="language-python">def encode(self, text):
     tokens = list(text.encode("utf-8"))
     for (a, b), new_id in self.merges:
         tokens = self._merge(tokens, (a, b), new_id)
     return tokens</code></pre>
-            <p>Replay the trained merges in order. Each merge is applied exhaustively before the next.</p>
+
+            <p>The order is essential and worth slowing down on. Suppose merge $1$ created token $256$ from the byte pair <code>(b'e', b' ')</code>, and merge $4$ created token $259$ from the pair <code>(b' t', b'h')</code>, which itself uses an earlier merge of <code>(b' ', b't')</code>. When we encode the string <code>"the "</code>, we must apply merge $1$ <em>before</em> merge $4$ — because merge $4$ expects to find token $258$ (or whatever id <code>" t"</code> received) sitting in the token stream, and that token won't exist until merge $1$ runs.</p>
+
+            <p>Replaying merges in training order guarantees correctness because that is the same order they were created. Every merge can assume its dependencies (the parent tokens) already exist in the token stream. Reversing or shuffling the order would break this invariant and produce different encodings — or, worse, encodings the model has never seen at training time.</p>
+
+            <p>For long text, this $O(M \cdot |t|)$ replay is slow. Production tokenizers use suffix-array or trie-based approaches that recognise the longest matching merge at each position in roughly linear time. Same algorithm, different data structures.</p>
 
             <h2>Decoding</h2>
+
+            <p>Decoding is trivial because of the recursive vocab structure we built up at training time:</p>
+
             <pre><code class="language-python">def decode(self, ids):
     data = b"".join(self.vocab[i] for i in ids)
     return data.decode("utf-8", errors="replace")</code></pre>
 
+            <p>Look up each token id in the vocab, concatenate the byte sequences, then UTF-8 decode the result. The <code>errors="replace"</code> argument is the only interesting choice here.</p>
+
+            <p><strong>Why <code>errors="replace"</code>?</strong> A subtle problem: BPE merges operate at the byte level, not the codepoint level. It is possible (though rare) for a sequence of token ids to correspond to a byte sequence that slices through the middle of a multi-byte UTF-8 character. Concretely, a character like <code>é</code> is two bytes (<code>0xC3 0xA9</code>); if a sequence of merges produces token boundaries that split it, the resulting bytes are not valid UTF-8. <code>errors="replace"</code> says "if you find an invalid byte sequence, emit the replacement character U+FFFD and continue" — graceful degradation instead of a crash.</p>
+
+            <p>This pathology essentially never happens on text we tokenized ourselves (the merges respect the UTF-8 structure of the training data). It can happen on adversarial inputs designed to exploit the byte-level nature of BPE — for example, certain prompt-injection attacks use deliberately malformed UTF-8 to confuse the tokenizer. The replace policy makes that fail-safe instead of fail-stop.</p>
+
+            <h2>What This Implementation Skips</h2>
+
+            <p>Real-world BPE implementations like tiktoken, sentencepiece, and Hugging Face Tokenizers add several optimisations and features we deliberately leave out for clarity:</p>
+
+            <p><strong>Pre-tokenization with a regex.</strong> GPT-2's tokenizer applies a regex to split text into "pre-tokens" (typically words and punctuation) before BPE runs. This prevents merges from crossing word boundaries — so a token like <code>"the next"</code> can never form, even if the substring is frequent. Pre-tokenization adds a layer of linguistic prior that our raw-byte version does not have. The trade-off is that pre-tokenized BPE handles whitespace-rich text better, while raw-byte BPE handles arbitrary input (code, emoji, mathematical notation) more uniformly.</p>
+
+            <p><strong>Special tokens.</strong> Real tokenizers reserve specific ids for special tokens: <code>&lt;|endoftext|&gt;</code>, <code>&lt;pad&gt;</code>, system role markers, end-of-turn markers, etc. These are added post-hoc to the vocabulary and treated specially during encoding (they cannot be split by merges). Our implementation has no concept of special tokens — every byte sequence is just data.</p>
+
+            <p><strong>Incremental pair-frequency updates.</strong> The biggest performance optimisation is not re-counting all pairs at every iteration. Instead, after a merge, you can incrementally update the pair counts in $O(k)$ where $k$ is the number of merge occurrences. Production tokenizers use linked lists or hash maps that support fast updates. Our $O(n)$ re-count per merge is roughly $1000\times$ slower than tiktoken but fits in $30$ lines instead of $3000$.</p>
+
+            <p><strong>Optimised data structures.</strong> Suffix arrays for $O(\log n)$ merge application at encoding time, hash-based merge tables, parallel chunk processing for very large corpora. None of this changes the algorithm — it changes the constants.</p>
+
+            <h2>The Whole Implementation</h2>
+
+            <p>Excluding comments and helpers, the substantive code is roughly $50$ lines: $14$ for the train method, $11$ for the merge helper, $4$ for encoding, $3$ for decoding, plus the constructor and the pair counter. The full file with documentation is around $80$ lines.</p>
+
+            <p>What you can do with this $80$ lines: tokenize arbitrary text losslessly, train new tokenizers on new corpora, inspect what merges were learned and why. What you cannot do: handle production-scale corpora in reasonable time, support special tokens, integrate with Hugging Face's model loading machinery. For learning, that trade is fine. For production, use <code>tiktoken</code>.</p>
+
+            <h2>What Part 3 Tests</h2>
+
+            <p>With this implementation in hand, Part 3 trains BPE on a $33$-KB English corpus at four vocabulary sizes and exposes two things: the universal compression curve shape that holds across every BPE training run on natural text, and the failure mode where repetitive code collapses into absurdly long single tokens — the same pathology that explains a wide range of strange LLM behaviour.</p>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/BPE-Tokenizer" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/BPE-Tokenizer</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

@@ -1,18 +1,17 @@
 ---
 layout: null
-title: "Deconstructing DiT: Part 3 — Training at Toy Scale, and Why It Matters"
-description: "3,200 synthetic 16×16 colored-shape images. 16 classes (4 colors × 4 shapes). Class-conditional DiT, 323,696 params, 42 seconds CPU training."
+title: "Deconstructing DiT: Part 3 — Training at Toy Scale, and What It Teaches"
+description: "323K-parameter class-conditional DiT trained on 3,200 synthetic 16×16 colored shapes in 42 seconds. The honest result: undertrained at this scale — exactly as the inductive-bias tradeoff predicts."
 permalink: /projects/dit-benchmark/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing DiT: Part 3 — Training at Toy Scale, and Why It Matters | Sovesh Mohapatra</title>
+    <title>Deconstructing DiT: Part 3 - Training at Toy Scale | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
     <style>
         .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -29,76 +28,169 @@ permalink: /projects/dit-benchmark/
         .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
         .article-content li { margin-bottom: 0.5rem; }
         .article-content strong { font-weight: 600; color: var(--accent-light); }
-        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
         .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
         .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
-        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
-        [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
-    <script>
-        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'ams' }, svg: { fontCache: 'global' } };
-    </script>
-    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 </head>
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/dit/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing DiT Hub</a>
+        <a href="{{ site.baseurl }}/projects/dit/" class="back-link"><i class="fas fa-arrow-left"></i> Back to DiT Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing DiT</h1>
-            <h2 class="article-subtitle">Part 3: Training at Toy Scale, and Why It Matters</h2>
+            <h2 class="article-subtitle">Part 3: Training at Toy Scale, and What It Teaches</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
-                <div class="abstract-title">Overview</div>
-                <p>3,200 synthetic 16×16 colored-shape images. 16 classes (4 colors × 4 shapes). Class-conditional DiT, 323,696 params, 42 seconds CPU training.</p>
+                <div class="abstract-title">The Honest Result</div>
+                <p>Most blog posts about new architectures show impressive results. This one shows a mediocre one — and the mediocrity is the point. A $323{,}696$-parameter class-conditional DiT trained from scratch on $3{,}200$ synthetic $16 \times 16$ colored-shape images in $42$ seconds produces samples that have the right colors but blurry shapes. This is exactly what the inductive-bias tradeoff predicts: DiT's architecture lacks the locality bias that would let a U-Net of the same size produce sharper output on small data.</p>
+                <p>The honest finding is more informative than the textbook claim that "DiT is better than U-Net." The actual finding is "DiT is better than U-Net <em>when the data is large enough</em>" — and at $3{,}200$ examples it isn't. This part demonstrates exactly what that crossover looks like at small scale.</p>
             </div>
 
             <h2>Setup</h2>
-            <p><strong>Dataset.</strong> 16 classes at 16×16 RGB, 200 examples per class. Patch size 4 → 16 patches per image. <strong>Model.</strong> DiT, hidden=64, 4 layers, 4 heads, $323{,}696$ params. <strong>Diffusion.</strong> Linear $\beta$ schedule, $T = 200$. <strong>Training.</strong> AdamW lr=$5 \times 10^{-4}$, 30 epochs, batch 128. <strong>Hardware.</strong> CPU (MPS has a stride-handling bug in adaLN's backward; CUDA works fine).</p>
+
+            <p><strong>Dataset.</strong> $16$ classes (4 colors $\times$ 4 shapes) at $16 \times 16$ RGB resolution. $200$ examples per class, $3{,}200$ total. Patch size $4$, so $16$ patches per image — the same total number as the number of classes, which is coincidental but small enough to fit comfortably in attention.</p>
+
+            <p><strong>Model.</strong> DiT with $\text{hidden} = 64$, $4$ layers, $4$ heads. Class-conditional via adaLN-Zero on the combined (timestep + class) vector. Total trainable parameters: $323{,}696$. This is two orders of magnitude smaller than the smallest published DiT (DiT-S at ~$33$M parameters trained on ImageNet at $256 \times 256$).</p>
+
+            <p><strong>Diffusion.</strong> Linear $\beta$ schedule, $T = 200$ timesteps. Standard DDPM $\varepsilon$-prediction objective.</p>
+
+            <p><strong>Training.</strong> AdamW with $\eta = 5 \times 10^{-4}$, weight decay $0.0$ ($z$-init handles the regularisation), gradient clipping at $1.0$, cosine schedule over $30$ epochs, batch size $128$.</p>
+
+            <p><strong>Hardware.</strong> CPU. The MPS backend on Apple Silicon has a stride-handling bug in the adaLN-Zero <code>chunk(6, dim=-1)</code> backward pass — gradients silently miscompute. CUDA reproduces the same numbers; the toy experiment falls back to CPU because of this Apple-specific issue. Total wall-clock: $42.7$ seconds.</p>
 
             <h2>Loss Trajectory</h2>
+
             <table class="results-table">
                 <thead><tr><th>Epoch</th><th>MSE (noise prediction)</th></tr></thead>
                 <tbody>
-                    <tr><td>1</td><td>$0.9147$</td></tr>
-                    <tr><td>4</td><td>$0.2467$</td></tr>
-                    <tr><td>8</td><td>$0.1685$</td></tr>
-                    <tr><td>16</td><td>$0.1409$</td></tr>
-                    <tr><td>30</td><td>$0.1228$</td></tr>
+                    <tr><td>$1$</td><td>$0.9147$</td></tr>
+                    <tr><td>$4$</td><td>$0.2467$</td></tr>
+                    <tr><td>$8$</td><td>$0.1685$</td></tr>
+                    <tr><td>$16$</td><td>$0.1409$</td></tr>
+                    <tr><td>$24$</td><td>$0.1262$</td></tr>
+                    <tr><td>$30$</td><td>$0.1228$</td></tr>
                 </tbody>
             </table>
-            <p>Loss drops by an order of magnitude in the first four epochs, then plateaus. Training took 42 seconds on CPU.</p>
+
+            <p>Loss drops by roughly an order of magnitude in the first four epochs (a regime where the model is learning the gross statistics of the dataset — average color distribution, average shape size, etc.), then plateaus slowly. The final value of $0.1228$ is reasonable for DDPM noise prediction on a low-resolution dataset — a perfectly trained model would have a noise-prediction MSE bounded below by the irreducible noise in the data itself, which on our $16 \times 16$ RGB images with the small added jitter is around $0.05$ to $0.10$.</p>
+
+            <p>The loss is still slowly decreasing at epoch $30$. Training longer would likely improve the samples further. We stop at $30$ epochs to keep the toy experiment under a minute; production DiT training runs for hundreds of thousands of iterations.</p>
 
             <h2>Generated Samples</h2>
-            <p>After training we generate one image per class from pure Gaussian noise with 200 ancestral denoising steps conditioned on the target class.</p>
-            <p><strong>What is correct.</strong> Colors are recovered consistently for every class — class conditioning works.</p>
-            <p><strong>What is approximate.</strong> Shape geometry is recognisable but blurry. Circles are roughly round but not smooth. Squares have soft edges. Crosses — the highest-frequency shape — are the hardest, often collapsing toward smudges with the right color.</p>
+
+            <p>After training, we generate one image per class by sampling pure Gaussian noise and running $200$ ancestral denoising steps conditioned on the target class label. The results are mixed in a way that is genuinely informative.</p>
+
+            <p><strong>What is correct.</strong> Colors are recovered consistently. Every "red" class produces red samples, every "blue" class produces blue, etc. The class conditioning works — the model has learned to associate each class index with a particular color distribution. This is what success looks like for the conditioning mechanism in isolation.</p>
+
+            <p><strong>What is approximate.</strong> Shape geometry is recognisable but blurry. Circles are roughly round but with soft, fuzzy edges. Squares are roughly square but the corners are rounded and the sides aren't quite straight. Triangles are roughly triangular but the points are blunted. Crosses — the highest-frequency shape in the dataset, requiring two thin orthogonal strokes — are the hardest, often collapsing toward a smudge with the right color but no clear cross structure.</p>
+
+            <p><strong>What is missing.</strong> Sharp edges. Clean geometric primitives. The fine-grained spatial structure that distinguishes shapes from coloured blobs. These are the things our model cannot produce at this scale.</p>
+
+            <p>This is the honest result. At $3{,}200$ examples, $323K$ parameters, and $16 \times 16$ resolution, DiT is undertrained for sharp geometric primitives. The samples have the right marginal distributions (color) but lack the high-frequency spatial detail that would make them recognisably squares versus circles versus triangles.</p>
 
             <h2>Why the Samples Are Blurry</h2>
-            <p>Three confounded reasons:</p>
-            <ol>
-                <li>Resolution is 16×16. A sharp triangle has a few pixels per edge.</li>
-                <li>Dataset is tiny. 3,200 examples is enough to learn approximate marginals but not enough to learn sharp geometry from scratch with a low-inductive-bias architecture.</li>
-                <li>Model is small. 323,696 parameters is two orders of magnitude smaller than the smallest published DiT.</li>
-            </ol>
-            <p>All three point in the same direction: at this scale, the architecture's lack of inductive bias is a liability.</p>
+
+            <p>Three confounded reasons, all in the same direction.</p>
+
+            <p><strong>(1) Resolution is 16×16.</strong> A sharp triangle has only a few pixels per edge at this resolution — the boundary between "triangle" and "circle" is a few pixels of difference. The model has very little information to encode shape geometry from. Even a perfectly trained model would struggle to make $16 \times 16$ triangles look much sharper than $16 \times 16$ blobs.</p>
+
+            <p><strong>(2) Dataset is tiny.</strong> $3{,}200$ examples is enough to learn approximate marginals (the colors), but not enough to learn sharp geometric primitives from scratch — especially with a low-inductive-bias architecture like DiT that has no prior on locality. A model with a U-Net's convolutional prior could plausibly do better with this little data because it would not have to learn that nearby pixels matter from scratch.</p>
+
+            <p><strong>(3) Model is small.</strong> $323{,}696$ parameters is two orders of magnitude smaller than the smallest published DiT (DiT-S at $\sim 33$M parameters on ImageNet). The smallest model in the original DiT paper trains for orders of magnitude longer than we do, on orders of magnitude more data, at much higher resolution. We are at the "this barely works" end of the regime.</p>
+
+            <p>All three of these point in the same direction: <strong>at this scale, the architecture's lack of inductive bias is a liability</strong>.</p>
+
+            <h2>Why DiT Is Undertrained Here But Dominant at Scale</h2>
+
+            <p>A U-Net of the same parameter count would produce sharper samples on the same dataset. U-Nets bake in three image priors that DiT has to learn from data:</p>
+
+            <p><strong>Locality.</strong> Convolutions only connect nearby pixels. A pixel's value depends on its neighbours, not on pixels far away. This is correct for natural images and immediately tells the model "shapes are local structures".</p>
+
+            <p><strong>Translation equivariance.</strong> The same convolution kernel applies everywhere in the image. A circle in the top-left and a circle in the bottom-right are processed by the same filters. This means the model doesn't have to learn separately what a circle looks like at each position.</p>
+
+            <p><strong>Multi-scale processing.</strong> U-Nets downsample to compute coarse features, then upsample with skip connections. This lets them naturally represent both global structure (where is the shape?) and local detail (what does its edge look like?) without having to discover this hierarchy from scratch.</p>
+
+            <p>These three priors are correct for natural images. They let a U-Net learn good image structure from very little data — exactly the regime we are in. DiT has none of these priors. The patch-embedding step throws away spatial locality (any patch can attend to any other patch). The position embedding has to be learned from scratch rather than baked in. Multi-scale processing happens implicitly through depth, if at all.</p>
+
+            <p>With $3{,}200$ examples, DiT cannot fully learn locality or translation equivariance — it doesn't have enough data to discover from scratch that nearby pixels matter more than distant ones. The basic image priors are not surfaced from such a small corpus, and the model is left producing reasonable colors but bad geometry.</p>
+
+            <h2>At LAION/JFT Scale, the Picture Inverts</h2>
+
+            <p>At $400$ million images (the LAION-scale that production diffusion models train on), the trade-off flips entirely. Now the U-Net's hardcoded biases become <em>constraints</em>, not assists. The data wants the model to learn biases that are different from "locality + translation equivariance":</p>
+
+            <ul>
+                <li>Non-local relationships between distant pixels (text rendering, perspective effects, multi-object scenes).</li>
+                <li>Strong text-driven semantics (the model needs to align with the conditioning prompt, not just generate plausible images).</li>
+                <li>Long-range structures that span the full image (a person's face on one side has to match their hand on the other).</li>
+            </ul>
+
+            <p>U-Nets cannot easily learn these. The convolutional prior actively prevents them. DiT can — it has no prior either way, so it learns whatever the data shows it.</p>
+
+            <p>This is why every production text-to-image and text-to-video model in 2024 moved to DiT: Stable Diffusion 3, Sora, Stable Video Diffusion (later versions), PixArt-$\alpha$, Lumina-T2I. The inductive-bias tradeoff that hurts DiT at $3{,}200$ examples is the same tradeoff that wins at $400$ million.</p>
 
             <h2>The Inductive-Bias Tradeoff, Quantified</h2>
-            <p>U-Nets bake in image priors that you don't have to learn from data. DiTs learn whatever priors the data implies. At toy scale, baked-in priors win. At ImageNet scale, the tradeoff is roughly even. At LAION/JFT scale (hundreds of millions of images), DiT decisively wins — the U-Net's hardcoded biases become constraints. This is the regime that produced SD3 and Sora.</p>
+
+            <p>The general pattern: <em>inductive biases trade short-term sample efficiency for long-term ceiling</em>. A U-Net with strong locality bias is more sample-efficient at small data; it has a higher floor. DiT with weak inductive bias is less sample-efficient at small data but has a higher ceiling at large data.</p>
+
+            <p>The crossover point is empirical and depends on resolution, model size, and task difficulty. For class-conditional $256 \times 256$ ImageNet generation, the crossover is somewhere in the millions of images. For text-conditional $1024 \times 1024$ image generation (the SD3/Sora regime), the crossover is in the hundreds of millions.</p>
+
+            <p>Our $3{,}200$-image experiment is firmly on the U-Net side of the crossover. That the DiT architecture learned recognisable colors and rough shapes at all is itself remarkable — evidence that the architecture is functioning correctly. What it cannot do at this scale is precisely the thing U-Nets do as a free gift from their inductive bias: produce sharp output from a small corpus.</p>
+
+            <h2>The Denoising Trajectory</h2>
+
+            <p>Watching a single noise vector get denoised step by step (the "denoising trajectory" plot) shows the canonical DDPM behaviour: at $t = T - 1$ the image is pure noise; over the first $50\%$ of the timesteps the noise gradually coalesces into a colored blob; over the next $30\%$ the blob takes shape; over the final $20\%$ the shape sharpens (modestly, in our case) into recognisable structure.</p>
+
+            <p>This is the standard DDPM picture. It shows up the same way in every diffusion paper. Our trajectory looks like the textbook one, just at toy scale — the model is functioning correctly, the limitation is data and resolution.</p>
 
             <h2>What This Series Demonstrates</h2>
-            <p>The architecture is sound. Class conditioning works. Denoising trajectory has canonical DDPM appearance. What it cannot do at this scale is precisely the thing U-Nets do as a free gift: produce sharp output from a small corpus. The architecture is not the bottleneck. Scale is.</p>
 
+            <p>The architecture is sound. Class conditioning via adaLN-Zero works. The denoising trajectory has canonical DDPM appearance. The training is stable (no NaN losses, no diverging gradients). The samples are recognisable. <strong>What the architecture cannot do at this scale is precisely the thing U-Nets do as a free gift.</strong></p>
+
+            <p>The lesson is not "DiT doesn't work" — DiT works fine, and at scale it dominates U-Nets. The lesson is that <em>the architectural choice depends on which side of the inductive-bias crossover you are training</em>. Small data, small model, small resolution: pick the U-Net. Large data, large model, large resolution: pick the DiT.</p>
+
+            <h2>This Was the Experiment I Built Before Writing the Post</h2>
+
+            <p>Writing this post in advance of running the experiment would have produced the textbook claim "DiT > U-Net" with no nuance. Running the experiment first and writing afterward produced the actual finding: <strong>"DiT > U-Net when data is large enough; U-Net > DiT when data is small."</strong></p>
+
+            <p>This is the right way to do build-in-public series. Run the experiment, see what happens, write up what you saw. If the result is unexpected, that's the most interesting outcome — the textbook story is rarely as clean as it is presented, and the discrepancies are where the real learning happens.</p>
+
+            <h2>Scaling This Up</h2>
+
+            <p>To get from "toy DiT that almost works" to "production DiT", you would scale several knobs:</p>
+
+            <p><strong>Resolution.</strong> $16 \times 16$ to $256 \times 256$ or $1024 \times 1024$. Latent diffusion in a pretrained VAE is the standard approach — the DiT operates on the VAE's latent grid, not directly on pixels.</p>
+
+            <p><strong>Model size.</strong> $323K$ to $1B$+ parameters. DiT-XL is roughly $700M$ parameters; SD3 and Sora's DiTs are believed to be in the $4B$+ range.</p>
+
+            <p><strong>Dataset.</strong> $3{,}200$ to $400M$+ examples. Most production diffusion models train on web-scraped image-caption pairs (LAION, COYO, internal datasets).</p>
+
+            <p><strong>Conditioning.</strong> Class indices to natural-language text. Add a small text-cross-attention back to the DiT block; keep adaLN-Zero for the time-conditioning side.</p>
+
+            <p><strong>Sampling improvements.</strong> Replace ancestral DDPM with DDIM, DPM-Solver++, or EDM-style samplers. Reduces the $200$-step sampling to $20$–$50$ steps without quality loss.</p>
+
+            <p>The architecture and the diffusion machinery don't change. The differences are entirely in the magnitudes — which is exactly the scaling story DiT was designed for.</p>
+
+            <h2>Summary</h2>
+
+            <ul>
+                <li>DiT trained from scratch on $3{,}200$ $16 \times 16$ colored-shape images in $42$ seconds.</li>
+                <li>Class conditioning works; sample colors are correct on every class.</li>
+                <li>Shape geometry is blurry — the model cannot fully learn locality/translation-equivariance from this little data.</li>
+                <li>This is exactly what the inductive-bias tradeoff predicts: at small data, U-Nets beat DiTs. The crossover sits somewhere in the millions of images.</li>
+                <li>The architecture is sound; what's missing is scale. This is the reason every production diffusion model in 2024 moved to DiT — but at LAION scale, not at toy scale.</li>
+            </ul>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/DiT" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/DiT</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>

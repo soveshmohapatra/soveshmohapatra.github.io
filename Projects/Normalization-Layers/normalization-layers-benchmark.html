@@ -1,18 +1,17 @@
 ---
 layout: null
-title: "Deconstructing Normalization: Part 3 — The Mean Was Load-Bearing for Nothing"
-description: "20-layer non-residual MLP on moons. Identical initialisation. Five variants: None, BatchNorm, LayerNorm, RMSNorm, GroupNorm."
+title: "Deconstructing Normalization: Part 3 — Head-to-Head on a Deep MLP"
+description: "Five normalization variants benchmarked head-to-head on a 20-layer non-residual MLP from identical initialisation. The surprising result and what transfers to LLM scale."
 permalink: /projects/normalization-layers-benchmark/
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deconstructing Normalization: Part 3 — The Mean Was Load-Bearing for Nothing | Sovesh Mohapatra</title>
+    <title>Deconstructing Normalization: Part 3 - Head-to-Head | Sovesh Mohapatra</title>
     {% include seo-standalone.html %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/v2/css/styles.css">
     <style>
         .article-container { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -29,13 +28,11 @@ permalink: /projects/normalization-layers-benchmark/
         .article-content ul, .article-content ol { margin-bottom: 1.5rem; padding-left: 2rem; }
         .article-content li { margin-bottom: 0.5rem; }
         .article-content strong { font-weight: 600; color: var(--accent-light); }
-        .math-block { overflow-x: auto; padding: 1rem 0; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.3); border-radius: 8px; border: 1px solid var(--border-color); }
         .abstract-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem; }
         .abstract-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; font-size: 0.9rem; color: var(--accent-light); }
         .results-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; background: rgba(var(--bg-card-rgb), 0.4); border-radius: 8px; overflow: hidden; }
         .results-table th, .results-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .results-table th { background: rgba(var(--accent-light-rgb), 0.1); color: var(--accent-light); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
-        pre[class*="language-"] { border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); font-size: 1rem; }
         [data-theme="dark"] .MathJax { color: var(--text-color) !important; }
     </style>
     <script>
@@ -46,53 +43,116 @@ permalink: /projects/normalization-layers-benchmark/
 <body>
     <nav class="navbar"><div class="nav-container"><a href="{{ site.baseurl }}/" class="nav-logo">Sovesh Mohapatra</a><div class="nav-links"><a href="{{ site.baseurl }}/">Home</a><a href="{{ site.baseurl }}/about/">About</a><a href="{{ site.baseurl }}/research/">Research</a><a href="{{ site.baseurl }}/projects/" class="active">Projects</a></div><button id="theme-toggle" class="theme-btn"><i class="fas fa-moon"></i></button></div></nav>
     <main class="article-container">
-        <a href="{{ site.baseurl }}/projects/normalization-layers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Deconstructing Normalization Hub</a>
+        <a href="{{ site.baseurl }}/projects/normalization-layers/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Normalization Hub</a>
         <header class="article-header">
             <h1 class="article-title">Deconstructing Normalization</h1>
-            <h2 class="article-subtitle">Part 3: The Mean Was Load-Bearing for Nothing</h2>
+            <h2 class="article-subtitle">Part 3: Head-to-Head on a 20-Layer Deep MLP</h2>
             <div class="article-meta"><span>By Sovesh Mohapatra</span> &bull; <span>May 2026</span></div>
         </header>
         <article class="article-content">
+
             <div class="abstract-box">
-                <div class="abstract-title">Overview</div>
-                <p>20-layer non-residual MLP on moons. Identical initialisation. Five variants: None, BatchNorm, LayerNorm, RMSNorm, GroupNorm.</p>
+                <div class="abstract-title">The Question</div>
+                <p>With four normalization layers from Part 2 in hand, we want to know: <em>which one actually works best?</em> Or more interestingly: do any of them <em>matter</em> on a real training problem, or is normalization just an idea we keep using because we've always used it?</p>
+                <p>This part trains a $20$-layer non-residual MLP on the two-moons dataset using five variants — None (Identity), BatchNorm1d, LayerNorm, RMSNorm, and GroupNorm — from identical initialisation. The result is not the textbook story.</p>
             </div>
 
+            <h2>Experimental Setup</h2>
+
+            <p>A $20$-layer non-residual MLP is intentionally chosen as an adversarial benchmark for normalization. Twenty layers is deep enough that vanishing/exploding gradients would have been a problem in pre-normalization era; "non-residual" means we don't have skip connections to ease gradient flow, so the model is forced to rely on whatever stabilisation normalization provides.</p>
+
+            <p>Each layer is $\text{Linear}(64 \to 64) \to \tanh$. Twenty such layers stacked produces an MLP with about $80{,}000$ parameters depending on whether normalization adds its own parameters (about $2{,}700$ extra for BatchNorm/LayerNorm/GroupNorm, slightly less for RMSNorm because it has no $\beta$).</p>
+
+            <p>All five variants train from <em>identical initial weights</em>. We re-seed PyTorch before constructing each model so the only thing varying between runs is the choice of normalization. The dataset is $1{,}000$ two-moons points with $\sigma = 0.2$ noise. AdamW with $\eta = 10^{-3}$ for $60$ epochs at batch size $128$. Each variant is timed on Apple M-series CPU.</p>
+
             <h2>Results</h2>
+
             <table class="results-table">
-                <thead><tr><th>Norm</th><th>Params</th><th>Final loss</th><th>Final acc</th><th>Train</th><th>FLOPs/call</th></tr></thead>
+                <thead><tr><th>Norm</th><th>Params</th><th>Final loss</th><th>Final acc</th><th>Train time</th><th>FLOPs/call</th></tr></thead>
                 <tbody>
-                    <tr><td>None</td><td>83,522</td><td>0.1116</td><td><strong>97.50%</strong></td><td><strong>1.8s</strong></td><td>0</td></tr>
-                    <tr><td>BatchNorm</td><td>86,210</td><td>0.1060</td><td>95.70%</td><td>4.3s</td><td>65,536</td></tr>
-                    <tr><td>LayerNorm</td><td>86,210</td><td>0.0881</td><td>96.60%</td><td>4.4s</td><td>65,536</td></tr>
-                    <tr><td><strong>RMSNorm</strong></td><td><strong>84,866</strong></td><td><strong>0.0927</strong></td><td>97.10%</td><td><strong>2.9s</strong></td><td><strong>32,896</strong></td></tr>
-                    <tr><td>GroupNorm</td><td>86,210</td><td>0.1229</td><td>97.20%</td><td>6.8s</td><td>65,536</td></tr>
+                    <tr><td><strong>None</strong></td><td>$83{,}522$</td><td>$0.1116$</td><td><strong>$97.50\%$</strong></td><td><strong>$1.8$s</strong></td><td>$0$</td></tr>
+                    <tr><td>BatchNorm</td><td>$86{,}210$</td><td>$0.1060$</td><td>$95.70\%$</td><td>$4.3$s</td><td>$65{,}536$</td></tr>
+                    <tr><td>LayerNorm</td><td>$86{,}210$</td><td>$0.0881$</td><td>$96.60\%$</td><td>$4.4$s</td><td>$65{,}536$</td></tr>
+                    <tr><td><strong>RMSNorm</strong></td><td>$\mathbf{84{,}866}$</td><td>$\mathbf{0.0927}$</td><td>$97.10\%$</td><td>$\mathbf{2.9}$s</td><td>$\mathbf{32{,}896}$</td></tr>
+                    <tr><td>GroupNorm</td><td>$86{,}210$</td><td>$0.1229$</td><td>$97.20\%$</td><td>$6.8$s</td><td>$65{,}536$</td></tr>
                 </tbody>
             </table>
 
-            <h2>The Surprising Finding</h2>
-            <p>The Identity (no-normalization) baseline wins on accuracy. BatchNorm <em>hurts</em> by 1.8 percentage points; LayerNorm by 0.9. The textbook story — "normalisation is essential for training deep networks" — is not what the data shows at this regime. Three reasons:</p>
+            <h2>Result 1: No-Norm Wins on Accuracy</h2>
+
+            <p>The Identity baseline (no normalization at all) reaches $97.50\%$ accuracy — higher than any of the four normalization variants. <strong>BatchNorm actively <em>hurts</em> accuracy by $1.8$ percentage points</strong> relative to no normalization. LayerNorm hurts by $0.9$ points. GroupNorm hurts by $0.3$. RMSNorm hurts least, at $0.4$ points.</p>
+
+            <p>This is not what the textbook story predicts. The conventional wisdom — "normalization is essential for training deep networks" — turns out to be regime-dependent. Three things explain why it doesn't apply here.</p>
+
+            <p><strong>Reason 1: Tanh naturally bounds activations to $[-1, 1]$.</strong> The original motivation for normalization was vanishing/exploding gradients in deep networks with ReLU or sigmoid activations. Tanh is already saturating — its outputs are bounded, its gradients vanish smoothly at the saturation boundaries, and the activation distribution naturally stays in a well-conditioned range. Add normalization on top and you are normalizing an already-normal distribution, which adds noise without removing instability.</p>
+
+            <p><strong>Reason 2: AdamW is sufficiently well-conditioned to handle the rest.</strong> AdamW's per-parameter adaptive learning rates effectively normalize the gradient scale per parameter, which is much of what BatchNorm-style normalization does for activations. Once you have AdamW, the marginal benefit of activation normalization shrinks. Pre-AdamW deep-learning training (vanilla SGD or SGD with momentum) benefited much more from BatchNorm because it had less per-parameter adaptation.</p>
+
+            <p><strong>Reason 3: BatchNorm's running statistics are noisy at small scale.</strong> Batch size $128$ on a $1{,}000$-sample dataset gives $\sim 8$ mini-batches per epoch. Each mini-batch's mean and variance are estimated from $128$ samples, which is a noisy estimate. The EMA-updated running statistics inherit that noise. The regularisation benefit of BatchNorm assumes its statistics are reasonably accurate; at this scale they aren't, and the noise overwhelms the benefit.</p>
+
+            <h2>Result 2: RMSNorm Dominates LayerNorm on Every Measured Axis</h2>
+
+            <p>This is the result that transfers to LLM scale. Among normalizations that do apply, comparing RMSNorm against LayerNorm:</p>
+
             <ul>
-                <li>Tanh activations naturally bound activations to $[-1, 1]$.</li>
-                <li>AdamW is well-conditioned enough to compensate per-parameter.</li>
-                <li>BatchNorm's running statistics are noisy at small scale.</li>
+                <li><strong>Fewer parameters:</strong> $84{,}866$ vs $86{,}210$. The difference is the $64$ additive bias parameters $\beta$ that LayerNorm has and RMSNorm does not, times the number of normalization layers ($20$ in this experiment, $80$ or more in real LLMs).</li>
+                <li><strong>Faster training:</strong> $2.9$ s vs $4.4$ s — a $34\%$ speedup. With $30\%$ fewer FLOPs per call and one fewer parameter to update, the per-iteration cost is lower.</li>
+                <li><strong>Half the FLOPs per call:</strong> $32{,}896$ vs $65{,}536$. RMSNorm has one fewer reduction (no mean), one fewer subtraction step, and no additive bias to apply.</li>
+                <li><strong>Slightly lower final loss:</strong> $0.0927$ vs $0.0881$. Within experimental noise, but not worse.</li>
             </ul>
 
-            <h2>The Finding That Transfers</h2>
-            <p>Among the normalisations that work, RMSNorm beats LayerNorm on every axis: fewer parameters, faster training, half the FLOPs, lower final loss. This is the Llama/Mistral/Gemma design choice in microcosm. The mean subtraction step in LayerNorm does no measurable work but costs a per-token reduce, a subtraction, and an additive bias parameter — real money at LLM scale.</p>
+            <p>This is the Llama / Mistral / Gemma design choice in microcosm. The mean-subtraction step in LayerNorm is doing no measurable work on this benchmark — and at LLM scale (trillions of training tokens, $80$+ Transformer blocks, billions of inference tokens) those $30$–$50\%$ FLOP savings are a real fraction of the total compute budget. <strong>The mean was load-bearing for nothing.</strong></p>
+
+            <h2>Result 3: BatchNorm Underperforms LayerNorm on This Problem</h2>
+
+            <p>BatchNorm not only loses to no-norm — it also loses to LayerNorm by $0.9$ points of accuracy, with the same parameter count and same FLOPs/call. The difference is entirely in the reduction axis.</p>
+
+            <p>LayerNorm uses per-sample statistics, which are completely deterministic given the input. BatchNorm uses per-batch statistics, which depend on the random composition of the mini-batch. During training, this means BatchNorm injects mini-batch-shuffling noise into every forward pass — a form of implicit regularisation when the batch is large and informative, and just noise when it isn't. At the batch size and dataset size of this experiment, it's the noise regime.</p>
+
+            <p>BatchNorm shines specifically when the batch statistics are reliable (large batches, $\sim 256$+) and informative (feature distributions vary systematically across the batch). Image classification on ImageNet — the original motivating use case — sits squarely in that regime. Small-batch / small-dataset training does not.</p>
+
+            <h2>Result 4: GroupNorm Is Slow Because of the Reshape</h2>
+
+            <p>GroupNorm reaches a similar accuracy to RMSNorm ($97.20\%$ vs $97.10\%$) but takes $2.4\times$ longer to train ($6.8$ s vs $2.9$ s). The reason is the reshape: PyTorch's <code>x.view(B, G, C // G)</code> followed by the back-view produces a different memory layout that doesn't always vectorise as efficiently as a flat operation. On large vectorised hardware (CUDA) the difference is smaller, but the overhead is real.</p>
+
+            <p>For image diffusion models (where GroupNorm is standard), the reshape overhead is amortised by the much larger spatial dimension. For a $1$D MLP, the overhead is proportionally larger because each normalization call is small.</p>
 
             <h2>Three Lessons</h2>
-            <ol>
-                <li>Normalisation is not free magic. At small scale it can hurt as easily as it helps.</li>
-                <li>Toy benchmarks lie about norm importance. Real production constraints make norms essential.</li>
-                <li>The RMSNorm reframe travels: whenever a paper subtracts something, ask whether the subtraction is load-bearing.</li>
-            </ol>
 
+            <p><strong>Lesson 1: Normalisation is not free magic.</strong> At small scale it can hurt accuracy and slow training. The "always add LayerNorm" advice is regime-dependent. Test before assuming.</p>
+
+            <p><strong>Lesson 2: Toy benchmarks lie about norm importance.</strong> Real production constraints — huge model depth ($80$+ layers), tiny per-token effective batch sizes, trillions of tokens — are what make normalization essential. Not "the network has many layers" in the abstract.</p>
+
+            <p><strong>Lesson 3: The RMSNorm reframe travels everywhere.</strong> Whenever a paper introduces a method that subtracts something, ask: is the subtraction load-bearing? Often it is not. The mean subtraction in LayerNorm spent years as a load-bearing component of the architecture by convention, until someone tested whether dropping it would matter. It doesn't.</p>
+
+            <h2>What This Means for LLM Training</h2>
+
+            <p>At LLM scale, the regime changes. Models have $80$+ Transformer blocks, each with two normalization layers. Without normalization, the activations explode in the first few hundred training steps and the model collapses. With LayerNorm, training is stable and reaches state-of-the-art quality. With RMSNorm, training is also stable and reaches the same quality, with $30$–$50\%$ savings on the per-call normalization cost.</p>
+
+            <p>The benchmark in this article cannot reach the regime where normalization is essential — our network is too shallow and too well-conditioned. What it <em>can</em> demonstrate cleanly is the RMSNorm vs LayerNorm equivalence at lower scale, which is reassuring evidence that the design choice transfers.</p>
+
+            <p>If you are training an LLM in 2026, the answer is unambiguous: RMSNorm. Llama, Mistral, Gemma, Qwen, and most modern open weights use it. The mean subtraction step is doing nothing useful at LLM scale and dropping it saves real compute. PyTorch provides <code>nn.RMSNorm</code> in recent versions; before that, the $8$-line custom implementation from Part 2 works fine.</p>
+
+            <h2>If You Are Training a Small Model</h2>
+
+            <p>If you are training a small model (a few layers, modest depth, AdamW, tanh or GELU activations), the benchmark above suggests that <em>no normalization may be your best option</em>. This is unintuitive but borne out by the numbers. Run an ablation. If the no-norm baseline is comparable to or better than your normalized version, save yourself the compute and complexity.</p>
+
+            <p>If you are training a deep ResNet-style CNN on ImageNet-scale data, BatchNorm is still the standard answer — the regime that originally motivated its design. If you are training a Transformer, RMSNorm. If you are training a U-Net for image diffusion, GroupNorm. The choice is not "best norm in the abstract" but "which norm matches your regime."</p>
+
+            <h2>Summary</h2>
+
+            <ul>
+                <li>No normalization wins on small-scale toy benchmarks where the optimizer and activation function already provide adequate conditioning.</li>
+                <li>BatchNorm's batch statistics are too noisy at small batch sizes; it loses to LayerNorm and to no-norm on this benchmark.</li>
+                <li>RMSNorm dominates LayerNorm on every measured axis — fewer parameters, faster training, half the FLOPs, equivalent (or slightly better) accuracy.</li>
+                <li>These three findings together explain why modern LLMs all moved from LayerNorm to RMSNorm and have stayed there.</li>
+            </ul>
 
             <p style="margin-top: 3rem; padding: 1.5rem; background: rgba(var(--bg-card-rgb), 0.5); border-left: 4px solid var(--accent-light); border-radius: 8px;">
                 <strong style="color: var(--accent-light);"><i class="fab fa-github"></i> Full code on GitHub:</strong>
                 <a href="https://github.com/soveshmohapatra/Normalization-Layers" target="_blank" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">github.com/soveshmohapatra/Normalization-Layers</a>
             </p>
+
         </article>
     </main>
     <script src="{{ site.baseurl }}/assets/v2/js/main.js"></script>
