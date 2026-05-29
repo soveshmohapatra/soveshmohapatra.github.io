@@ -121,36 +121,6 @@ permalink: /research/QUIET/
 <!-- End paper abstract -->
 
 
-<!-- Live demo -->
-<section class="section" id="live-demo">
-  <div class="container is-max-desktop content">
-    <h2 class="title is-3 has-text-centered">Live Demo</h2>
-    <p class="has-text-centered">
-      Run a small synthetic QUIET experiment in your browser, for free. Choose a network
-      topology, pick target nodes, and watch QUIET rank the <i>quiet highways</i> and
-      synchronize them through its three-stage optimization. Runs are capped for the free
-      server (N &le; 36); the full software is available via the request form above.
-    </p>
-    <div style="position: relative; width: 100%; max-width: 1100px; margin: 1.5rem auto 0;">
-      <iframe
-        src="https://sovesh-quiet-live-demo.hf.space"
-        title="QUIET Live Demo"
-        frameborder="0"
-        loading="lazy"
-        width="100%"
-        height="900"
-        style="border: 1px solid #ddd; border-radius: 8px;"></iframe>
-    </div>
-    <p class="has-text-centered" style="margin-top: 0.75rem; color: #777; font-size: 0.9rem;">
-      The demo sleeps when idle and may take ~30s to wake on first use.
-      It can also be opened in a
-      <a href="https://huggingface.co/spaces/Sovesh/quiet-live-demo" target="_blank">new tab</a>.
-    </p>
-  </div>
-</section>
-<!-- End live demo -->
-
-
 <!-- Image carousel -->
 <section class="hero is-small">
   <div class="hero-body">
