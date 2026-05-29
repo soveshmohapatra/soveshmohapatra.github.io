@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Request QUIET Software Access</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    .main-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .form-wrapper {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      max-width: 640px;
+      width: 100%;
+    }
+    .form-wrapper h1 {
+      text-align: center;
+      margin-bottom: 0.4rem;
+      font-size: 1.5rem;
+      color: #222;
+    }
+    .form-wrapper h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 1.15rem;
+      color: #555;
+      font-weight: normal;
+    }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-group label { display: block; margin-bottom: 0.4rem; font-weight: bold; color: #333; }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.7rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus { border-color: #007BFF; outline: none; }
+    .agree-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 1.2rem; }
+    .agree-row input { margin-top: 0.25rem; }
+    .agree-row label { font-weight: normal; color: #444; }
+    .submit-button {
+      background-color: #007BFF;
+      color: #fff;
+      border: none;
+      padding: 0.85rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      width: 100%;
+    }
+    .submit-button:hover { background-color: #0056b3; }
+    .submit-button:disabled { background-color: #9bbfe6; cursor: not-allowed; }
+    /* Honeypot: hidden from real users, catches bots */
+    .hp-field { position: absolute; left: -5000px; }
+    .download-button {
+      display: inline-block;
+      background-color: #28a745;
+      color: #fff;
+      text-decoration: none;
+      padding: 0.9rem 1.6rem;
+      border-radius: 4px;
+      font-size: 1.05rem;
+      margin-top: 0.5rem;
+    }
+    .download-button:hover { background-color: #1e7e34; }
+    .note { color: #666; font-size: 0.9rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <div class="form-wrapper" id="formWrapper">
+      <h1>QUIET: Quantifying Underutilized Influential Edges for Targeted Synchronization</h1>
+      <h2>Request access to the QUIET software</h2>
+      <form id="quietRequestForm">
+        <div class="form-group">
+          <label for="name">Full Name *</label>
+          <input type="text" id="name" name="Name" placeholder="Enter your full name" required>
+        </div>
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" name="Email" placeholder="example@institution.edu" required>
+        </div>
+        <div class="form-group">
+          <label for="institution">Institution / Affiliation *</label>
+          <input type="text" id="institution" name="Institution" placeholder="Enter your institution name" required>
+        </div>
+        <div class="form-group">
+          <label for="pi">Principal Investigator (PI) Name *</label>
+          <input type="text" id="pi" name="PI Name" placeholder="Dr. Jane Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="use">Intended Use / Project Description *</label>
+          <textarea id="use" name="Intended Use" rows="4" placeholder="Briefly describe how you intend to use QUIET" required></textarea>
+        </div>
+
+        <div class="agree-row">
+          <input type="checkbox" id="agree" name="Agreed to research-only use" value="Yes" required>
+          <label for="agree">I will use the QUIET software for research purposes only. *</label>
+        </div>
+
+        <!-- FormSubmit configuration (no account needed) -->
+        <input type="hidden" name="_subject" value="New QUIET software download request">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_autoresponse"
+               value="Thank you for requesting the QUIET software. Your request has been received. If you have any questions, contact quietbrainsync@gmail.com.">
+        <!-- Honeypot anti-spam field (leave empty) -->
+        <input type="text" name="_honey" class="hp-field" tabindex="-1" autocomplete="off">
+
+        <button type="submit" class="submit-button" id="submitBtn">Submit Request</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // SET THIS to the hosted location of Network_Synchronization_App.zip
+    // (e.g. a Google Drive / Dropbox shareable link or a GitHub Release URL).
+    var DOWNLOAD_URL = "https://drive.google.com/file/d/1EdGawLeGvMpPWxjg600Vch_gVGK0skOS/view?usp=sharing";
+    // ============================================================
+
+    // FormSubmit AJAX endpoint -> emails each submission to this inbox.
+    // NOTE: the FIRST submission triggers a one-time activation email to
+    // quietbrainsync@gmail.com. Click the link in it once to activate.
+    var FORMSUBMIT_ENDPOINT = "https://formsubmit.co/ajax/quietbrainsync@gmail.com";
+
+    var form = document.getElementById("quietRequestForm");
+    var submitBtn = document.getElementById("submitBtn");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Submitting...";
+
+      var formData = new FormData(form);
+
+      fetch(FORMSUBMIT_ENDPOINT, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body: formData
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (data && (data.success === "true" || data.success === true)) {
+            showDownload();
+          } else {
+            showError(data && data.message ? data.message : "Unknown error.");
+          }
+        })
+        .catch(function (error) {
+          console.error("Submission error:", error);
+          showError("There was a problem submitting your request. Please try again later.");
+        });
+    });
+
+    function showDownload() {
+      var hasLink = DOWNLOAD_URL && DOWNLOAD_URL !== "PASTE_DOWNLOAD_LINK_HERE";
+      var downloadHtml = hasLink
+        ? '<a class="download-button" href="' + DOWNLOAD_URL + '" target="_blank" rel="noopener">Download QUIET Software</a>'
+        : '<p class="note">The download link has not been configured yet. Please contact ' +
+          '<a href="mailto:quietbrainsync@gmail.com">quietbrainsync@gmail.com</a>.</p>';
+
+      document.getElementById("formWrapper").innerHTML =
+        "<h1>Thank You!</h1>" +
+        "<p>Your request has been recorded and a copy has been sent to the QUIET team.</p>" +
+        "<p>You can now download the software:</p>" +
+        downloadHtml +
+        '<p class="note">QUIET is provided for research purposes only. ' +
+        "If you have any issues, contact " +
+        '<a href="mailto:quietbrainsync@gmail.com">quietbrainsync@gmail.com</a>.</p>';
+    }
+
+    function showError(msg) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Request";
+      var existing = document.getElementById("formError");
+      if (existing) existing.remove();
+      var p = document.createElement("p");
+      p.id = "formError";
+      p.style.color = "#c0392b";
+      p.style.marginTop = "1rem";
+      p.textContent = "Error: " + msg;
+      form.appendChild(p);
+    }
+  </script>
+</body>
+</html>
