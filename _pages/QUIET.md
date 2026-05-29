@@ -173,10 +173,10 @@ permalink: /research/QUIET/
   <section class="section" id="BibTeX">
     <div class="container is-max-desktop content">
       <h2 class="title">BibTeX</h2>
-      <pre><code>@article{Mohapatra_QUIET_2025,
+      <pre><code>@article{Mohapatra_QUIET_2026,
   author  = {Mohapatra, Sovesh AND Alexandersen, Christoffer G. AND Fotiadis, Panos AND Kelz, Max AND Detre, John AND Pasqualetti, Fabio AND Bassett, Dani S.},
-  title   = {{QUIET: Quantifying Underutilized Influential Edges for Targeted Synchronization}},
-  year    = {2025},
+  title   = {QUIET: Quantifying Underutilized Influential Edges for Targeted Synchronization},
+  year    = {2026},
   note    = {Preprint},
 }</code></pre>
     </div>
