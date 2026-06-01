@@ -83,6 +83,17 @@ permalink: /research/QUIET/
               </a>
             </span>
 
+              <!-- NetSci'26 Poster -->
+              <span class="link-block">
+                <a href="/assets/QUIET/NetSci-QUIET.pdf" target="_blank"
+                class="external-link button is-normal is-rounded is-dark">
+                <span class="icon">
+                  <i class="fas fa-image"></i>
+                </span>
+                <span>NetSci'26 Poster</span>
+              </a>
+            </span>
+
               <!-- Paper link (update when available) -->
               <span class="link-block">
                 <a href="#" target="_blank"
