@@ -94,14 +94,14 @@ permalink: /research/QUIET/
               </a>
             </span>
 
-              <!-- Paper link (update when available) -->
+              <!-- Paper link (arXiv) -->
               <span class="link-block">
-                <a href="#" target="_blank"
+                <a href="https://arxiv.org/pdf/2606.11091" target="_blank"
                 class="external-link button is-normal is-rounded is-dark">
                 <span class="icon">
                   <i class="fas fa-file-pdf"></i>
                 </span>
-                <span>Paper (Coming Soon)</span>
+                <span>Paper</span>
               </a>
             </span>
 
@@ -184,11 +184,14 @@ permalink: /research/QUIET/
   <section class="section" id="BibTeX">
     <div class="container is-max-desktop content">
       <h2 class="title">BibTeX</h2>
-      <pre><code>@article{Mohapatra_QUIET_2026,
-  author  = {Mohapatra, Sovesh AND Alexandersen, Christoffer G. AND Fotiadis, Panos AND Kelz, Max AND Detre, John AND Pasqualetti, Fabio AND Bassett, Dani S.},
-  title   = {QUIET: Quantifying Underutilized Influential Edges for Targeted Synchronization},
-  year    = {2026},
-  note    = {Preprint},
+      <pre><code>@article{mohapatra2026quietquantifyingunderutilizedinfluential,
+  title         = {QUIET: Quantifying Underutilized Influential Edges for Targeted Synchronization},
+  author        = {Sovesh Mohapatra and Christoffer G. Alexandersen and Panagiotis Fotiadis and Max B. Kelz and John A. Detre and Fabio Pasqualetti and Dani S. Bassett},
+  year          = {2026},
+  eprint        = {2606.11091},
+  archivePrefix = {arXiv},
+  primaryClass  = {eess.SY},
+  url           = {https://arxiv.org/abs/2606.11091},
 }</code></pre>
     </div>
 </section>
