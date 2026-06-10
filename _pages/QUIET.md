@@ -99,9 +99,9 @@ permalink: /research/QUIET/
                 <a href="https://arxiv.org/pdf/2606.11091" target="_blank"
                 class="external-link button is-normal is-rounded is-dark">
                 <span class="icon">
-                  <i class="fas fa-file-pdf"></i>
+                  <i class="ai ai-arxiv"></i>
                 </span>
-                <span>Paper</span>
+                <span>arXiv</span>
               </a>
             </span>
 
