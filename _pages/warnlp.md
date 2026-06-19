@@ -61,16 +61,25 @@ permalink: /research/warnlp/
             <div class="column has-text-centered">
               <div class="publication-links">
 
-                <!-- Paper (PDF) -->
+                <!-- arXiv (coming soon) -->
                 <span class="link-block">
-                  <a href="/assets/warnlp/WarNLP.pdf" target="_blank"
-                  class="external-link button is-normal is-rounded is-dark">
+                  <a class="external-link button is-normal is-rounded is-dark" disabled style="pointer-events: none; opacity: 0.65;">
                   <span class="icon">
-                    <i class="fas fa-file-pdf"></i>
+                    <i class="ai ai-arxiv"></i>
                   </span>
-                  <span>Paper (PDF)</span>
+                  <span>arXiv (Coming soon)</span>
                 </a>
               </span>
+
+              <!-- GitHub (coming soon) -->
+              <span class="link-block">
+                <a class="external-link button is-normal is-rounded is-dark" disabled style="pointer-events: none; opacity: 0.65;">
+                <span class="icon">
+                  <i class="fab fa-github"></i>
+                </span>
+                <span>Code (Coming soon)</span>
+              </a>
+            </span>
 
         </div>
       </div>
