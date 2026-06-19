@@ -109,17 +109,23 @@ permalink: /research/warnlp/
 <!-- End paper abstract -->
 
 
-<!-- Image carousel -->
+<!-- Pipeline overview (Fig 0) — full-width banner (kept out of the carousel: its wide aspect ratio would leave large white gaps) -->
+<section class="section">
+  <div class="container is-max-desktop has-text-centered">
+    <img src="/assets/warnlp/Fig0.png" alt="Study design and analytical pipeline" style="display: block; margin: 0 auto; width: 100%;"/>
+    <h4 class="subtitle has-text-centered" style="margin-top: 0.75rem;">
+      Study design and analytical pipeline for quantifying militarized language across 21.4 million scientific papers.
+    </h4>
+  </div>
+</section>
+<!-- End pipeline overview -->
+
+
+<!-- Image carousel (result figures) -->
 <section class="hero is-small">
   <div class="hero-body">
     <div class="container">
       <div id="results-carousel" class="carousel results-carousel">
-        <div class="item">
-          <img src="/assets/warnlp/Fig0.png" alt="Study design and analytical pipeline" style="display: block; margin: 0 auto; width: 80%;"/>
-          <h4 class="subtitle has-text-centered">
-            Study design and analytical pipeline for quantifying militarized language across 21.4 million scientific papers.
-          </h4>
-        </div>
         <div class="item">
           <img src="/assets/warnlp/Fig1.png" alt="Temporal dynamics 2010-2025" style="display: block; margin: 0 auto; width: 80%;"/>
           <h4 class="subtitle has-text-centered">
