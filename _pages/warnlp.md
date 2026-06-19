@@ -71,13 +71,14 @@ permalink: /research/warnlp/
                 </a>
               </span>
 
-              <!-- GitHub (coming soon) -->
+              <!-- GitHub -->
               <span class="link-block">
-                <a class="external-link button is-normal is-rounded is-dark" disabled style="pointer-events: none; opacity: 0.65;">
+                <a href="https://github.com/soveshmohapatra/warnlp" target="_blank"
+                class="external-link button is-normal is-rounded is-dark">
                 <span class="icon">
                   <i class="fab fa-github"></i>
                 </span>
-                <span>Code (Coming soon)</span>
+                <span>Code</span>
               </a>
             </span>
 
