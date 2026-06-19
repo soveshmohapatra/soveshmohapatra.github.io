@@ -21,7 +21,7 @@ permalink: /research/warnlp/
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>War in the Abstract</title>
-  <link rel="icon" type="image/x-icon" href="/assets/warnlp/Icon.png">
+  <link rel="icon" href="data:,">
   <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
   rel="stylesheet">
 
