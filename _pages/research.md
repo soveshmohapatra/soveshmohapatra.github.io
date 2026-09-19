@@ -25,7 +25,6 @@ My research examines how network structure shapes dynamics and function in the b
 * [War in the Abstract: The rise and consequences of militarized language in scientific communication](https://arxiv.org/abs/2606.23462)  
   **Sovesh Mohapatra**, David Lydon-Staley, Dani S. Bassett  
   **Preprint · under review**  
-  Public manuscript: arXiv v2, 4 August 2026.  
   [Project page](/research/warnlp/)
 
 * [QUIET: Quantifying Underutilized Influential Edges for Targeted synchronization](https://arxiv.org/abs/2606.11091)  
@@ -42,7 +41,6 @@ My research examines how network structure shapes dynamics and function in the b
 * [Meta-analysis of transfer learning for segmentation of brain lesions](https://arxiv.org/abs/2306.11714)  
   **Sovesh Mohapatra**, Advait Gosai, Anant Shinde, Aleksei Rutkovskii, Sirisha Nouduri, Gottfried Schlaug  
   **arXiv preprint**  
-  First posted in 2023; manuscript under review as of 2026.
 
 * [Automated ensemble-based segmentation of adult brain tumors: A novel approach using the BraTS Africa Challenge data](https://arxiv.org/abs/2308.07214)  
   Chiranjeewee Prasad Koirala<sup>†</sup>, **Sovesh Mohapatra**<sup>†</sup>, Advait Gosai, Gottfried Schlaug  
@@ -61,12 +59,10 @@ My research examines how network structure shapes dynamics and function in the b
 * [BONBID-HIE 2023: Lesion Segmentation Challenge in BOston Neonatal Brain Injury Data for Hypoxic Ischemic Encephalopathy](https://ieeexplore.ieee.org/abstract/document/11297440)  
   Rina Bao, Anna N. Foster, Ya'Nan Song, Rutvi Vyas, Ankush Kesri, Imad Eddine Toubal, Elham Soltani Kazemi, Gani Rahmon, Taci Kucukpinar, Mohamed Almansour, Mai-Lan Ho, K. Palaniappan, Dean Ninalga, Chiranjeewee Prasad Koirala, **Sovesh Mohapatra**, Gottfried Schlaug, Marek Wodzinski, Henning Muller, David G. Ellis, Michele R. Aizenberg, M. Arda Aydın, Elvin Abdinli, Gozde Unal, Nazanin Tahmasebi, Kumaradevan Punithakumar, Tian Song, Yun Peng, Sara V. Bates, Randy Hirschtick, P. Ellen Grant, Yangming Ou  
   **IEEE Transactions on Medical Imaging, 45(4), 1711–1725**  
-  First published online in December 2025; final issue citation: 2026.
 
 * [Mapping functional brain organization using artificial intelligence](https://pubs.acs.org/doi/full/10.1021/cbmi.5c00092)  
   Tianjia Zhu, **Sovesh Mohapatra**, Shufang Tan, Minhui Ouyang, Hao Huang  
   **Chemical & Biomedical Imaging, 4(4), 469–484**  
-  First published online in November 2025; final issue citation: 2026.
 
 #### 2024
 
@@ -98,14 +94,12 @@ My research examines how network structure shapes dynamics and function in the b
 * [An ensemble approach for segmentation of neonatal HIE lesions](https://link.springer.com/chapter/10.1007/978-3-031-71626-3_3)  
   Chiranjeewee Prasad Koirala<sup>†</sup>, **Sovesh Mohapatra**<sup>†</sup>, Gottfried Schlaug  
   **AI for Brain Lesion Detection and Trauma Video Action Recognition (BONBID-HIE 2023), LNCS 14567, pp. 23–27**  
-  Workshop held in 2023; first online in 2024; Springer citation year: 2025.
 
 #### 2024
 
 * [Automated ensemble method for pediatric brain tumor segmentation](https://link.springer.com/chapter/10.1007/978-3-031-76163-8_19)  
   Shashidhar Reddy Javaji<sup>†</sup>, Advait Gosai<sup>†</sup>, **Sovesh Mohapatra**<sup>†</sup>, Gottfried Schlaug  
   **Brain Tumor Segmentation, and Cross-Modality Domain Adaptation for Medical Image Segmentation (BraTS 2023), LNCS 14669, pp. 211–220**  
-  Workshop held in 2023; proceedings published in 2024.  
   [Preprint](https://arxiv.org/abs/2308.07212)
 
 #### 2023
