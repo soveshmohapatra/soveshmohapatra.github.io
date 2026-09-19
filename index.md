@@ -26,18 +26,18 @@ Email: [soveshm@engineering.upenn.edu](mailto:soveshm@engineering.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
-<tr><td><b>2026:</b></td><td>New preprint: <a href="/research/connectome-compiler/">Connectome as Compiler: Reading Computation from Connectivity and then Writing it Back</a>.</td></tr>
-<tr><td><b>2026:</b></td><td>Selected for Rising Stars in Engineering in Health.</td></tr>
-<tr><td><b>2026:</b></td><td>Presented <a href="/research/QUIET/">QUIET</a> at the Network Neuroscience Satellite Event at Network Science (oral presentation).</td></tr>
-<tr><td><b>2026:</b></td><td>Guest Editor for the special issue on Pediatric MRI in <i>Magnetic Resonance in Medicine</i>.</td></tr>
-<tr><td><b>Fall 2026:</b></td><td>Invited seminar in the Yale MRRC Neuroscience Seminar Series (scheduled).</td></tr>
-<tr><td><b>Fall 2026:</b></td><td>Guest lecturer for BE 5660: Networked Neuroscience (scheduled).</td></tr>
+<tr><td><b>Sep 2026:</b></td><td>Invited seminar in the Yale MRRC Neuroscience Seminar Series.</td></tr>
+<tr><td><b>Sep 2026:</b></td><td>Guest lecturer for BE 5660: Networked Neuroscience.</td></tr>
+<tr><td><b>Aug 2026:</b></td><td>Selected for Rising Stars in Engineering in Health.</td></tr>
 <tr><td><b>Aug 2026:</b></td><td>New <a href="https://www.preprints.org/manuscript/202608.0321">preprint</a>: Edge-centric control energy follows an inverted-U trajectory through Alzheimer's disease progression.</td></tr>
+<tr><td><b>July 2026:</b></td><td>New preprint: <a href="/research/connectome-compiler/">Connectome as Compiler: Reading Computation from Connectivity and then Writing it Back</a>.</td></tr>
 <tr><td><b>Jun 2026:</b></td><td>New <a href="https://arxiv.org/abs/2606.23462">preprint</a>: <a href="/research/warnlp/">War in the Abstract</a>, on militarized language in scientific communication.</td></tr>
 <tr><td><b>Jun 2026:</b></td><td>New <a href="https://arxiv.org/abs/2606.11091">preprint</a>: <a href="/research/QUIET/">QUIET</a>, an edge-centric framework for targeted network synchronization.</td></tr>
 <tr><td><b>Apr 2026:</b></td><td><a href="https://ieeexplore.ieee.org/document/11297440">BONBID-HIE 2023</a> published in <i>IEEE Transactions on Medical Imaging</i>, 45(4), 1711–1725 (first online December 2025).</td></tr>
 <tr><td><b>Apr 2026:</b></td><td><a href="https://pubs.acs.org/doi/10.1021/cbmi.5c00092">Mapping functional brain organization using artificial intelligence</a> published in <i>Chemical &amp; Biomedical Imaging</i>, 4(4), 469–484 (first online November 2025).</td></tr>
 <tr><td><b>Spring 2026:</b></td><td>Teaching assistant and guest lecturer for STAT 4850/5850: Foundations of AI: Deep Learning with Applications, with Prof. Enric Boix.</td></tr>
+<tr><td><b>Mar 2026:</b></td><td>Presented <a href="/research/QUIET/">QUIET</a> at the Network Neuroscience Satellite Event at Network Science (oral presentation).</td></tr>
+<tr><td><b>Mar 2026:</b></td><td>Guest Editor for the special issue on Pediatric MRI in <i>Magnetic Resonance in Medicine</i>.</td></tr>
 <tr><td><b>Dec 2025:</b></td><td>  New <a href="https://ieeexplore.ieee.org/document/11297440"> paper</a> on Lesion Segmentation Challenge in BOston Neonatal Brain Injury Data for Hypoxic Ischemic Encephalopathy</td></tr>
 <tr><td><b>Jul 2025:</b></td><td>  Chaired Gordon Research Seminar on Tissue Microstructure Imaging</td></tr>
 <tr><td><b>Jun 2025:</b></td><td>  TReND-Neonatal Functional Parcellation paper accepted in the Main track of MICCAI 2025</td></tr>
