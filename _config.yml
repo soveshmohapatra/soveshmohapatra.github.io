@@ -8,9 +8,8 @@
 # Site settings
 title: Sovesh Mohapatra
 full_name: Sovesh Mohapatra
-email: soveshusa@gmail.com
-email2: soveshm@seas.upenn.edu
-description: "Sovesh Mohapatra is a PhD Candidate in BioEngineering at the University of Pennsylvania, researching neuroimaging, brain connectivity, and AI for medical imaging."
+email: soveshm@engineering.upenn.edu
+description: "Sovesh Mohapatra is a PhD candidate in Bioengineering at Penn studying brain networks, network control, neuroimaging, and scientific communication."
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://soveshmohapatra.com" # the base hostname & protocol for your site
 github_username:  soveshmohapatra

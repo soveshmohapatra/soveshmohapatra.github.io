@@ -1,8 +1,8 @@
 ---
-layout: page
-title: Resume
-permalink: /assets/resume.pdf
+layout: null
+title: CV
+permalink: /cv/
+redirect_to: /assets/resume.pdf
 order: 3
+sitemap: false
 ---
-
-({{ site.url }}/assets/resume.pdf)

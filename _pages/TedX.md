@@ -1,6 +1,6 @@
 ---
 layout: page
-title: TedX
+title: TEDx
 permalink: TedX
 order: 5
 ---

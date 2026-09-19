@@ -1,0 +1,383 @@
+%==============================================================================
+%  ACADEMIC CV — Sovesh Mohapatra
+%  Visual design modeled on Arvind Satyanarayan's faculty-application CV:
+%    - large serif name (top-left) with contact block (top-right)
+%    - letter-spaced gray UPPERCASE section headers + hairline rule
+%    - narrow right-aligned date column + content column for dated sections
+%    - block-indented hanging publications (bold title, bold own name)
+%    - running header (pages 2+) and centered "n of N" footer
+%
+%  Compile:  pdflatex cv.tex   (run TWICE — the "n of N" footer needs a second
+%            pass to resolve the last-page reference).
+%
+%  Built on BASE packages only (lmodern, microtype, fancyhdr, xcolor,
+%  hyperref, geometry) so it compiles on a minimal TeX install / Overleaf.
+%==============================================================================
+\documentclass[11pt,letterpaper]{article}
+
+\usepackage[left=0.72in, right=0.72in, top=0.65in, bottom=0.72in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}              % only usable serif on this TeX install
+\usepackage{microtype}            % enables \textls letter-spacing for headers
+\usepackage{ragged2e}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+
+\linespread{1.04}
+\emergencystretch=1em
+
+%-------------------------------------------------------------------- colors ---
+\definecolor{headgray}{gray}{0.45}   % section-header text
+\definecolor{rulegray}{gray}{0.70}   % hairline rule under headers
+\definecolor{linkblue}{HTML}{2C5F88} % URLs / emails
+\hypersetup{colorlinks=true, urlcolor=linkblue, linkcolor=linkblue,
+  pdfauthor={Sovesh Mohapatra}, pdftitle={Sovesh Mohapatra -- Curriculum Vitae}}
+
+%------------------------------------------------ key horizontal measurements ---
+\newlength{\datewidth}\setlength{\datewidth}{1.45in} % left date column
+\newlength{\datesep}\setlength{\datesep}{0.18in}     % gap date->content
+\newlength{\contentwidth}
+\setlength{\contentwidth}{\dimexpr\textwidth-\datewidth-\datesep\relax}
+\newcommand{\contentindent}{\dimexpr\datewidth+\datesep\relax} % x of content col
+
+%==============================================================================
+%  BUILDING BLOCKS  (replacing titlesec / enumitem)
+%==============================================================================
+
+% Section header: letter-spaced gray uppercase + hairline rule (full width).
+\newcommand{\reservelines}[1]{\par\begingroup\dimen0=\pagegoal\advance\dimen0 by -\pagetotal\ifdim\dimen0<#1\newpage\fi\endgroup}
+\newcommand{\cvsection}[1]{%
+  \reservelines{7\baselineskip}%
+  \par\addvspace{5pt}\noindent%
+  {\large\color{headgray}\textls[140]{\MakeUppercase{#1}}}%
+  \par\nointerlineskip\vspace{5pt}\noindent{\color{rulegray}\hrule height 0.6pt}\par\addvspace{5pt}%
+}
+
+% Lightweight subheader (e.g. publication categories), aligned to content col.
+\newcommand{\cvsubsection}[1]{%
+  \reservelines{12\baselineskip}%
+  \par\addvspace{6pt}\noindent\textbf{#1}\par\addvspace{3pt}%
+}
+
+% Dated entry: right-aligned date in left column, body in content column.
+% \dated{date}{body}
+\newcommand{\dated}[2]{%
+  \par\addvspace{3pt}\noindent
+  \begin{minipage}[t]{\datewidth}\RaggedLeft\small #1\strut\end{minipage}%
+  \hspace{\datesep}%
+  \begin{minipage}[t]{\contentwidth}#2\strut\end{minipage}\par%
+}
+
+% Dated entry variant with a left-aligned date.
+% \datedleft{date}{body}
+\newcommand{\datedleft}[2]{%
+  \par\vspace{3pt}\noindent
+  \begin{minipage}[t]{\datewidth}\RaggedRight\small #1\strut\end{minipage}%
+  \hspace{\datesep}%
+  \begin{minipage}[t]{\contentwidth}#2\strut\end{minipage}\par%
+}
+
+% Compact dated entry with a left-aligned date and tighter date-to-text gap.
+\newlength{\compactdatewidth}\setlength{\compactdatewidth}{0.9in}
+\newlength{\compactsep}\setlength{\compactsep}{0.08in}
+\newlength{\compactcontentwidth}
+\setlength{\compactcontentwidth}{\dimexpr\textwidth-\compactdatewidth-\compactsep\relax}
+\newcommand{\datedcompact}[2]{%
+  \par\vspace{3pt}\noindent
+  \begin{minipage}[t]{\compactdatewidth}\RaggedRight\small #1\strut\end{minipage}%
+  \hspace{\compactsep}%
+  \begin{minipage}[t]{\compactcontentwidth}#2\strut\end{minipage}\par%
+}
+\newcommand{\datedresearch}[2]{%
+  \par\vspace{3pt}\noindent
+  \begin{minipage}[t]{\compactdatewidth}\RaggedRight\small #1\strut\end{minipage}%
+  \hspace{\compactsep}%
+  \begin{minipage}[t]{\compactcontentwidth}#2\strut\end{minipage}\par%
+}
+
+\newenvironment{researchbullets}{%
+  \begin{list}{\textbullet}{%
+    \setlength{\topsep}{0pt}\setlength{\partopsep}{0pt}%
+    \setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}%
+    \setlength{\leftmargin}{1.2em}\setlength{\labelwidth}{0.8em}%
+    \setlength{\labelsep}{0.4em}}}%
+  {\end{list}\vspace{-6pt}}
+
+% A bold "group title" sitting in the content column with no date
+% (used to head a cluster of talk venues). \grouptitle{...}
+\newcommand{\grouptitle}[1]{%
+  \par\vspace{6pt}\noindent\hspace*{\contentindent}%
+  \begin{minipage}[t]{\contentwidth}\textbf{#1}\strut\end{minipage}\par\vspace{1pt}%
+}
+
+% Compact variants for presentations, keeping titles close to the year column.
+\newlength{\talkdatewidth}\setlength{\talkdatewidth}{0.55in}
+\newlength{\talksep}\setlength{\talksep}{0.06in}
+\newlength{\talkcontentwidth}
+\setlength{\talkcontentwidth}{\dimexpr\textwidth-\talkdatewidth-\talksep\relax}
+\newcommand{\talkindent}{\dimexpr\talkdatewidth+\talksep\relax}
+\newcommand{\talktitle}[1]{%
+  \par\addvspace{1pt}\noindent\hspace*{\talkindent}%
+  \begin{minipage}[t]{\talkcontentwidth}\textbf{#1}\strut\end{minipage}\par\nobreak\vspace{1pt}%
+}
+\newcommand{\talkdated}[2]{%
+  \par\vspace{3pt}\noindent
+  \begin{minipage}[t]{\talkdatewidth}\RaggedRight\small #1\strut\end{minipage}%
+  \hspace{\talksep}%
+  \begin{minipage}[t]{\talkcontentwidth}#2\strut\end{minipage}\par%
+}
+
+% Compact bullet list (base "list" env; no enumitem needed).
+\newenvironment{bullets}{%
+  \begin{list}{\textbullet}{%
+    \setlength{\topsep}{2pt}\setlength{\partopsep}{0pt}%
+    \setlength{\itemsep}{1.5pt}\setlength{\parsep}{0pt}%
+    \setlength{\leftmargin}{1.2em}\setlength{\labelwidth}{0.8em}%
+    \setlength{\labelsep}{0.4em}}}%
+  {\end{list}}
+
+% Block-indented publication list. Each \pub{...} is one hanging entry.
+\newenvironment{pubs}{%
+  \par\begingroup
+  \setlength{\parindent}{0pt}\setlength{\leftskip}{0.32in}\RaggedRight}%
+  {\endgroup\par}
+\newcommand{\pub}[1]{\par\vspace{5pt}\begingroup\interlinepenalty=10000\noindent #1\par\endgroup}
+
+\newcommand{\me}{\textbf{Sovesh Mohapatra}}   % own name, bold
+
+%---------------------------------------------- running header / footer ---
+% Redefine the "plain" page style so fancyhdr governs every page. Page 1 shows
+% no running header (the name block is the header); pages 2+ show name + label.
+\renewcommand{\headrulewidth}{0pt}
+\fancypagestyle{cv}{%
+  \fancyhf{}%
+  \fancyhead[L]{\small Sovesh Mohapatra}%
+  \fancyhead[R]{\small\textit{Curriculum Vitae}}%
+  \fancyfoot[C]{\footnotesize\textit{\thepage\ of \pageref{cvlastpage}}}%
+}
+% First page: keep the footer but drop the running header.
+\fancypagestyle{cvfirst}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\footnotesize\textit{\thepage\ of \pageref{cvlastpage}}}%
+}
+\pagestyle{cv}
+
+%==============================================================================
+%  DOCUMENT
+%==============================================================================
+\begin{document}
+\thispagestyle{cvfirst}
+
+%---------------------------------------------------------------- NAME / CONTACT ---
+\noindent
+\begin{minipage}[c]{0.58\textwidth}
+  \raisebox{0.18\baselineskip}{\fontsize{30}{32}\selectfont Sovesh Mohapatra}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.40\textwidth}\RaggedLeft\small
+  Department of Bioengineering\\
+  University of Pennsylvania\\
+  \href{mailto:soveshm@engineering.upenn.edu}{soveshm@engineering.upenn.edu}\\
+  +1 (857) 389-8786 \,$\cdot$\, \href{https://soveshmohapatra.com}{soveshmohapatra.com}\\
+  \href{https://github.com/soveshmohapatra}{GitHub} \,$\cdot$\,
+  \href{https://scholar.google.com/citations?user=_IqJIZcAAAAJ\&hl=en}{Google Scholar} \,$\cdot$\,
+  \href{https://www.linkedin.com/in/sovesh/}{LinkedIn}
+\end{minipage}
+
+%---------------------------------------------------------------- EDUCATION ---
+\par\vspace{6pt}\noindent{\footnotesize Public academic CV -- updated 18 September 2026.}\par
+\cvsection{Education}
+\noindent
+\begin{minipage}[t]{0.48\textwidth}
+  Ph.D. Bioengineering\\
+  \textit{University of Pennsylvania, May 2027 (expected)}\\
+  Advisor: Dani S. Bassett
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}
+  B.S. Computer Science \& Mathematics\\
+  B.A. Linguistics\\
+  \textit{University of Massachusetts Amherst, 2023}
+\end{minipage}
+\par\vspace{5pt}
+
+%------------------------------------------------------- RESEARCH INTERESTS ---
+\cvsection{Research Interests}
+\noindent\begin{minipage}{\textwidth}\RaggedRight
+I develop computational methods to study how network structure shapes dynamics
+and function in the brain. My research combines network control, machine learning
+for neuroimaging, and large-scale analysis of scientific communication.
+\end{minipage}
+\par\vspace{5pt}
+
+%--------------------------------------------------------------- PUBLICATIONS ---
+% Newest first; own name bold via \me; co-first marked with $^{\dagger}$.
+\input{publications.tex}
+\cvsubsection{In preparation}
+\begin{pubs}
+  \pub{\me{}, Steven Meisler, Fabio Pasqualetti, Theodore D. Satterthwaite, and Dani S. Bassett. \textbf{Brain Network Control Across the Human Lifespan.} \textit{In preparation.} 2026.}
+  \pub{Xiaohuan Xia$^{\dagger}$, \me{}$^{\dagger}$, David Lydon-Staley, and Dani S. Bassett. \textbf{Citation homophily in science, before and after large language models.} \textit{In preparation.} 2026.}
+  \pub{\me{}, David Lydon-Staley, and Dani S. Bassett. \textbf{What changes between preprint and the journal? Quantifying the effect of peer review.} \textit{In preparation.} 2026.}
+\end{pubs}
+
+\par\vspace{4pt}\noindent{\footnotesize $^{\dagger}$Contributed equally as co-first author.}
+
+%----------------------------------------------------------- RESEARCH EXPERIENCE ---
+\cvsection{Research Experience}
+\datedresearch{2025 -- Present}{%
+  \textbf{Graduate Research Assistant}, \textit{Complex Systems Lab, University of Pennsylvania}\\
+  With Prof. Dani S. Bassett
+  \begin{researchbullets}
+    \item Developed QUIET, edge-centric network-control software for
+      energy-efficient synchronization across synthetic and empirical data.
+    \item Analyzed \textbf{\textasciitilde 21 million} scientific texts with NLP to quantify
+      militarized language and its relationship to downstream attention.
+    \item Lead ongoing projects on Alzheimer's network energetics, citation
+      homophily, and peer-review-driven changes from preprints to journals.
+  \end{researchbullets}}
+
+\datedresearch{2023 -- 2025}{%
+  \textbf{Graduate Research Assistant}, \textit{LINBC Lab, University of Pennsylvania}\\
+  With Prof. Hao Huang
+  \begin{researchbullets}
+    \item Developed TReND, a self-supervised transformer-autoencoder and RNMF
+      framework for neonatal functional network delineation using \textbf{300+} dHCP subjects.
+    \item Modeled 2-year neurodevelopmental outcomes in mild HIE from neonatal
+      white-matter microstructure.
+  \end{researchbullets}}
+
+\datedresearch{2021 -- 2023}{%
+  \textbf{Research Assistant}, \textit{Schlaug Lab, University of Massachusetts Amherst}\\
+  With Prof. Gottfried Schlaug
+  \begin{researchbullets}
+    \item Analyzed tDCS-fMRI in \textbf{33} participants to classify arcuate
+      fasciculus network engagement across stimulation montages (best reported accuracy \textbf{0.92}).
+    \item Developed transfer-learning ensembles for stroke-lesion segmentation,
+      evaluated on \textbf{22} independent T1w MRI scans (best Dice \textbf{0.736}),
+      and engineered \texttt{lesseg} software.
+    \item Benchmarked SAM against BET for MRI brain extraction across diverse
+      sequences, lesion profiles, and image-quality conditions.
+  \end{researchbullets}}
+
+\datedresearch{2021}{%
+  \textbf{Research Intern}, \textit{Massachusetts Institute of Technology, Computer Science \& Artificial Intelligence Laboratory}\\
+  With Prof. Arvind Satyanarayan
+  \begin{researchbullets}
+    \item Built a deep-learning model generating natural-language descriptors
+      from data visualizations.
+    \item Developed sentiment-classification models for U.S. presidential-election discourse.
+  \end{researchbullets}}
+
+\datedresearch{2020}{%
+  \textbf{Research Assistant}, \textit{Satapathi Lab, Indian Institute of Technology Roorkee}\\
+  With Prof. Soumitra Satapathi
+  \begin{researchbullets}
+    \item Built Naive Bayes and docking workflows trained on \textbf{290,893}
+      PubChem compounds to screen \textbf{2,388} FDA-approved drugs for COVID-19 repurposing.\par
+  \end{researchbullets}}
+
+%---------------------------------------------- INVITED TALKS & PRESENTATIONS ---
+\cvsection{Invited Talks \& Presentations}
+\talkdated{2026}{Invited seminar, \textit{Yale MRRC Neuroscience Seminar Series} (scheduled, Fall 2026).}
+
+\talktitle{QUIET: Quantifying Underutilized Influential Edges for Targeted synchronization}
+\talkdated{2026}{Oral presentation, \textit{Network Neuroscience Satellite Event at Network Science}.}
+
+\talktitle{TReND: Transformer-derived features \& Regularized NMF for Functional Network Delineation}
+\talkdated{2025}{Oral presentation, \textit{Organization for Human Brain Mapping (OHBM)}.}
+\talkdated{2025}{Poster, \textit{ISMRM \& ISMRT Annual Meeting}.}
+
+\talktitle{Predicting 2-year neurodevelopmental outcomes in mild HIE from neonatal white-matter microstructure}
+\talkdated{2025}{Oral presentation, \textit{ISMRM \& ISMRT Annual Meeting}.}
+
+\talktitle{GRAFP: Graph-kernel assisted robust functional brain parcellation}
+\talkdated{2024}{Power pitch, \textit{ISMRM \& ISMRT Annual Meeting}.}
+
+\talktitle{Identifying the engagement of a brain network during a targeted tDCS-fMRI experiment using a machine learning approach}
+\talkdated{2022}{Oral presentation, \textit{UMass Interdisciplinary Neuroscience Conference}.}
+
+
+%---------------------------------------------------------------- TEACHING ---
+% Faculty committees weight this heavily; list TA roles too.
+\cvsection{Teaching}
+\datedcompact{Fall 2026}{%
+  \textbf{Guest Lecturer (scheduled)}, \textit{BE 5660: Networked Neuroscience}}
+
+\datedcompact{Spring 2026}{%
+  \textbf{Teaching Assistant}, \textit{STAT 4850/5850: Foundations of AI: Deep Learning with Applications}\\
+  With Prof. Enric Boix}
+
+\datedcompact{Spring 2026}{%
+  \textbf{Guest Lecturer}, \textit{STAT 4850/5850: Foundations of AI: Deep Learning with Applications}}
+\par\vspace{5pt}
+%---------------------------------------------------------------- MENTORING ---
+\cvsection{Mentoring}
+\datedcompact{2026 -- Present}{%
+  \textbf{Isabella Llano Aristizabal}, master's student, \textit{University of Pennsylvania}\\
+  Research mentoring in Alzheimer's network energetics.}
+\datedcompact{2022 -- 2023}{%
+  \textbf{Advait Gosai}, undergraduate student, \textit{University of Massachusetts Amherst}\\
+  Research mentoring in brain extraction and lesion segmentation.}
+\datedcompact{2022 -- 2023}{%
+  \textbf{Aleksei Rutkovskii}, undergraduate student, \textit{University of Massachusetts Amherst}\\
+  Research mentoring in transfer learning for brain-lesion segmentation.}
+\datedcompact{2022 -- 2023}{%
+  \textbf{Chiranjeewee Prasad Koirala}, master's student, \textit{University of Massachusetts Amherst}\\
+  Research mentoring in neonatal and adult brain-lesion segmentation.}
+\datedcompact{2022 -- 2023}{%
+  \textbf{Shashidhar Reddy Javaji}, master's student, \textit{University of Massachusetts Amherst}\\
+  Research mentoring in pediatric brain-tumor segmentation.}
+%---------------------------------------------------------- AWARDS & HONORS ---
+\reservelines{14\baselineskip}
+\cvsection{Awards \& Honors}
+\datedcompact{2026}{Rising Stars in Engineering in Health.}
+\datedcompact{2025}{Merit Abstract Award, \textit{OHBM 2025}.}
+\datedcompact{2025}{Distinguished Alumni, SIP Abacus.}
+\datedcompact{2025}{Trainee Award, \textit{ISMRM \& ISMRT Annual Meeting}.}
+\datedcompact{2024}{Trainee Award, \textit{ISMRM \& ISMRT Annual Meeting}.}
+\datedcompact{2022}{Best Poster Award, \textit{UMass Interdisciplinary Neuroscience Conference}.}
+\datedcompact{2021}{UMass Core Summer Fellow.}
+\datedcompact{2019}{YonoSBI 20 under 20, Arts \& Literature.}
+\datedcompact{2016}{President of India Medal for Exceptional Performance in Innovation.}
+% Add fellowships, travel awards, scholarships, GPA distinctions here.
+\par\vspace{5pt}
+%------------------------------------------------------ LEADERSHIP & SERVICE ---
+\cvsection{Leadership \& Service}
+\datedcompact{2026}{%
+  \textbf{Guest Editor}, special issue on Pediatric MRI, \textit{Magnetic Resonance in Medicine}.}
+\datedcompact{2025 -- 2026}{%
+  \textbf{Trainee Representative}, \textit{ISMRM Pediatric Study Group}.
+  Represent trainee interests; facilitate communication between trainees and
+  senior researchers.}
+\datedcompact{2023 -- 2025}{%
+  \textbf{Co-Chair / Co-President}, \textit{Gordon Research Seminar --- Tissue Microstructure Imaging}.
+  Organized a conference for graduate and postdoctoral researchers spanning
+  multiple tissue-microstructure imaging modalities.}
+\datedcompact{2023 -- 2024}{%
+  \textbf{Advocacy Chair}, \textit{Penn Rangoli}.
+  Supported advocacy and community programming for South Asian students at Penn;
+  helped organize cultural, educational, and community-building events.}
+\datedcompact{2021 -- 2023}{%
+  \textbf{Resident Advisor}, \textit{Brett Hall, University of Massachusetts Amherst}.
+  Fostered an inclusive residential community, supported student well-being, and
+  coordinated programming for undergraduate residents.}
+\datedcompact{2021 -- 2023}{%
+  \textbf{Member}, \textit{Anti-Racism/Bias Training Committee, University of Massachusetts Amherst}.
+  Prepared a five-hour training module for incoming resident assistants and peer
+  mentors on recognizing incidents of racism and bias and responding effectively.}
+\datedcompact{2022 -- 2023}{%
+  \textbf{Member}, \textit{Dean's Student Advisory Council, College of Natural Sciences, University of Massachusetts Amherst}.
+  Represented student perspectives to college leadership and contributed feedback
+  on academic programs, student support, and campus climate initiatives.}
+\datedcompact{Reviewing}{MICCAI (2024--2026); OHBM (2025); ISMRM (2024--2025);
+  \textit{Human Brain Mapping}; \textit{Brain Research}; Gordon Research Conference;
+  ML4LMS, ICML (2024).}
+\par\vspace{5pt}
+%--------------------------------------------------- OUTREACH & ENGAGEMENT ---
+\cvsection{Outreach \& Public Engagement}
+\datedcompact{2019}{LinkedIn Local, GLA University.}
+\datedcompact{2018, 2019}{TEDx Speaker --- TEDxNITSrinagar, TEDxRamjasCollege, TEDxManipal.}
+
+
+\label{cvlastpage}
+\end{document}
