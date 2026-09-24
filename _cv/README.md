@@ -1,12 +1,12 @@
-# Public academic CV
+# CV download
 
-This website edition is based on the supplied faculty-application CV. It omits
-the application reference section and Interfolio addresses. Bibliographic dates
-and publication status were reconciled with public publication records. The
-original faculty-application source is maintained separately.
+The current `assets/resume.pdf` is the user-supplied `Curriculum-Vitae.pdf`,
+replaced without modification on 24 September 2026. Replace the download
+directly when a new approved CV is supplied.
 
-To update the download, edit `public-cv.tex` and `publications.tex`, run
-`pdflatex public-cv.tex` twice from this directory, visually inspect every page,
-then copy `public-cv.pdf` to `../assets/resume.pdf`. Do not commit TeX build files.
+The `public-cv.tex` and `publications.tex` files describe the previous website
+edition and are retained as historical sources. They do not generate the current
+download.
+
 The `_cv` directory is excluded from the generated site by Jekyll's normal
 underscore-directory convention.
