@@ -1,7 +1,7 @@
 # CV download
 
 The current `assets/resume.pdf` is the user-supplied `Curriculum-Vitae.pdf`,
-replaced without modification on 24 September 2026. Replace the download
+replaced without modification on 29 September 2026. Replace the download
 directly when a new approved CV is supplied.
 
 The `public-cv.tex` and `publications.tex` files describe the previous website
