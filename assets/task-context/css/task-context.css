@@ -1,0 +1,36 @@
+.publication-status {
+  margin-top: 0.5rem;
+}
+
+.result-figure {
+  display: block;
+  width: 80%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.results-carousel .item .subtitle {
+  margin: 1rem auto 1.5rem;
+  max-width: 960px;
+}
+
+.slider-navigation-previous:focus-visible,
+.slider-navigation-next:focus-visible,
+.slider-page:focus-visible {
+  outline: 2px solid #3273dc;
+  outline-offset: 3px;
+}
+
+@media screen and (max-width: 768px) {
+  .result-figure {
+    width: 100%;
+  }
+
+  .results-carousel .item {
+    padding: 12px 8px 24px;
+  }
+
+  .results-carousel .item .subtitle {
+    font-size: 1rem;
+  }
+}

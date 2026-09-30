@@ -1,0 +1,151 @@
+---
+layout: null
+title: "Task Context Shapes Component Roles in Language Models"
+description: "Task context changes which graph facts shared language-model components respond to and how their outputs affect later computation. Submitted to ICLR 2027."
+permalink: /research/task-context/
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Context Shapes Component Roles in Language Models</title>
+  <meta name="description" content="Task context changes which graph facts shared language-model components respond to and how their outputs affect later computation. Submitted to ICLR 2027.">
+  <link rel="canonical" href="https://soveshmohapatra.com/research/task-context/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Task Context Shapes Component Roles in Language Models">
+  <meta property="og:description" content="Sovesh Mohapatra and Dani S. Bassett. Submitted to ICLR 2027. A network view of task-dependent computation in shared language-model components.">
+  <meta property="og:url" content="https://soveshmohapatra.com/research/task-context/">
+  <meta property="og:image" content="https://soveshmohapatra.com/assets/task-context/Figure1.png">
+  <meta property="og:image:width" content="2000">
+  <meta property="og:image:height" content="1378">
+  <meta property="og:image:alt" content="Shared components support task-dependent interactions, measured with graph tasks and internal activation edits.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Task Context Shapes Component Roles in Language Models">
+  <meta name="twitter:description" content="Task context changes factual responses and downstream influence in shared language-model components. Submitted to ICLR 2027.">
+  <meta name="twitter:image" content="https://soveshmohapatra.com/assets/task-context/Figure1.png">
+  <meta name="citation_title" content="Task Context Shapes Component Roles in Language Models">
+  <meta name="citation_author" content="Sovesh Mohapatra">
+  <meta name="citation_author" content="Dani S. Bassett">
+  <meta name="citation_publication_date" content="2026">
+  <meta name="citation_pdf_url" content="https://soveshmohapatra.com/assets/task-context/Paper.pdf">
+  <link rel="icon" href="data:,">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/task-context/css/bulma.min.css">
+  <link rel="stylesheet" href="/assets/task-context/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="/assets/task-context/css/index.css">
+  <link rel="stylesheet" href="/assets/task-context/css/task-context.css">
+  <script defer src="/assets/task-context/js/bulma-carousel.min.js"></script>
+  <script defer src="/assets/task-context/js/index.js"></script>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Task Context Shapes Component Roles in Language Models</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Sovesh Mohapatra, Dani S. Bassett</span>
+            </div>
+            <p class="is-size-5 publication-status">Submitted to ICLR 2027</p>
+            <div class="column has-text-centered">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="/assets/task-context/Paper.pdf" target="_blank" rel="noopener" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon" aria-hidden="true">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M8 13h8M8 17h6"></path></svg>
+                    </span>
+                    <span>Paper</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section hero is-light" aria-labelledby="abstract-title">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 id="abstract-title" class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>Large language models reuse the same attention heads across tasks, but identifying these shared heads does not explain what they do differently in each task. A natural source of inspiration is task-dependent interactions among shared brain regions, which motivate a network view of language-model computation. Here, we compare fixed model components across tasks using identical graph facts, statements specifying which directed connections are present. We measure how interventions affect attention heads and the activation state in later layers (influence), as well as the answer (importance). Task changes redistribute the influence in five open-weight models spanning four families and 1.5–14 billion parameters. In Gemma-2-9B and Qwen3-14B, an activation edit changes an early internal activation vector and switches which fact the model reads while the written instruction stays fixed. The same heads then respond to different graph facts and influence later components differently. For each prompt, we construct two linear response maps, one before the edit and one after it. Each map predicts a later head’s response from a measured change in an earlier head. For a separate factual intervention, the map for the corresponding condition reduces mean squared prediction error by 53.6% in Gemma and 5.0% in Qwen compared with the average of the two maps. These findings show that task context changes both which graph facts the shared components respond to and how their outputs affect later computation. A network account may help explain how models use shared parameters to perform different computations. Measurements of task-dependent influence could also guide interventions intended to alter one behavior while preserving others.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero is-small" aria-label="Paper figures">
+    <div class="hero-body">
+      <div class="container">
+        <div id="results-carousel" class="carousel results-carousel" aria-label="Research figures">
+          <div class="item">
+            <a href="/assets/task-context/Figure1.png" target="_blank" rel="noopener" aria-label="Open Figure 1 at full size">
+              <img class="result-figure" src="/assets/task-context/Figure1.png" width="2000" height="1378" alt="Overview: shared components have different interactions across tasks; graph facts stay fixed while instructions or the internal task state change.">
+            </a>
+            <p class="subtitle has-text-centered">Task context can change interactions among shared components. Graph tasks and internal activation edits separate the available facts from how the model uses them.</p>
+          </div>
+          <div class="item">
+            <a href="/assets/task-context/Figure2.png" target="_blank" rel="noopener" aria-label="Open Figure 2 at full size">
+              <img class="result-figure" src="/assets/task-context/Figure2.png" width="2000" height="1444" alt="Task-dependent influence patterns across five open-weight models and comparison of influence-profile and component-importance-profile rotations.">
+            </a>
+            <p class="subtitle has-text-centered">Changing the task instruction redistributes influence among fixed components across five open-weight models, with the graph facts held constant.</p>
+          </div>
+          <div class="item">
+            <a href="/assets/task-context/Figure3.png" target="_blank" rel="noopener" aria-label="Open Figure 3 at full size">
+              <img class="result-figure" src="/assets/task-context/Figure3.png" width="2000" height="845" alt="Task-selective factual effects in Gemma-2-9B and Qwen3-14B, and reductions in task selectivity after restoring later residual activations.">
+            </a>
+            <p class="subtitle has-text-centered">Factual interventions affect answers more when the targeted fact is relevant. Restoring later activations reduces task selectivity beyond restoration controls in Gemma and Qwen.</p>
+          </div>
+          <div class="item">
+            <a href="/assets/task-context/Figure4.png" target="_blank" rel="noopener" aria-label="Open Figure 4 at full size">
+              <img class="result-figure" src="/assets/task-context/Figure4.png" width="2000" height="1533" alt="Early activation edits redirect fixed heads toward a different fact and shift influence toward the alternative task, while the written instruction and model weights remain fixed.">
+            </a>
+            <p class="subtitle has-text-centered">An early activation edit redirects factual responses and downstream influence in Gemma and Qwen while the written instruction and model weights remain fixed.</p>
+          </div>
+          <div class="item">
+            <a href="/assets/task-context/Figure5.png" target="_blank" rel="noopener" aria-label="Open Figure 5 at full size">
+              <img class="result-figure" src="/assets/task-context/Figure5.png" width="2000" height="691" alt="Condition-matched response maps reduce prediction error by 53.6 percent in Gemma and 5.0 percent in Qwen; graph-fine-tuned models respond more strongly when the fact is relevant.">
+            </a>
+            <p class="subtitle has-text-centered">Within the same prompt, condition-matched response maps reduce mean squared prediction error by 53.6% in Gemma and 5.0% in Qwen relative to the averaged map. In graph-fine-tuned models, the same head displacement produces stronger downstream responses when the fact is relevant.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="BibTeX" aria-labelledby="citation-title">
+    <div class="container is-max-desktop content">
+      <h2 id="citation-title" class="title">BibTeX</h2>
+      <pre><code>@unpublished{mohapatra2026taskcontext,
+  title  = {Task Context Shapes Component Roles in Language Models},
+  author = {Mohapatra, Sovesh and Bassett, Dani S.},
+  year   = {2026},
+  note   = {Submitted to ICLR 2027},
+  url    = {https://soveshmohapatra.com/research/task-context/}
+}</code></pre>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p><a href="/research/">More research</a> · <a href="/">Sovesh Mohapatra</a></p>
+          <p>This page was built using the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank" rel="noopener">Academic Project Page Template</a> which was adopted from the <a href="https://nerfies.github.io" target="_blank" rel="noopener">Nerfies</a> project page.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

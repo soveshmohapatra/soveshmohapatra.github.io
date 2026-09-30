@@ -12,7 +12,7 @@ I am a PhD candidate in Bioengineering at the [University of Pennsylvania](https
 
 I completed a B.S. in Computer Science & Mathematics and a B.A. in Linguistics at the [University of Massachusetts Amherst](https://www.umass.edu/) in 2023, completing all three majors in three years. At UMass, I worked with [Gottfried Schlaug](https://profiles.umassmed.edu/display/22559132) on brain stimulation, neuroimaging, and methods to support stroke rehabilitation.
 
-My current work includes [Connectome as Compiler]({{ '/research/connectome-compiler/' | relative_url }}), [QUIET]({{ '/research/QUIET/' | relative_url }}), [War in the Abstract]({{ '/research/warnlp/' | relative_url }}), and [TReND]({{ '/research/TReND/' | relative_url }}). You can find my publications under [Research]({{ '/research/' | relative_url }}) and my machine-learning tutorials and implementations under [Projects]({{ '/projects/' | relative_url }}).
+My current work includes [Task Context]({{ '/research/task-context/' | relative_url }}), [Connectome as Compiler]({{ '/research/connectome-compiler/' | relative_url }}), [QUIET]({{ '/research/QUIET/' | relative_url }}), [War in the Abstract]({{ '/research/warnlp/' | relative_url }}), and [TReND]({{ '/research/TReND/' | relative_url }}). You can find my publications under [Research]({{ '/research/' | relative_url }}) and my machine-learning tutorials and implementations under [Projects]({{ '/projects/' | relative_url }}).
 
 [CV]({{ '/assets/resume.pdf' | relative_url }}) (updated September 2026)
 
@@ -26,6 +26,7 @@ Email: [soveshm@engineering.upenn.edu](mailto:soveshm@engineering.upenn.edu)
 <table>
 <col width="100px">
 <col width="650px">
+<tr><td><b>Sep 2026:</b></td><td>New paper: <a href="/research/task-context/">Task Context Shapes Component Roles in Language Models</a>. Submitted to ICLR 2027.</td></tr>
 <tr><td><b>Sep 2026:</b></td><td>Invited seminar in the Yale MRRC Neuroscience Seminar Series.</td></tr>
 <tr><td><b>Sep 2026:</b></td><td>Guest lecturer for BE 5660: Networked Neuroscience.</td></tr>
 <tr><td><b>Aug 2026:</b></td><td>Selected for Rising Stars in Engineering in Health.</td></tr>
