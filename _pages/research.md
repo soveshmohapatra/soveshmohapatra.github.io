@@ -20,7 +20,7 @@ My research examines how network structure shapes dynamics and function in the b
 * [Task Context Shapes Component Roles in Language Models](/assets/task-context/Paper.pdf)  
   **Sovesh Mohapatra**, Dani S. Bassett  
   **Submitted to ICLR 2027**  
-  [Project page](/research/task-context/)
+  [Project page](/research/task-context/) · [arXiv](https://arxiv.org/abs/2610.13895v1)
 
 * [Connectome as Compiler: Reading Computation from Connectivity and then Writing it Back](https://soveshmohapatra.com/assets/connectome-compiler/Paper.pdf)  
   **Sovesh Mohapatra**, Dani S. Bassett  
